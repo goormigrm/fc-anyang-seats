@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
 <title>FC안양 예매현황</title>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <script src="emblem.js"></script>
@@ -33,9 +34,13 @@
   td input[type=number] { width: 72px; padding: 3px 6px; border: 1px solid #d1d5db; border-radius: 5px; text-align: right; }
   tr.hit td { background: #fff7d6; }
   td.bad { color: #dc2626; font-weight: 700; }
+  .mobile-only { display: none; }
   /* 휴대폰: 현황 → 경기 정보 → 구역별 잔여석 → 스크린샷 인식 */
   @media (max-width: 860px) {
     main { padding: 8px; }
+    .mobile-only { display: block; margin: 6px 4px 0; }
+    #boardWrap.zoom { overflow-x: auto; border-radius: 12px; }
+    #boardWrap.zoom #board { width: 1280px; max-width: none; }
     .panel { grid-template-columns: 1fr; grid-template-areas: "info" "seats" "ocr"; gap: 10px; margin-top: 10px; }
     .box { padding: 14px; }
     .scroll { max-height: none; }
@@ -45,7 +50,8 @@
 </head>
 <body>
 <main>
-  <svg id="board" xmlns="http://www.w3.org/2000/svg" width="1280" height="1040" viewBox="0 0 1280 1040" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif"></svg>
+  <div id="boardWrap"><svg id="board" xmlns="http://www.w3.org/2000/svg" width="1280" height="1040" viewBox="0 0 1280 1040" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif"></svg></div>
+  <p class="hint mobile-only">현황판을 누르면 크게 보입니다 (좌우로 밀어서 보고, 다시 누르면 원래대로).</p>
   <div class="panel">
     <div class="box info">
       <h2>경기 정보</h2>
@@ -53,9 +59,12 @@
       <label><span>경기 일시</span><input type="date" id="day"><select id="time"><option value="">시간</option></select></label>
       <label><span>집계 시각</span><input type="datetime-local" id="at"><button id="now">지금</button></label>
       <h2>저장·불러오기</h2>
-      <div class="row"><button id="png" class="main">PNG 저장</button><button id="story" class="main">인스타 스토리용 PNG</button></div>
+      <div class="row"><button id="png" class="main">PNG 저장</button><button id="story" class="main">인스타 스토리용 PNG</button><button id="share" class="main" hidden>스토리 공유</button></div>
       <div class="row"><button id="saveJson">기록 파일 저장</button><button id="loadBtn">기록 파일 불러오기</button><input type="file" id="loadJson" accept=".json,application/json" hidden></div>
       <p class="hint">기록 파일(JSON)에는 경기 정보, 집계 시각, 모든 구역 숫자가 담깁니다. 집계할 때마다 저장해 두면 나중에 불러와 그 시점 현황을 다시 보거나 이어서 입력할 수 있습니다.</p>
+      <h2>직전 집계와 비교</h2>
+      <div class="row"><button id="baseNow">지금 값을 비교 기준으로</button><button id="baseLoad">기록 파일을 비교 기준으로</button><button id="baseClear">비교 끄기</button><input type="file" id="baseFile" accept=".json,application/json" hidden></div>
+      <p class="hint">새 숫자를 넣기 전에 '지금 값을 비교 기준으로'를 누르거나 지난 기록 파일을 비교 기준으로 고르면, 구역마다 그 사이 예매된 좌석이 +N으로 표시됩니다.</p>
       <div id="note"></div>
     </div>
     <div class="box seats">
@@ -175,7 +184,7 @@ console.assert(t.found.R8 === 28 && t.found.R9 === 58 && t.found.FS6 === 1 && !(
   && !('R2' in t.found) && t.found.R3 === 115 && t.found.R4 === 100 && t.totals[0]?.[1] === 574
   && t.opp === '부천FC1995' && t.date === '2026-11-01T16:30', 'parseText self-check', t);
 
-const state = { opp: '', date: '', at: '', rows: {} };
+const state = { opp: '', date: '', at: '', base: null, rows: {} };  // base: 비교 기준 { at, rows: { 구역: 잔여 } }
 try { Object.assign(state, JSON.parse(localStorage.getItem(KEY))); } catch {}
 SECTIONS.forEach(s => (state.rows[s.id] ??= { remain: null, max: null, off: false }).max ??= KNOWN_MAX[s.id] ?? null);
 // 예전 버전에서 글자로 넣은 상대팀·일시는 목록·달력 형식이 아니면 비움
@@ -200,7 +209,9 @@ const oval = r => 'M' + pts(0, 4, r, 200).join('L') + 'Z';
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const text = (x, y, s, fs, fill, weight = 400, anchor = 'middle') =>
   `<text x="${x}" y="${y}" font-size="${fs}" font-weight="${weight}" fill="${fill}" text-anchor="${anchor}">${esc(s)}</text>`;
-const label = (x, y, lines, ink) => lines.map((s, i) => text(x, y + (i - (lines.length - 1) / 2) * 17 + 5, s, i ? 13 : 15, ink, 700)).join('');
+// hi: 마지막 줄(비교 기준 이후 +N)만 다른 색으로
+const label = (x, y, lines, ink, hi) =>
+  lines.map((s, i) => text(x, y + (i - (lines.length - 1) / 2) * 17 + 5, s, i ? 13 : 15, hi && i === lines.length - 1 ? hi : ink, 700)).join('');
 const tw = (s, fs) => [...s].reduce((w, c) => w + (c > 'ᄀ' ? fs : fs * 0.6), 0);
 const fmt = n => n.toLocaleString('ko-KR');
 
@@ -212,6 +223,10 @@ function look(s, r) {
   const p = r.remain / r.max, i = p >= 0.75 ? 3 : p >= 0.5 ? 2 : p >= 0.25 ? 1 : 0;
   return { fill: (s.away ? RED : PURPLE)[i], ink: i ? '#fff' : s.away ? '#4a0e0e' : '#2b1450', sub: [r.remain + '/' + r.max] };
 }
+// 비교 기준 이후 팔린 좌석 (+: 팔림, −: 취소 등으로 남은 좌석이 늘어남)
+const sold = id => { const b = state.base?.rows?.[id], r = state.rows[id]; return b == null || r.remain == null || r.off ? 0 : b - r.remain; };
+const signed = d => (d > 0 ? '+' : '−') + fmt(Math.abs(d));
+const snap = () => ({ at: state.at, rows: Object.fromEntries(SECTIONS.map(s => [s.id, state.rows[s.id].remain])) });
 // "2026-11-01T16:30" → "2026.11.01(일) 16:30"
 const fmtDate = s => {
   const d = new Date(s.slice(0, 10) + 'T00:00');
@@ -220,33 +235,36 @@ const fmtDate = s => {
 
 // 현황판 SVG 내용. story=false: 1280×1040 가로판, story=true: 인스타 스토리 1080×1920
 function build(story) {
-  let avail = 0, cap = 0, offN = 0, offCap = 0, noMax = false, empty = false;
+  let avail = 0, cap = 0, offN = 0, offCap = 0, noMax = false, empty = false, soldSum = 0;
   const parts = [];
   for (const s of SECTIONS) {
-    const r = state.rows[s.id], v = look(s, r);
+    const r = state.rows[s.id], v = look(s, r), d = sold(s.id);
     if (r.off) { offN++; offCap += r.max || 0; }
     else if (r.remain != null && r.max) { avail += Math.min(r.remain, r.max); cap += r.max; }
     noMax ||= !!v.noMax; empty ||= !!v.empty;
+    if (r.max) soldSum += d;  // 카드 숫자와 같은 범위(총석을 아는 구역)만 더함
     const stroke = v.empty ? 'stroke="#b9c2ce" stroke-width="1.5" stroke-dasharray="4 3"' : 'stroke="#fff" stroke-width="3"';
-    const lines = [s.name || s.id, ...v.sub];
+    const lines = [s.name || s.id, ...v.sub], dl = d ? signed(d) : '', hi = dl && (v.ink === '#fff' ? '#fde68a' : '#9a3412');
     if (s.rect) {
       const [x, y, w, h] = s.rect;
       parts.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${v.fill}" ${stroke}/>`);
-      if (h < 40) parts.push(text(x + w / 2, y + h / 2 + 4, lines.join(' ').replace('잔여 ', ''), 12, v.ink, 700));  // 낮은 칸은 한 줄
-      else if (w < 60 && v.sub[0]?.includes('/')) parts.push(label(x + w / 2, y + h / 2, [lines[0], ...v.sub[0].replace('/', ' /').split(' ')], v.ink));
-      else parts.push(label(x + w / 2, y + h / 2, w < 60 ? lines.map(l => l.replace('잔여 ', '')) : lines, v.ink));
+      if (h < 40) parts.push(text(x + w / 2, y + h / 2 + 4, [...lines, dl].join(' ').trim().replace('잔여 ', ''), 12, v.ink, 700));  // 낮은 칸은 한 줄
+      else if (w < 60 && v.sub[0]?.includes('/')) parts.push(label(x + w / 2, y + h / 2, [lines[0], ...v.sub[0].replace('/', ' /').split(' '), dl].filter(Boolean), v.ink, hi));
+      else parts.push(label(x + w / 2, y + h / 2, [...(w < 60 ? lines.map(l => l.replace('잔여 ', '')) : lines), dl].filter(Boolean), v.ink, hi));
     } else {
       s.ring.forEach(([a, b]) => parts.push(`<path d="${ring(a, b)}" fill="${v.fill}" ${stroke}/>`));
       const [x, y] = P((s.ring[0][0] + s.ring[0][1]) / 2, (RI + RO) / 2);
-      parts.push(label(x, y, lines, v.ink));
+      parts.push(label(x, y, [...lines, dl].filter(Boolean), v.ink, hi));
     }
   }
 
   const pc = x => cap ? (x / cap * 100).toFixed(1) + '%' : '-';
+  const baseAt = state.base ? state.base.at ? state.base.at.slice(5).replace('-', '.').replace('T', ' ') : '비교 기준' : '';  // "11.25 12:00"
   // [제목, 큰 숫자, 뒤 글자, 설명, 스토리용 짧은 설명]
   const sums = [
     ['예매 가능 좌석', fmt(avail), ` / ${fmt(cap)}석`, `총석을 아는 구역 대비 ${pc(avail)} 남음`, `${pc(avail)} 남음`],
-    ['예매된 좌석', fmt(cap - avail), ` / ${fmt(cap)}석`, `총석을 아는 구역 대비 ${pc(cap - avail)} 예매 (선택 중 좌석 포함)`, `${pc(cap - avail)} 예매`],
+    ['예매된 좌석', fmt(cap - avail), ` / ${fmt(cap)}석`, baseAt ? `총석을 아는 구역 대비 ${pc(cap - avail)} 예매 · ${baseAt} 이후 ${signed(soldSum)}석`
+      : `총석을 아는 구역 대비 ${pc(cap - avail)} 예매 (선택 중 좌석 포함)`, baseAt ? `${baseAt} 이후 ${signed(soldSum)}석` : `${pc(cap - avail)} 예매`],
     ['미판매 구역', String(offN), ' 개', offCap ? `좌석 ${fmt(offCap)}석, 이번 경기 판매 없음` : '이번 경기 판매 없음', '이번 경기 판매 없음'],
   ];
   const card = (x, title, big, small, note) => `<g transform="translate(${x},100)"><rect width="400" height="88" rx="10" fill="#fff" stroke="#e5e7eb"/>`
@@ -292,6 +310,7 @@ function build(story) {
     + parts.join('');
   const title = `FC안양 vs ${state.opp || '상대팀'}`, when = state.date ? fmtDate(state.date) : '';
   const at = state.at ? `집계 ${state.at.replace(/-/g, '.').replace('T', ' ')} (KST)` : '';
+  const foot = '구역 안 숫자 = 예매 가능 / 최대 좌석' + (baseAt ? ` · +N = ${baseAt} 이후 예매된 좌석` : '');
 
   if (!story) return defs + `<rect width="${W}" height="${H}" fill="#fff"/>`
     + text(30, 50, title + ' 예매 현황', 26, '#111827', 700, 'start')
@@ -302,7 +321,7 @@ function build(story) {
     + `<rect x="20" y="200" width="1240" height="828" rx="12" fill="#f7f8fa" stroke="#eceff3"/>`
     + `<g transform="translate(40,212)">${map}</g>`
     + legend(40, 996, 12, 1240)
-    + text(40, 1018, '구역 안 숫자 = 예매 가능 / 최대 좌석', 11, '#9ca3af', 400, 'start');
+    + text(40, 1018, foot, 11, '#9ca3af', 400, 'start');
 
   // 스토리: 맨 위·아래는 인스타 화면(프로필, 답장 칸)에 가려서 내용은 y 200~1660 사이에 둠
   const S = 1000 / 1224;  // 지도 전체 폭(관중석 바깥 포함 1224)을 1000에 맞춤
@@ -315,14 +334,17 @@ function build(story) {
     + `<rect x="20" y="760" width="1040" height="660" rx="24" fill="#f7f8fa" stroke="#eceff3"/>`
     + `<g transform="translate(${40 + 12 * S},${780 - 3 * S}) scale(${S})">${map}</g>`
     + legend(40, 1490, 22, 1040)
-    + text(540, 1640, '구역 안 숫자 = 예매 가능 / 최대 좌석 · 티켓링크 잔여석 기준', 20, '#9ca3af');
+    + text(540, 1640, foot, 20, '#9ca3af')
+    + text(540, 1672, '티켓링크 잔여석 기준', 18, '#b0b5bf');
 }
 
 function render() {
   board.innerHTML = build(false);
   for (const tr of tbody.rows) {
     const r = state.rows[tr.dataset.id], c = tr.cells[4];
-    c.textContent = r.off ? '미판매' : r.remain == null ? '' : r.remain === 0 ? '매진' : r.max ? Math.round(r.remain / r.max * 100) + '%' : '총석?';
+    const d = sold(tr.dataset.id);
+    c.textContent = (r.off ? '미판매' : r.remain == null ? '' : r.remain === 0 ? '매진' : r.max ? Math.round(r.remain / r.max * 100) + '%' : '총석?')
+      + (d ? ` (${signed(d)})` : '');
     c.classList.toggle('bad', !r.off && r.max != null && r.remain > r.max);
   }
 }
@@ -386,8 +408,9 @@ $('toMax').onclick = () => {
   fillTable(); save(); render();
 };
 $('clear').onclick = () => {
-  if (!confirm('새 경기를 준비할까요?\n모든 구역의 잔여석과 원정석 총석을 비웁니다. (다른 구역의 최대 좌석과 미판매 설정은 그대로)')) return;
+  if (!confirm('새 경기를 준비할까요?\n모든 구역의 잔여석, 원정석 총석, 비교 기준을 비웁니다. (다른 구역의 최대 좌석과 미판매 설정은 그대로)')) return;
   SECTIONS.forEach(s => { const r = state.rows[s.id]; r.remain = null; if (s.perGame) r.max = null; });
+  state.base = null;
   fillTable([]); save(); render();
 };
 $('reparse').onclick = () => apply(parseText(raw.value));
@@ -415,32 +438,51 @@ async function pngBlob(story) {
 }
 $('png').onclick = async () => download(fileBase() + '.png', await pngBlob(false));
 $('story').onclick = async () => download(fileBase() + '_스토리.png', await pngBlob(true));
+// 휴대폰 공유 창(인스타·카톡 등)으로 바로 보내기. 공유 창을 못 띄우는 기기는 버튼을 숨기고, 실패하면 파일로 저장
+$('share').hidden = !navigator.canShare?.({ files: [new File([''], 'a.png', { type: 'image/png' })] });
+$('share').onclick = async () => {
+  const name = fileBase() + '_스토리.png', blob = await pngBlob(true);
+  try { await navigator.share({ files: [new File([blob], name, { type: 'image/png' })], title: `FC안양 vs ${state.opp || '상대팀'} 예매 현황` }); }
+  catch (err) { if (err.name !== 'AbortError') download(name, blob); }
+};
 $('saveJson').onclick = () => {
   download(fileBase() + '.json', new Blob([JSON.stringify({ app: 'fc-anyang-seats', version: 1, ...state }, null, 1)], { type: 'application/json' }));
   note('기록 파일을 저장했습니다.');
 };
-$('loadBtn').onclick = () => $('loadJson').click();
-$('loadJson').onchange = async e => {
+// 기록 파일 읽기: 이 프로그램이 저장한 형식인지 보고, 값은 0 이상 정수·목록에 있는 팀·날짜 형식만 받음
+async function readRecord(f) {
+  const d = JSON.parse(await f.text());
+  if (d?.app !== 'fc-anyang-seats' || !d.rows || typeof d.rows !== 'object') throw new Error('이 프로그램의 기록 파일이 아닙니다.');
+  const num = v => Number.isInteger(v) && v >= 0 ? v : null;
+  return {
+    rows: Object.fromEntries(SECTIONS.map(s => { const r = d.rows[s.id] || {}; return [s.id, { remain: num(r.remain), max: num(r.max), off: r.off === true }]; })),
+    opp: Object.values(TEAMS).includes(d.opp) ? d.opp : '',
+    date: /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/.test(d.date) ? d.date : '',
+    at: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(d.at) ? d.at : '',
+  };
+}
+const pickFile = (input, fn) => input.onchange = async e => {
   const f = e.target.files[0];
   e.target.value = '';
-  if (!f) return;
-  try {
-    const d = JSON.parse(await f.text());
-    if (d?.app !== 'fc-anyang-seats' || typeof d.rows !== 'object') throw new Error('이 프로그램의 기록 파일이 아닙니다.');
-    if (Object.values(state.rows).some(r => r.remain != null)
-      && !confirm(`지금 입력된 내용을 "${f.name}" 기록으로 바꿀까요?\n지금 내용이 필요하면 취소하고 먼저 '기록 파일 저장'을 누르세요.`)) return;
-    const num = v => Number.isInteger(v) && v >= 0 ? v : null;  // 파일 값은 0 이상 정수만 받음
-    SECTIONS.forEach(s => {
-      const r = d.rows[s.id] || {};
-      Object.assign(state.rows[s.id], { remain: num(r.remain), max: num(r.max) ?? KNOWN_MAX[s.id] ?? null, off: r.off === true });
-    });
-    state.opp = Object.values(TEAMS).includes(d.opp) ? d.opp : '';
-    state.date = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/.test(d.date) ? d.date : '';
-    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(d.at)) state.at = d.at;
-    syncInputs(); fillTable([]); save(); render();
-    note(`"${f.name}"을(를) 불러왔습니다. 새로 집계하려면 집계 시각의 '지금'을 누르고 바뀐 숫자를 고치세요.`);
-  } catch (err) { note('불러오기 실패: ' + err.message); }
+  if (f) try { await fn(f, await readRecord(f)); } catch (err) { note('불러오기 실패: ' + err.message); }
 };
+$('loadBtn').onclick = () => $('loadJson').click();
+pickFile($('loadJson'), (f, d) => {
+  if (Object.values(state.rows).some(r => r.remain != null)
+    && !confirm(`지금 입력된 내용을 "${f.name}" 기록으로 바꿀까요?\n지금 내용이 필요하면 취소하고 먼저 '기록 파일 저장'을 누르세요.`)) return;
+  SECTIONS.forEach(s => Object.assign(state.rows[s.id], d.rows[s.id], { max: d.rows[s.id].max ?? KNOWN_MAX[s.id] ?? null }));
+  Object.assign(state, { opp: d.opp, date: d.date, at: d.at || state.at, base: null });
+  syncInputs(); fillTable([]); save(); render();
+  note(`"${f.name}"을(를) 불러왔습니다. 이어서 집계하려면 '지금 값을 비교 기준으로'를 누르고, 집계 시각 '지금'을 누른 뒤 새 숫자를 넣으세요.`);
+});
+$('baseNow').onclick = () => { state.base = snap(); save(); render(); note('지금 숫자를 비교 기준으로 고정했습니다. 새 숫자를 넣으면 구역마다 그 사이 예매된 좌석(+N)이 보입니다.'); };
+$('baseLoad').onclick = () => $('baseFile').click();
+pickFile($('baseFile'), (f, d) => {
+  state.base = { at: d.at, rows: Object.fromEntries(SECTIONS.map(s => [s.id, d.rows[s.id].remain])) };
+  save(); render();
+  note(`"${f.name}"을(를) 비교 기준으로 정했습니다.`);
+});
+$('baseClear').onclick = () => { state.base = null; save(); render(); note('비교를 껐습니다.'); };
 
 // ---------- 스크린샷 인식 ----------
 // 이미지 일부를 z배로 잘라 냄. thr: 이보다 어두운 점은 검정, 나머지는 흰색 (회색 "0석"·빨간 숫자를 또렷하게)
@@ -485,37 +527,56 @@ async function readCards(col, kor, eng) {
   return cards.map((c, i) => /^\d+$/.test(c.num) ? `${p}${+base + i}구역 ${c.num}석` : '').filter(Boolean).join('\n') + '\n';
 }
 
+// 스크린샷 한 장의 글자. first: 맨 위 경기 정보(상대팀·일시)도 읽음
+async function readShot(f, first, kor, eng) {
+  const bmp = await createImageBitmap(f), W0 = bmp.width, H0 = bmp.height;
+  await kor.setParameters({ tessedit_pageseg_mode: '4' });
+  if (H0 < W0 * 1.2) return (await kor.recognize(bmp)).data.text + '\n';  // 가로 캡처(PC)는 통째로
+  // 티켓링크 앱 세로 캡처: 아래 목록만, 왼쪽 등급 목록과 오른쪽 구역 카드를 따로 읽음
+  // shortcut: 목록 위치를 화면 비율(아래 60~90%, 66%에서 나눔)로 고정, 다른 기기에서 못 읽으면 비율 조정
+  let out = (await kor.recognize(cut(bmp, 0, H0 * 0.6, W0 * 0.66, H0 * 0.3))).data.text + '\n';
+  out += await readCards(cut(bmp, W0 * 0.66, H0 * 0.6, W0 * 0.34, H0 * 0.3), kor, eng);
+  if (first) {
+    await kor.setParameters({ tessedit_pageseg_mode: '6' });
+    out += (await kor.recognize(cut(bmp, 0, H0 * 0.11, W0 * 0.8, H0 * 0.09))).data.text + '\n';
+  }
+  return out;
+}
+
 async function ocr(files) {
   if (!window.Tesseract) return status('글자 인식 도구를 불러오지 못했습니다. 인터넷 연결을 확인하거나 표에 직접 입력하세요.');
-  let kor, eng;
+  // 코어·메모리가 넉넉하면 두 갈래로 나눠 동시에 읽음 (갈래마다 한글·영문 인식기 한 쌍)
+  const lanes = Math.min(files.length, (navigator.hardwareConcurrency ?? 2) >= 4 && (navigator.deviceMemory ?? 4) >= 4 ? 2 : 1);
+  const pairs = [], texts = [];
+  let next = 0, done = 0;
   try {
     status('글자 인식 준비 중… (처음 한 번은 인식 데이터를 내려받아 조금 걸립니다)');
-    [kor, eng] = await Promise.all([Tesseract.createWorker('kor+eng'), Tesseract.createWorker('eng')]);
-    await eng.setParameters({ tessedit_pageseg_mode: '7' });
-    raw.value = '';
-    for (const [k, f] of files.entries()) {
-      status(`${k + 1}/${files.length}장 인식 중…`);
-      const bmp = await createImageBitmap(f), W0 = bmp.width, H0 = bmp.height;
-      await kor.setParameters({ tessedit_pageseg_mode: '4' });
-      if (H0 < W0 * 1.2) { raw.value += (await kor.recognize(bmp)).data.text + '\n'; continue; }  // 가로 캡처(PC)는 통째로
-      // 티켓링크 앱 세로 캡처: 아래 목록만, 왼쪽 등급 목록과 오른쪽 구역 카드를 따로 읽음
-      // shortcut: 목록 위치를 화면 비율(아래 60~90%, 66%에서 나눔)로 고정, 다른 기기에서 못 읽으면 비율 조정
-      raw.value += (await kor.recognize(cut(bmp, 0, H0 * 0.6, W0 * 0.66, H0 * 0.3))).data.text + '\n';
-      raw.value += await readCards(cut(bmp, W0 * 0.66, H0 * 0.6, W0 * 0.34, H0 * 0.3), kor, eng);
-      if (k === 0) {  // 맨 위 경기 정보(상대팀·일시)는 첫 장에서 한 번만
-        await kor.setParameters({ tessedit_pageseg_mode: '6' });
-        raw.value += (await kor.recognize(cut(bmp, 0, H0 * 0.11, W0 * 0.8, H0 * 0.09))).data.text + '\n';
+    for (let i = 0; i < lanes; i++) pairs.push(await Promise.all([Tesseract.createWorker('kor+eng'), Tesseract.createWorker('eng')]));
+    await Promise.all(pairs.map(([, eng]) => eng.setParameters({ tessedit_pageseg_mode: '7' })));
+    await Promise.all(pairs.map(async ([kor, eng]) => {
+      for (let k; (k = next++) < files.length;) {
+        texts[k] = await readShot(files[k], k === 0, kor, eng);
+        status(`${++done}/${files.length}장 인식했습니다…`);
       }
-    }
+    }));
+    raw.value = texts.join('');  // 원래 순서대로 (같은 구역이 여러 장이면 나중 장이 우선)
     apply(parseText(raw.value));
   } catch (e) { status('인식 실패: ' + e.message); }
-  await Promise.all([kor?.terminate(), eng?.terminate()]);
+  await Promise.all(pairs.flat().map(w => w.terminate()));
 }
 $('file').onchange = e => { ocr([...e.target.files]); e.target.value = ''; };
 addEventListener('paste', e => {
   const imgs = [...e.clipboardData.files].filter(f => f.type.startsWith('image/'));
   if (imgs.length) { e.preventDefault(); ocr(imgs); }
 });
+
+// 휴대폰: 현황판을 누르면 실제 크기(1280px)로 키워 좌우로 밀어 보고, 다시 누르면 원래대로
+$('boardWrap').onclick = () => {
+  if (!matchMedia('(max-width: 860px)').matches) return;
+  const wrap = $('boardWrap');
+  wrap.classList.toggle('zoom');
+  wrap.scrollLeft = (wrap.scrollWidth - wrap.clientWidth) / 2;  // 경기장 가운데부터
+};
 
 syncInputs(); fillTable(); render();
 </script>
