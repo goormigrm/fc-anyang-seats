@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FC안양 예매현황</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+<style>
+  body { margin: 0; background: #f2f4f7; color: #1f2937; font: 14px 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; }
+  main { max-width: 1280px; margin: 0 auto; padding: 16px; }
+  #board { display: block; width: 100%; height: auto; border-radius: 12px; box-shadow: 0 1px 3px #0001; }
+  .panel { display: grid; grid-template-columns: 1fr 1.2fr; gap: 16px; margin-top: 16px; align-items: start; }
+  @media (max-width: 860px) { .panel { grid-template-columns: 1fr; } }
+  .box { background: #fff; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 3px #0001; }
+  h2 { font-size: 15px; margin: 20px 0 8px; } h2:first-child { margin-top: 0; }
+  label { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+  label > span { width: 70px; flex: none; color: #6b7280; }
+  input, textarea, button { font: inherit; }
+  input[type=text], input[type=datetime-local] { flex: 1; min-width: 0; padding: 5px 8px; border: 1px solid #d1d5db; border-radius: 6px; }
+  textarea { width: 100%; box-sizing: border-box; height: 120px; margin: 6px 0; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 12px; }
+  button { padding: 6px 12px; border: 1px solid #c7cdd6; background: #fff; border-radius: 6px; cursor: pointer; }
+  button.main { background: #4b2a85; border-color: #4b2a85; color: #fff; }
+  .hint { margin: 4px 0 8px; color: #6b7280; font-size: 12px; }
+  #status { min-height: 18px; margin: 6px 0; color: #4b2a85; font-size: 12px; white-space: pre-line; }
+  .scroll { max-height: 660px; overflow: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th { position: sticky; top: 0; background: #f9fafb; color: #6b7280; font-size: 12px; font-weight: 600; }
+  th, td { padding: 4px 6px; border-bottom: 1px solid #eef0f3; text-align: center; }
+  td:first-child { text-align: left; font-weight: 600; }
+  td input[type=number] { width: 72px; padding: 3px 6px; border: 1px solid #d1d5db; border-radius: 5px; text-align: right; }
+  tr.hit td { background: #fff7d6; }
+  td.bad { color: #dc2626; font-weight: 700; }
+</style>
+</head>
+<body>
+<main>
+  <svg id="board" xmlns="http://www.w3.org/2000/svg" width="1280" height="1040" viewBox="0 0 1280 1040" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif"></svg>
+  <div class="panel">
+    <div class="box">
+      <h2>경기 정보</h2>
+      <label><span>상대팀</span><input type="text" id="opp" placeholder="예: 부천FC1995"></label>
+      <label><span>경기 일시</span><input type="text" id="date" placeholder="예: 2026.11.01(일) 16:30"></label>
+      <label><span>대회</span><input type="text" id="league"></label>
+      <label><span>집계 시각</span><input type="datetime-local" id="at"><button id="now">지금</button></label>
+      <h2>스크린샷 인식</h2>
+      <p class="hint">티켓링크 앱의 '등급/좌석 선택' 화면을 캡처해서 이 페이지에 Ctrl+V 하거나 파일을 고르세요. 등급마다 눌러 구역 목록이 보이게 여러 장 찍어 한 번에 넣으면 됩니다. 인식된 구역은 표에서 노랗게 표시되니 숫자를 확인하세요.</p>
+      <input type="file" id="file" accept="image/*" multiple>
+      <div id="status"></div>
+      <textarea id="raw" placeholder="인식된 글자가 여기에 나옵니다. 잘못 읽은 글자를 고치거나 직접 붙여넣을 수도 있습니다. (예: R8구역 28석 / 가변석 574 석)"></textarea>
+      <button id="reparse">이 글자로 표 채우기</button>
+      <h2>내보내기</h2>
+      <button id="png" class="main">PNG 이미지로 저장</button>
+    </div>
+    <div class="box">
+      <h2>구역별 잔여석</h2>
+      <p class="hint">잔여를 비워 두면 '정보 없음', 0이면 매진입니다. 최대 좌석은 한 번 넣으면 남지만, 원정석 총석은 경기마다 다시 넣습니다.</p>
+      <p><button id="toMax">잔여석을 최대 좌석으로 저장</button> <button id="clear">새 경기: 잔여석 비우기</button></p>
+      <div class="scroll"><table>
+        <thead><tr><th>구역</th><th>미판매</th><th>잔여</th><th>최대</th><th>잔여율</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table></div>
+    </div>
+  </div>
+</main>
+<script>
+const KEY = 'fc-anyang-seat-status', W = 1280, H = 1040;
+// 지도: 경기장 중심 (CX, CY), 직선 반길이 L, 스탠드 안쪽/바깥 반지름 RI/RO
+const CX = 600, CY = 375, L = 240, RI = 285, RO = 360;
+const BLUE = ['#6ea8ea', '#3b82e0', '#2160c4', '#0f3a7a'];  // 잔여율 1~24 / 25~49 / 50~74 / 75%+
+const RED = ['#e58b8b', '#d24a4a', '#a82020', '#761212'];
+const Rs = (a, b, p = 'R') => Array.from({ length: b - a + 1 }, (_, i) => p + (a + i));
+
+// ring: 스탠드 위치 [u0, u1]. u 0~1 위(W) 직선 왼→오, 1~2 오른쪽(N) 곡선, 2~3 아래(E) 직선 오→왼, 3~4 왼쪽(S) 곡선 아래→위
+// perGame: 경기마다 총석이 달라 '새 경기' 때 최대 좌석도 비움
+const SECTIONS = [
+  { id: '일반지정석', ring: [[0.05, 0.76]] },
+  { id: '일반자유석', ring: [[0.76, 1.16], [3.88, 4.05]] },
+  { id: 'T4', name: '피크닉 T4', ring: [[1.16, 1.27]] },
+  { id: 'P', name: '돗자리 P', ring: [[1.27, 1.38]] },
+  { id: '중립석', ring: [[1.38, 1.46]] },
+  { id: '원정석', ring: [[1.46, 1.84]], away: true, perGame: true },
+  { id: 'T3', ring: [[3.0, 3.06]] },
+  { id: '남측자유석', ring: [[3.06, 3.3]] },
+];
+// 가변석 칸: 번호가 이어지도록 E 오른쪽 R1 → 왼쪽 R9 → S 아래 R10 → 위 R14 → W 왼쪽 R15 → 오른쪽 R26
+const cells = (ids, x, y, w, h, down) => ids.forEach((id, i) =>
+  SECTIONS.push({ id, rect: [CX + x + (down ? 0 : i * w), CY + y + (down ? i * h : 0), w, h] }));
+cells(Rs(15, 26), -265, -270, 530 / 12, 80);
+cells(['R9', 'R8', 'R7', 'R6', 'T1', 'T2', 'R5', 'R4', 'R3', 'R2', 'R1'], -265, 190, 530 / 11, 80);
+cells(['R14'], -460, -170, 160, 45);
+cells(['R13', 'R12', 'R11'], -460, -125, 70, 250 / 3, true);
+cells(Rs(1, 7, 'FS'), -390, -125, 90, 250 / 7, true);  // shortcut: FS 순서·위치는 추정, 실제 배치 확인되면 수정
+cells(['R10'], -460, 125, 160, 45);
+// 11/1 부천전에서 전 좌석이 남아 있던 구역 (= 최대 좌석)
+const KNOWN_MAX = { R1: 141, R25: 138, R26: 138 };
+
+// 티켓링크 왼쪽 '등급 목록' → 구역. 위에서부터 먼저 맞는 규칙을 씀 ("퍼스트 스탠딩석"이 "퍼스트석"보다 먼저)
+const GRADES = [
+  { name: '퍼스트 스탠딩석', re: /스탠딩/, ids: Rs(1, 7, 'FS') },
+  { name: '퍼스트석', re: /퍼스트/, ids: Rs(10, 14) },  // shortcut: R10~R14는 추정, 퍼스트석 구역 목록 보면 확정
+  { name: '해링턴플레이스존', re: /해링턴|플레이스/, ids: Rs(15, 26) },
+  { name: '가변석', re: /가변/, ids: Rs(1, 9) },
+  { name: '피크닉존 돗자리석(P)', re: /자리|\(P\)/, ids: ['P'] },
+  { name: '피크닉존 테이블석(T4)', re: /피크닉.*테이블/, ids: ['T4'] },
+  { name: '테이블석(T1)', re: /테이블.*\(.?1\)/, ids: ['T1'] },  // OCR이 T를 1로 읽어 "(13)"이 되어도 끝자리로 구분
+  { name: '테이블석(T2)', re: /테이블.*\(.?2\)/, ids: ['T2'] },
+  { name: '테이블석(T3)', re: /테이블.*\(.?3\)/, ids: ['T3'] },
+  { name: '남측 자유석(2층)', re: /남측/, ids: ['남측자유석'] },
+  { name: '원정석', re: /원정/, ids: ['원정석'] },
+  { name: '중립석', re: /중립/, ids: ['중립석'] },
+  { name: '일반지정석', re: /지정/, ids: ['일반지정석'] },
+  { name: '일반자유석', re: /자유/, ids: ['일반자유석'] },
+];
+
+// 화면 글자 해석: 오른쪽 구역 목록 "R8구역 (줄바꿈) 28석", 왼쪽 등급 목록 "가변석 574 석", 상단 "FC안양 vs 상대 / 날짜"
+function parseText(text) {
+  const t = text.replace(/(\d),(?=\d{3})/g, '$1'), seen = {}, totals = [];
+  const add = (id, v) => (seen[id] ??= []).push(v);
+  for (const [, a, n, v] of t.matchAll(/(?<![A-Za-z])([A-Z]{1,2})\s*(\d{1,2})\s*구\s*역\s*(\d+)\s*석/gi)) add(a.toUpperCase() + n, +v);
+  // 등급 줄의 "석"을 OCR이 4로 읽는 일이 잦아서("204석" → "2044"), 줄 끝의 남는 4는 석으로 봄
+  for (const [, name, v] of t.matchAll(/([가-힣][가-힣A-Za-z0-9() \t]*?)[ \t]*(\d+)(?:[ \t]*석|4(?=[^\d\n]{0,2}$))/gm)) {
+    const g = GRADES.find(g => g.re.test(name));
+    if (!g) continue;
+    if (g.ids.length === 1) add(g.ids[0], +v);  // 등급 = 구역 하나
+    else if (+v === 0) g.ids.forEach(id => add(id, 0));  // 등급 전체 0석이면 구역도 전부 0
+    else totals.push([g, +v]);
+  }
+  // 같은 구역이 여러 장에 나오면 가장 많이 읽힌 값 (같으면 나중 것): 한 장에서 잘못 읽은 숫자를 걸러 냄
+  const found = {};
+  for (const [id, vs] of Object.entries(seen)) {
+    const cnt = v => vs.filter(x => x === v).length;
+    found[id] = vs.reduce((a, b) => cnt(b) >= cnt(a) ? b : a);
+  }
+  return {
+    found, totals,
+    opp: t.match(/FC\s*안양\s*vs\.?\s*([^\n|]+)/i)?.[1].trim(),
+    date: t.match(/\d{4}\.\d{2}\.\d{2}\s*\(.\)\s*\d{1,2}:\d{2}/)?.[0],
+  };
+}
+const t = parseText('홈 FC안양 vs 부천FC1995\n안양종합운동장 | 2026.11.01(일) 16:30\n남측 자유석(2층) 12074\n가변석 574 석 R8구역\n28석\n'
+  + 'R9구역\n58석\nFS6구역 1석\n피크닉존 테이블석(14) 584\n피크닉존\n58석\n피크닉존듯자리석(및 2044\n테이블석(13) 30석\n퍼스트석 0 석\nR2 6석\n'
+  + 'R3구역 11석\nR3구역 115석\nR3구역 115석\nR4구역 99석\nR4구역 100석');
+console.assert(t.found.R8 === 28 && t.found.R9 === 58 && t.found.FS6 === 1 && !('S6' in t.found) && t.found['남측자유석'] === 1207
+  && t.found.T4 === 58 && t.found.P === 204 && t.found.T3 === 30 && !('T1' in t.found) && t.found.R10 === 0 && t.found.R14 === 0
+  && !('R2' in t.found) && t.found.R3 === 115 && t.found.R4 === 100 && t.totals[0]?.[1] === 574
+  && t.opp === '부천FC1995' && t.date === '2026.11.01(일) 16:30', 'parseText self-check', t);
+
+const state = { opp: '', date: '', league: 'K리그1', at: '', rows: {} };
+try { Object.assign(state, JSON.parse(localStorage.getItem(KEY))); } catch {}
+SECTIONS.forEach(s => state.rows[s.id] ??= { remain: null, max: KNOWN_MAX[s.id] ?? null, off: false });
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} };
+const nowLocal = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+state.at ||= nowLocal();
+
+// ---------- 그리기 ----------
+const P = (u, r) => {
+  u = ((u % 4) + 4) % 4;
+  const k = Math.floor(u), f = u - k;
+  if (k === 0) return [CX - L + 2 * L * f, CY - r];
+  if (k === 2) return [CX + L - 2 * L * f, CY + r];
+  const a = Math.PI * (k === 1 ? f - 0.5 : f + 0.5);
+  return [(k === 1 ? CX + L : CX - L) + r * Math.cos(a), CY + r * Math.sin(a)];
+};
+const pts = (u0, u1, r, n = 40) => Array.from({ length: n + 1 }, (_, i) => P(u0 + (u1 - u0) * i / n, r).map(v => v.toFixed(1)).join(','));
+const ring = (u0, u1) => 'M' + [...pts(u0, u1, RO), ...pts(u1, u0, RI)].join('L') + 'Z';
+const oval = r => 'M' + pts(0, 4, r, 200).join('L') + 'Z';
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const text = (x, y, s, fs, fill, weight = 400, anchor = 'middle') =>
+  `<text x="${x}" y="${y}" font-size="${fs}" font-weight="${weight}" fill="${fill}" text-anchor="${anchor}">${esc(s)}</text>`;
+const label = (x, y, lines, ink) => lines.map((s, i) => text(x, y + (i - (lines.length - 1) / 2) * 17 + 5, s, i ? 13 : 15, ink, 700)).join('');
+const tw = (s, fs) => [...s].reduce((w, c) => w + (c > 'ᄀ' ? fs : fs * 0.6), 0);
+const fmt = n => n.toLocaleString('ko-KR');
+
+function look(s, r) {
+  if (r.off) return { fill: 'url(#hatch)', ink: '#a19d8f', sub: ['미판매'] };
+  if (r.remain == null) return { fill: '#fff', ink: '#9aa4b1', sub: [], empty: true };
+  if (r.remain === 0) return { fill: '#b4b1a7', ink: '#2f2f2f', sub: ['매진'] };
+  if (!r.max) return { fill: '#8d9bb0', ink: '#fff', sub: ['잔여 ' + r.remain], noMax: true };
+  const p = r.remain / r.max, i = p >= 0.75 ? 3 : p >= 0.5 ? 2 : p >= 0.25 ? 1 : 0;
+  return { fill: (s.away ? RED : BLUE)[i], ink: '#fff', sub: [r.remain + '/' + r.max] };
+}
+
+function render() {
+  let avail = 0, cap = 0, offN = 0, offCap = 0, noMax = false, empty = false;
+  const parts = [];
+  for (const s of SECTIONS) {
+    const r = state.rows[s.id], v = look(s, r);
+    if (r.off) { offN++; offCap += r.max || 0; }
+    else if (r.remain != null && r.max) { avail += Math.min(r.remain, r.max); cap += r.max; }
+    noMax ||= !!v.noMax; empty ||= !!v.empty;
+    const stroke = v.empty ? 'stroke="#b9c2ce" stroke-width="1.5" stroke-dasharray="4 3"' : 'stroke="#fff" stroke-width="3"';
+    const lines = [s.name || s.id, ...v.sub];
+    if (s.rect) {
+      const [x, y, w, h] = s.rect;
+      parts.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${v.fill}" ${stroke}/>`);
+      if (h < 40) parts.push(text(x + w / 2, y + h / 2 + 4, lines.join(' ').replace('잔여 ', ''), 12, v.ink, 700));  // 낮은 칸은 한 줄
+      else if (w < 60 && v.sub[0]?.includes('/')) parts.push(label(x + w / 2, y + h / 2, [lines[0], ...v.sub[0].replace('/', ' /').split(' ')], v.ink));
+      else parts.push(label(x + w / 2, y + h / 2, w < 60 ? lines.map(l => l.replace('잔여 ', '')) : lines, v.ink));
+    } else {
+      s.ring.forEach(([a, b]) => parts.push(`<path d="${ring(a, b)}" fill="${v.fill}" ${stroke}/>`));
+      const [x, y] = P((s.ring[0][0] + s.ring[0][1]) / 2, (RI + RO) / 2);
+      parts.push(label(x, y, lines, v.ink));
+    }
+  }
+
+  const pc = x => cap ? (x / cap * 100).toFixed(1) + '%' : '-';
+  const card = (x, title, big, small, note) => `<g transform="translate(${x},100)"><rect width="400" height="88" rx="10" fill="#fff" stroke="#e5e7eb"/>`
+    + text(18, 26, title, 12, '#6b7280', 400, 'start')
+    + `<text x="18" y="61" font-size="28" font-weight="700" fill="#111827">${esc(big)}<tspan font-size="14" font-weight="600" fill="#4b5563">${esc(small)}</tspan></text>`
+    + text(18, 79, note, 11, '#9ca3af', 400, 'start') + '</g>';
+
+  const legend = [[BLUE[3], '75% 이상'], [BLUE[2], '50~74%'], [BLUE[1], '25~49%'], [BLUE[0], '1~24%'], [RED, '원정석 (같은 구간, 빨강)'],
+    ['#b4b1a7', '매진'], ['url(#hatch)', '미판매 구역']];
+  if (empty) legend.push(['#fff', '정보 없음', 'stroke="#b9c2ce" stroke-dasharray="3 2"']);
+  if (noMax) legend.push(['#8d9bb0', '총석 모름 (잔여만)']);
+  let lx = 100, lg = text(40, 996, '잔여율', 12, '#111827', 700, 'start');
+  for (const [c, t, attr = ''] of legend) {
+    const sw = Array.isArray(c) ? 36 : 22;
+    lg += Array.isArray(c) ? c.map((cc, i) => `<rect x="${lx + i * 9}" y="986" width="9" height="12" fill="${cc}"/>`).join('')
+      : `<rect x="${lx}" y="986" width="22" height="12" fill="${c}" ${attr}/>`;
+    lg += text(lx + sw + 6, 996, t, 12, '#4b5563', 400, 'start');
+    lx += sw + 6 + tw(t, 12) + 18;
+  }
+
+  const fx = CX - 220, fy = CY - 142;
+  board.innerHTML = `<defs><pattern id="hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">`
+    + `<rect width="7" height="7" fill="#ece9df"/><rect width="2.5" height="7" fill="#d8d4c6"/></pattern></defs>`
+    + `<rect width="${W}" height="${H}" fill="#fff"/>`
+    + text(30, 50, `FC안양 vs ${state.opp || '상대팀'} 예매 현황`, 26, '#111827', 700, 'start')
+    + text(30, 78, [state.date, '안양종합운동장', state.league].filter(Boolean).join(' · '), 13, '#6b7280', 400, 'start')
+    + text(1250, 50, state.at ? `집계 ${state.at.replace(/-/g, '.').replace('T', ' ')} (KST)` : '', 12, '#4b5563', 600, 'end')
+    + text(1250, 70, '티켓링크 등급/좌석 선택 화면 잔여석 기준', 11, '#9ca3af', 400, 'end')
+    + card(30, '예매 가능 좌석', fmt(avail), ` / ${fmt(cap)}석`, `총석을 아는 구역 대비 ${pc(avail)} 남음`)
+    + card(440, '예매된 좌석', fmt(cap - avail), ` / ${fmt(cap)}석`, `총석을 아는 구역 대비 ${pc(cap - avail)} 예매 (선택 중 좌석 포함)`)
+    + card(850, '미판매 구역', String(offN), ' 개', offCap ? `좌석 ${fmt(offCap)}석, 이번 경기 판매 없음` : '이번 경기 판매 없음')
+    + `<rect x="20" y="200" width="1240" height="828" rx="12" fill="#f7f8fa" stroke="#eceff3"/>`
+    + `<g transform="translate(40,212)"><path d="${oval(RO + 12)}" fill="#e9ecf1"/><path d="${oval(RO)}" fill="#dde2e9"/><path d="${oval(RI)}" fill="#f3f5f8"/>`
+    + `<g fill="none" stroke="#c9d0da" stroke-width="2"><rect x="${fx}" y="${fy}" width="440" height="284" fill="#fff"/>`
+    + `<line x1="${CX}" y1="${fy}" x2="${CX}" y2="${fy + 284}"/><circle cx="${CX}" cy="${CY}" r="40"/>`
+    + `<rect x="${fx}" y="${CY - 80}" width="66" height="160"/><rect x="${fx + 374}" y="${CY - 80}" width="66" height="160"/>`
+    + `<rect x="${fx}" y="${CY - 35}" width="22" height="70"/><rect x="${fx + 418}" y="${CY - 35}" width="22" height="70"/></g>`
+    + `<g fill="#cfd6df" font-size="30" font-weight="700" text-anchor="middle"><text x="${CX}" y="${CY - 152}">W</text>`
+    + `<text x="${CX}" y="${CY + 178}">E</text><text x="${CX - 262}" y="${CY + 11}">S</text><text x="${CX + 300}" y="${CY + 11}">N</text></g>`
+    + parts.join('') + '</g>' + lg
+    + text(40, 1018, '구역 안 숫자 = 예매 가능 / 최대 좌석', 11, '#9ca3af', 400, 'start');
+
+  for (const tr of tbody.rows) {
+    const r = state.rows[tr.dataset.id], c = tr.cells[4];
+    c.textContent = r.off ? '미판매' : r.remain == null ? '' : r.remain === 0 ? '매진' : r.max ? Math.round(r.remain / r.max * 100) + '%' : '총석?';
+    c.classList.toggle('bad', !r.off && r.max != null && r.remain > r.max);
+  }
+}
+
+// ---------- 입력 ----------
+const board = document.getElementById('board'), tbody = document.getElementById('rows'), raw = document.getElementById('raw');
+const status = m => document.getElementById('status').textContent = m;
+const isCell = s => /^[A-Z]+\d/.test(s.id);
+[...SECTIONS].sort((a, b) => isCell(a) - isCell(b) || (isCell(a) ? a.id.localeCompare(b.id, 'en', { numeric: true }) : 0))
+  .forEach(s => tbody.insertAdjacentHTML('beforeend', `<tr data-id="${s.id}"><td>${s.name || s.id}</td><td><input type="checkbox" data-k="off"></td>`
+    + `<td><input type="number" min="0" data-k="remain"></td><td><input type="number" min="0" data-k="max"></td><td></td></tr>`));
+
+function fillTable(hits) {
+  for (const tr of tbody.rows) {
+    const r = state.rows[tr.dataset.id], [off, remain, max] = tr.querySelectorAll('input');
+    off.checked = r.off; remain.value = r.remain ?? ''; max.value = r.max ?? '';
+    if (hits) tr.classList.toggle('hit', hits.includes(tr.dataset.id));
+  }
+}
+function apply({ found, totals, opp, date }) {
+  const ids = Object.keys(found).filter(id => state.rows[id]);
+  ids.forEach(id => Object.assign(state.rows[id], { remain: found[id], off: false }));
+  if (opp) state.opp = document.getElementById('opp').value = opp;
+  if (date) state.date = document.getElementById('date').value = date;
+  // 등급 합계와 구역 합 비교: 잘못 읽은 숫자나 빠진 구역을 알려 줌
+  const notes = totals.map(([g, v]) => {
+    const vals = g.ids.map(id => state.rows[id].remain), miss = vals.filter(x => x == null).length;
+    const sum = vals.reduce((a, b) => a + (b ?? 0), 0);
+    return miss ? `${g.name} ${v}석: 구역 ${miss}개 아직 없음` : sum !== v ? `⚠ ${g.name} ${v}석인데 구역 합은 ${sum}석입니다. 숫자를 확인하세요.` : '';
+  }).filter(Boolean);
+  fillTable(ids); save(); render();
+  status((ids.length ? `${ids.length}개 구역을 채웠습니다. 노란 줄의 숫자를 확인하세요.`
+    : '구역 이름과 숫자를 찾지 못했습니다. 아래 글자를 고친 뒤 "이 글자로 표 채우기"를 누르거나 표에 직접 입력하세요.')
+    + (notes.length ? '\n' + [...new Set(notes)].join('\n') : ''));
+}
+
+tbody.addEventListener('input', e => {
+  const tr = e.target.closest('tr'), r = state.rows[tr.dataset.id], k = e.target.dataset.k;
+  r[k] = k === 'off' ? e.target.checked : e.target.value === '' ? null : Math.max(0, Math.round(+e.target.value));
+  tr.classList.remove('hit'); save(); render();
+});
+for (const id of ['opp', 'date', 'league', 'at']) {
+  const el = document.getElementById(id);
+  el.value = state[id];
+  el.addEventListener('input', () => { state[id] = el.value; save(); render(); });
+}
+document.getElementById('now').onclick = () => { const el = document.getElementById('at'); el.value = nowLocal(); el.dispatchEvent(new Event('input')); };
+document.getElementById('toMax').onclick = () => {
+  if (!confirm('지금 입력된 잔여석을 각 구역의 최대 좌석으로 저장할까요?\n(예매가 막 열려 아직 팔린 좌석이 없을 때 쓰세요)')) return;
+  Object.values(state.rows).forEach(r => { if (r.remain != null) r.max = r.remain; });
+  fillTable(); save(); render();
+};
+document.getElementById('clear').onclick = () => {
+  if (!confirm('새 경기를 준비할까요?\n모든 구역의 잔여석과 원정석 총석을 비웁니다. (다른 구역의 최대 좌석과 미판매 설정은 그대로)')) return;
+  SECTIONS.forEach(s => { const r = state.rows[s.id]; r.remain = null; if (s.perGame) r.max = null; });
+  fillTable([]); save(); render();
+};
+document.getElementById('reparse').onclick = () => apply(parseText(raw.value));
+
+// 이미지 일부를 z배로 잘라 냄. thr: 이보다 어두운 점은 검정, 나머지는 흰색 (회색 "0석"·빨간 숫자를 또렷하게)
+function cut(src, x, y, w, h, z = 1, thr = 0) {
+  const c = document.createElement('canvas');
+  c.width = w * z; c.height = h * z;
+  const g = c.getContext('2d');
+  g.fillStyle = '#fff';
+  g.fillRect(0, 0, c.width, c.height);
+  g.drawImage(src, x, y, w, h, 0, 0, c.width, c.height);
+  if (thr) {
+    const d = g.getImageData(0, 0, c.width, c.height), p = d.data;
+    for (let i = 0; i < p.length; i += 4) p[i] = p[i + 1] = p[i + 2] = 0.299 * p[i] + 0.587 * p[i + 1] + 0.114 * p[i + 2] < thr ? 0 : 255;
+    g.putImageData(d, 0, 0);
+  }
+  return c;
+}
+
+// 오른쪽 구역 카드("R8구역" / "28석")를 "R8구역 28석" 줄로 바꿈. 한·영이 섞인 "R8구역"은 통째로 읽으면 자주 틀려서,
+// 줄 위치만 찾은 뒤 뒤쪽 "구역"(글자 2개)·"석"(1개)을 잘라 내고 영문·숫자 전용으로 다시 읽음
+async function readCards(col, kor, eng) {
+  const cards = [];
+  await kor.setParameters({ tessedit_pageseg_mode: '11' });  // 카드 사이 여백이 커서 '흩어진 글자' 모드가 줄을 가장 잘 찾음
+  for (const l of (await kor.recognize(col)).data.lines) {
+    const { x0, x1, y0, y1 } = l.bbox, h = y1 - y0, isNum = /^\d+\s*\S?$/.test(l.text.trim());
+    if (h < 10 || !/\d/.test(l.text)) continue;  // 아이콘·버튼 같은 숫자 없는 줄은 건너뜀 (카드 순서는 숫자 줄로 유지)
+    await eng.setParameters({ tessedit_char_whitelist: isNum ? '0123456789' : 'RF0123456789' });
+    const v = (await eng.recognize(cut(col, x0 - 4, y0 - 4, x1 - x0 + 6 - h * (isNum ? 0.85 : 1.9), h + 8, 3, 200))).data.text.trim();
+    if (!isNum || !cards.length || cards.at(-1).num != null) cards.push({});
+    Object.assign(cards.at(-1), isNum ? { num: v } : { name: v });
+  }
+  // 한 화면의 카드는 번호가 이어짐(R7, R8, R9): 가장 많은 카드가 가리키는 시작 번호로 맞추고, 이름이 잘린 맨 윗 카드도 채움
+  const votes = {};
+  cards.forEach((c, i) => {
+    const m = c.name?.match(/^(R|F)\D*?(\d+)$/), n = m && (m[1] === 'F' ? +m[2].at(-1) : +m[2]);  // FS는 한 자리, S가 숫자로 읽혀도 끝자리만
+    const key = n && (m[1] === 'F' ? 'FS' : 'R') + ':' + (n - i);
+    if (key) votes[key] = (votes[key] || 0) + 1;
+  });
+  const best = Object.entries(votes).reduce((a, b) => b[1] > a[1] ? b : a, ['', 0])[0];
+  if (!best) return '';
+  const [p, base] = best.split(':');
+  return cards.map((c, i) => /^\d+$/.test(c.num) ? `${p}${+base + i}구역 ${c.num}석` : '').filter(Boolean).join('\n') + '\n';
+}
+
+async function ocr(files) {
+  if (!window.Tesseract) return status('글자 인식 도구를 불러오지 못했습니다. 인터넷 연결을 확인하거나 표에 직접 입력하세요.');
+  let kor, eng;
+  try {
+    status('글자 인식 준비 중… (처음 한 번은 인식 데이터를 내려받아 조금 걸립니다)');
+    [kor, eng] = await Promise.all([Tesseract.createWorker('kor+eng'), Tesseract.createWorker('eng')]);
+    await eng.setParameters({ tessedit_pageseg_mode: '7' });
+    raw.value = '';
+    for (const [k, f] of files.entries()) {
+      status(`${k + 1}/${files.length}장 인식 중…`);
+      const bmp = await createImageBitmap(f), W0 = bmp.width, H0 = bmp.height;
+      await kor.setParameters({ tessedit_pageseg_mode: '4' });
+      if (H0 < W0 * 1.2) { raw.value += (await kor.recognize(bmp)).data.text + '\n'; continue; }  // 가로 캡처(PC)는 통째로
+      // 티켓링크 앱 세로 캡처: 아래 목록만, 왼쪽 등급 목록과 오른쪽 구역 카드를 따로 읽음
+      // shortcut: 목록 위치를 화면 비율(아래 60~90%, 66%에서 나눔)로 고정, 다른 기기에서 못 읽으면 비율 조정
+      raw.value += (await kor.recognize(cut(bmp, 0, H0 * 0.6, W0 * 0.66, H0 * 0.3))).data.text + '\n';
+      raw.value += await readCards(cut(bmp, W0 * 0.66, H0 * 0.6, W0 * 0.34, H0 * 0.3), kor, eng);
+    }
+    apply(parseText(raw.value));
+  } catch (e) { status('인식 실패: ' + e.message); }
+  await Promise.all([kor?.terminate(), eng?.terminate()]);
+}
+document.getElementById('file').onchange = e => { ocr([...e.target.files]); e.target.value = ''; };
+addEventListener('paste', e => {
+  const imgs = [...e.clipboardData.files].filter(f => f.type.startsWith('image/'));
+  if (imgs.length) { e.preventDefault(); ocr(imgs); }
+});
+
+document.getElementById('png').onclick = async () => {
+  const img = new Image();
+  img.src = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(board)], { type: 'image/svg+xml' }));
+  await img.decode();
+  const c = document.createElement('canvas');
+  c.width = W * 2; c.height = H * 2;
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  URL.revokeObjectURL(img.src);
+  const a = document.createElement('a');
+  a.download = `안양_예매현황_${state.at.replace(/\D/g, '')}.png`;
+  a.href = c.toDataURL('image/png');
+  a.click();
+};
+
+fillTable(); render();
+</script>
+</body>
+</html>
