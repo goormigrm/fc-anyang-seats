@@ -32,6 +32,7 @@
   th, td { padding: 4px 6px; border-bottom: 1px solid #eef0f3; text-align: center; }
   td:first-child { text-align: left; font-weight: 600; }
   td input[type=number] { width: 72px; padding: 3px 6px; border: 1px solid #d1d5db; border-radius: 5px; text-align: right; }
+  td button { padding: 2px 8px; font-size: 12px; white-space: nowrap; }
   tr.hit td { background: #fff7d6; }
   td.bad { color: #dc2626; font-weight: 700; }
   .mobile-only { display: none; }
@@ -69,10 +70,10 @@
     </div>
     <div class="box seats">
       <h2>구역별 잔여석</h2>
-      <p class="hint">잔여를 비워 두면 '정보 없음', 0이면 매진입니다. 최대 좌석은 한 번 넣으면 남지만, 원정석 총석은 경기마다 다시 넣습니다.</p>
+      <p class="hint">잔여를 비워 두면 '정보 없음', 0이면 매진입니다. '매진' 버튼을 누르면 잔여가 0으로 들어갑니다. 최대 좌석은 한 번 넣으면 남습니다.</p>
       <div class="row"><button id="toMax">잔여석을 최대 좌석으로 저장</button><button id="clear">새 경기: 잔여석 비우기</button></div>
       <div class="scroll"><table>
-        <thead><tr><th>구역</th><th>미판매</th><th>잔여</th><th>최대</th><th>잔여율</th></tr></thead>
+        <thead><tr><th>구역</th><th>매진</th><th>잔여</th><th>최대</th><th>잔여율</th></tr></thead>
         <tbody id="rows"></tbody>
       </table></div>
     </div>
@@ -95,14 +96,13 @@ const RED = ['#e58b8b', '#d24a4a', '#a82020', '#761212'];
 const Rs = (a, b, p = 'R') => Array.from({ length: b - a + 1 }, (_, i) => p + (a + i));
 
 // ring: 스탠드 위치 [u0, u1]. u 0~1 위(W) 직선 왼→오, 1~2 오른쪽(N) 곡선, 2~3 아래(E) 직선 오→왼, 3~4 왼쪽(S) 곡선 아래→위
-// perGame: 경기마다 총석이 달라 '새 경기' 때 최대 좌석도 비움
 const SECTIONS = [
   { id: '일반지정석', ring: [[0.05, 0.76]] },
   { id: '일반자유석', ring: [[0.76, 1.16], [3.88, 4.05]] },
   { id: 'T4', name: '피크닉 T4', ring: [[1.16, 1.27]] },
   { id: 'P', name: '돗자리 P', ring: [[1.27, 1.38]] },
   { id: '중립석', ring: [[1.38, 1.46]] },
-  { id: '원정석', ring: [[1.46, 1.84]], away: true, perGame: true },
+  { id: '원정석', ring: [[1.46, 1.84]], away: true },
   { id: 'T3', ring: [[3.0, 3.06]] },
   { id: '남측자유석', ring: [[3.06, 3.3]] },
 ];
@@ -121,6 +121,7 @@ const KNOWN_MAX = {
   R1: 141, R2: 123, R3: 123, R4: 123, R5: 120, R8: 99, R9: 108,
   R15: 141, R16: 138, R17: 123, R18: 123, R19: 138, R20: 123, R21: 123, R22: 138, R23: 123, R24: 123, R25: 138, R26: 138,
   FS2: 26, FS6: 26,
+  원정석: 1218,
 };
 // 상대팀 = 2026 K리그1에서 안양을 뺀 11팀. key: 스크린샷 맨 위 "FC안양 vs 부천FC1995"에서 찾을 한글 지명 (영문은 OCR이 자주 깨뜨림)
 const TEAMS = {
@@ -186,7 +187,7 @@ console.assert(t.found.R8 === 28 && t.found.R9 === 58 && t.found.FS6 === 1 && !(
 
 const state = { opp: '', date: '', at: '', base: null, rows: {} };  // base: 비교 기준 { at, rows: { 구역: 잔여 } }
 try { Object.assign(state, JSON.parse(localStorage.getItem(KEY))); } catch {}
-SECTIONS.forEach(s => (state.rows[s.id] ??= { remain: null, max: null, off: false }).max ??= KNOWN_MAX[s.id] ?? null);
+SECTIONS.forEach(s => (state.rows[s.id] ??= { remain: null, max: null }).max ??= KNOWN_MAX[s.id] ?? null);
 // 예전 버전에서 글자로 넣은 상대팀·일시는 목록·달력 형식이 아니면 비움
 if (!Object.values(TEAMS).includes(state.opp)) state.opp = '';
 if (!/^\d{4}-\d{2}-\d{2}/.test(state.date)) state.date = '';
@@ -216,7 +217,6 @@ const tw = (s, fs) => [...s].reduce((w, c) => w + (c > 'ᄀ' ? fs : fs * 0.6), 0
 const fmt = n => n.toLocaleString('ko-KR');
 
 function look(s, r) {
-  if (r.off) return { fill: 'url(#hatch)', ink: '#a19d8f', sub: ['미판매'] };
   if (r.remain == null) return { fill: '#fff', ink: '#9aa4b1', sub: [], empty: true };
   if (r.remain === 0) return { fill: '#b4b1a7', ink: '#2f2f2f', sub: ['매진'] };
   if (!r.max) return { fill: '#857d96', ink: '#fff', sub: ['잔여 ' + r.remain], noMax: true };
@@ -224,7 +224,7 @@ function look(s, r) {
   return { fill: (s.away ? RED : PURPLE)[i], ink: i ? '#fff' : s.away ? '#4a0e0e' : '#2b1450', sub: [r.remain + '/' + r.max] };
 }
 // 비교 기준 이후 팔린 좌석 (+: 팔림, −: 취소 등으로 남은 좌석이 늘어남)
-const sold = id => { const b = state.base?.rows?.[id], r = state.rows[id]; return b == null || r.remain == null || r.off ? 0 : b - r.remain; };
+const sold = id => { const b = state.base?.rows?.[id], r = state.rows[id]; return b == null || r.remain == null ? 0 : b - r.remain; };
 const signed = d => (d > 0 ? '+' : '−') + fmt(Math.abs(d));
 const snap = () => ({ at: state.at, rows: Object.fromEntries(SECTIONS.map(s => [s.id, state.rows[s.id].remain])) });
 // "2026-11-01T16:30" → "2026.11.01(일) 16:30"
@@ -235,12 +235,12 @@ const fmtDate = s => {
 
 // 현황판 SVG 내용. story=false: 1280×1040 가로판, story=true: 인스타 스토리 1080×1920
 function build(story) {
-  let avail = 0, cap = 0, offN = 0, offCap = 0, noMax = false, empty = false, soldSum = 0;
+  let avail = 0, cap = 0, soldN = 0, noMax = false, empty = false, soldSum = 0;
   const parts = [];
   for (const s of SECTIONS) {
     const r = state.rows[s.id], v = look(s, r), d = sold(s.id);
-    if (r.off) { offN++; offCap += r.max || 0; }
-    else if (r.remain != null && r.max) { avail += Math.min(r.remain, r.max); cap += r.max; }
+    if (r.remain === 0) soldN++;
+    if (r.remain != null && r.max) { avail += Math.min(r.remain, r.max); cap += r.max; }
     noMax ||= !!v.noMax; empty ||= !!v.empty;
     if (r.max) soldSum += d;  // 카드 숫자와 같은 범위(총석을 아는 구역)만 더함
     const stroke = v.empty ? 'stroke="#b9c2ce" stroke-width="1.5" stroke-dasharray="4 3"' : 'stroke="#fff" stroke-width="3"';
@@ -265,7 +265,7 @@ function build(story) {
     ['예매 가능 좌석', fmt(avail), ` / ${fmt(cap)}석`, `총석을 아는 구역 대비 ${pc(avail)} 남음`, `${pc(avail)} 남음`],
     ['예매된 좌석', fmt(cap - avail), ` / ${fmt(cap)}석`, baseAt ? `총석을 아는 구역 대비 ${pc(cap - avail)} 예매 · ${baseAt} 이후 ${signed(soldSum)}석`
       : `총석을 아는 구역 대비 ${pc(cap - avail)} 예매 (선택 중 좌석 포함)`, baseAt ? `${baseAt} 이후 ${signed(soldSum)}석` : `${pc(cap - avail)} 예매`],
-    ['미판매 구역', String(offN), ' 개', offCap ? `좌석 ${fmt(offCap)}석, 이번 경기 판매 없음` : '이번 경기 판매 없음', '이번 경기 판매 없음'],
+    ['매진 구역', String(soldN), ' 개', `전체 ${SECTIONS.length}개 구역 중`, `${SECTIONS.length}개 구역 중`],
   ];
   const card = (x, title, big, small, note) => `<g transform="translate(${x},100)"><rect width="400" height="88" rx="10" fill="#fff" stroke="#e5e7eb"/>`
     + text(18, 26, title, 12, '#6b7280', 400, 'start')
@@ -277,7 +277,7 @@ function build(story) {
     + text(24, 154, short, 20, '#9ca3af', 400, 'start') + '</g>';
 
   const items = [[PURPLE[3], '75% 이상'], [PURPLE[2], '50~74%'], [PURPLE[1], '25~49%'], [PURPLE[0], '1~24%'], [RED, '원정석 (같은 구간, 빨강)'],
-    ['#b4b1a7', '매진'], ['url(#hatch)', '미판매 구역']];
+    ['#b4b1a7', '매진']];
   if (empty) items.push(['#fff', '정보 없음', 'stroke="#b9c2ce" stroke-dasharray="3 2"']);
   if (noMax) items.push(['#857d96', '총석 모름 (잔여만)']);
   const legend = (x0, y0, fs, maxX) => {  // 폭이 모자라면 다음 줄로
@@ -295,9 +295,7 @@ function build(story) {
   };
 
   const fx = CX - 220, fy = CY - 142;
-  const defs = `<defs><pattern id="hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">`
-    + `<rect width="7" height="7" fill="#ece9df"/><rect width="2.5" height="7" fill="#d8d4c6"/></pattern>`
-    + `<pattern id="grass" x="${fx}" width="40" height="40" patternUnits="userSpaceOnUse">`  // 잔디 세로 줄무늬
+  const defs = `<defs><pattern id="grass" x="${fx}" width="40" height="40" patternUnits="userSpaceOnUse">`  // 잔디 세로 줄무늬
     + `<rect width="20" height="40" fill="#4f8b3b"/><rect x="20" width="20" height="40" fill="#5c9a46"/></pattern></defs>`;
   const map = `<path d="${oval(RO + 12)}" fill="#e9ecf1"/><path d="${oval(RO)}" fill="#dde2e9"/><path d="${oval(RI)}" fill="#f3f5f8"/>`
     + `<g fill="none" stroke="#fff" stroke-opacity="0.9" stroke-width="2"><rect x="${fx}" y="${fy}" width="440" height="284" fill="url(#grass)"/>`
@@ -343,9 +341,9 @@ function render() {
   for (const tr of tbody.rows) {
     const r = state.rows[tr.dataset.id], c = tr.cells[4];
     const d = sold(tr.dataset.id);
-    c.textContent = (r.off ? '미판매' : r.remain == null ? '' : r.remain === 0 ? '매진' : r.max ? Math.round(r.remain / r.max * 100) + '%' : '총석?')
+    c.textContent = (r.remain == null ? '' : r.remain === 0 ? '매진' : r.max ? Math.round(r.remain / r.max * 100) + '%' : '총석?')
       + (d ? ` (${signed(d)})` : '');
-    c.classList.toggle('bad', !r.off && r.max != null && r.remain > r.max);
+    c.classList.toggle('bad', r.max != null && r.remain > r.max);
   }
 }
 
@@ -356,15 +354,15 @@ const status = m => $('status').textContent = m;
 const note = m => $('note').textContent = m;
 const isCell = s => /^[A-Z]+\d/.test(s.id);
 [...SECTIONS].sort((a, b) => isCell(a) - isCell(b) || (isCell(a) ? a.id.localeCompare(b.id, 'en', { numeric: true }) : 0))
-  .forEach(s => tbody.insertAdjacentHTML('beforeend', `<tr data-id="${s.id}"><td>${s.name || s.id}</td><td><input type="checkbox" data-k="off"></td>`
+  .forEach(s => tbody.insertAdjacentHTML('beforeend', `<tr data-id="${s.id}"><td>${s.name || s.id}</td><td><button>매진</button></td>`
     + `<td><input type="number" min="0" data-k="remain"></td><td><input type="number" min="0" data-k="max"></td><td></td></tr>`));
 Object.values(TEAMS).forEach(n => $('opp').add(new Option(n)));
 for (let m = 600; m <= 1320; m += 30) $('time').add(new Option(`${String(m / 60 | 0).padStart(2, '0')}:${m % 60 ? '30' : '00'}`));  // 10:00~22:00, 30분 단위
 
 function fillTable(hits) {
   for (const tr of tbody.rows) {
-    const r = state.rows[tr.dataset.id], [off, remain, max] = tr.querySelectorAll('input');
-    off.checked = r.off; remain.value = r.remain ?? ''; max.value = r.max ?? '';
+    const r = state.rows[tr.dataset.id], [remain, max] = tr.querySelectorAll('input');
+    remain.value = r.remain ?? ''; max.value = r.max ?? '';
     if (hits) tr.classList.toggle('hit', hits.includes(tr.dataset.id));
   }
 }
@@ -375,7 +373,7 @@ function syncInputs() {
 }
 function apply({ found, totals, opp, date }) {
   const ids = Object.keys(found).filter(id => state.rows[id]);
-  ids.forEach(id => Object.assign(state.rows[id], { remain: found[id], off: false }));
+  ids.forEach(id => state.rows[id].remain = found[id]);
   if (opp) state.opp = opp;
   if (date) state.date = date;
   // 등급 합계와 구역 합 비교: 잘못 읽은 숫자나 빠진 구역을 알려 줌
@@ -392,7 +390,14 @@ function apply({ found, totals, opp, date }) {
 
 tbody.addEventListener('input', e => {
   const tr = e.target.closest('tr'), r = state.rows[tr.dataset.id], k = e.target.dataset.k;
-  r[k] = k === 'off' ? e.target.checked : e.target.value === '' ? null : Math.max(0, Math.round(+e.target.value));
+  r[k] = e.target.value === '' ? null : Math.max(0, Math.round(+e.target.value));
+  tr.classList.remove('hit'); save(); render();
+});
+tbody.addEventListener('click', e => {  // 매진 버튼: 잔여 0
+  if (e.target.tagName !== 'BUTTON') return;
+  const tr = e.target.closest('tr');
+  state.rows[tr.dataset.id].remain = 0;
+  tr.querySelector('[data-k=remain]').value = 0;
   tr.classList.remove('hit'); save(); render();
 });
 const changed = () => {
@@ -408,8 +413,8 @@ $('toMax').onclick = () => {
   fillTable(); save(); render();
 };
 $('clear').onclick = () => {
-  if (!confirm('새 경기를 준비할까요?\n모든 구역의 잔여석, 원정석 총석, 비교 기준을 비웁니다. (다른 구역의 최대 좌석과 미판매 설정은 그대로)')) return;
-  SECTIONS.forEach(s => { const r = state.rows[s.id]; r.remain = null; if (s.perGame) r.max = null; });
+  if (!confirm('새 경기를 준비할까요?\n모든 구역의 잔여석과 비교 기준을 비웁니다. (최대 좌석은 그대로)')) return;
+  SECTIONS.forEach(s => state.rows[s.id].remain = null);
   state.base = null;
   fillTable([]); save(); render();
 };
@@ -455,7 +460,7 @@ async function readRecord(f) {
   if (d?.app !== 'fc-anyang-seats' || !d.rows || typeof d.rows !== 'object') throw new Error('이 프로그램의 기록 파일이 아닙니다.');
   const num = v => Number.isInteger(v) && v >= 0 ? v : null;
   return {
-    rows: Object.fromEntries(SECTIONS.map(s => { const r = d.rows[s.id] || {}; return [s.id, { remain: num(r.remain), max: num(r.max), off: r.off === true }]; })),
+    rows: Object.fromEntries(SECTIONS.map(s => { const r = d.rows[s.id] || {}; return [s.id, { remain: num(r.remain), max: num(r.max) }]; })),
     opp: Object.values(TEAMS).includes(d.opp) ? d.opp : '',
     date: /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/.test(d.date) ? d.date : '',
     at: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(d.at) ? d.at : '',
