@@ -76,7 +76,7 @@
       <h2>발행</h2>
       <div class="row"><button id="publish" class="main">최신 집계 발행</button><label class="check"><input type="checkbox" id="autoPub">숫자가 들어오면 바로 발행 (경고 없을 때)</label></div>
       <div class="row"><button id="unpub">마지막 발행 지우기</button><button id="unpubAll">발행 모두 지우기</button></div>
-      <p class="hint">보기 화면과 다른 사이트가 가져가는 최신 현황(JSON, 이미지)을 바꿉니다. 처음 한 번 GitHub 토큰을 묻습니다. 시험으로 발행했으면 '마지막 발행 지우기'로 그 전 발행으로 되돌립니다.</p>
+      <p class="hint">발행 = 지금 현황판을 누구나 보는 기본 화면(과 다른 사이트)에 올리기. 발행하기 전 숫자는 이 브라우저에만 있습니다. 처음 한 번 GitHub 토큰을 묻습니다. 시험으로 발행했으면 '마지막 발행 지우기'로 그 전 발행으로 되돌립니다.</p>
       <h2>집계 기록</h2>
       <div class="row"><button id="saveJson">이번 집계 저장</button><button id="loadBtn">저장한 집계 열기</button><input type="file" id="loadJson" accept=".json,application/json" hidden></div>
       <p class="hint">숫자 전체를 파일(JSON)로 저장하고 다시 엽니다.</p>
@@ -475,10 +475,15 @@ function syncInputs() {
 function apply({ found, totals, filled = [], opp, date }, pre = []) {
   const ids = Object.keys(found).filter(id => state.rows[id]);
   ids.forEach(id => state.rows[id].remain = found[id]);
-  if (opp) state.opp = opp;
-  if (date) state.date = date;
+  // 최대 좌석 배우기: 모르던 구역은 처음 본 잔여로 (예매 오픈 직후면 정확), 잔여가 최대보다 조금(10% 안) 많으면 최대를 늘림
+  // 잔여는 실제 좌석 수를 넘을 수 없어서. 크게 넘으면(원정석을 넓게 연 날, 잘못 읽은 숫자) 아래에서 경고
+  const learned = ids.filter(id => { const r = state.rows[id], v = found[id]; return v > 0 && (r.max == null || (v > r.max && v <= r.max * 1.1)); });
+  learned.forEach(id => state.rows[id].max = found[id]);
+  if (ids.length && opp) state.opp = opp;  // 좌석 숫자가 없는 화면(다른 경기 일정 등)으로는 경기 정보도 안 바꿈
+  if (ids.length && date) state.date = date;
   // 등급 합계와 구역 합 비교: 잘못 읽은 숫자나 빠진 구역을 알려 줌
-  const notes = [...pre, ...filled.map(id => `${nameOf(id)}: 등급 합계로 채움`), ...totals.map(([g, v]) => {
+  const notes = [...pre, ...filled.map(id => `${nameOf(id)}: 등급 합계로 채움`),
+    ...(learned.length ? [`최대 좌석을 새로 넣음: ${learned.map(id => nameOf(id) + ' ' + fmt(state.rows[id].max)).join(', ')}`] : []), ...totals.map(([g, v]) => {
     const vals = g.ids.map(id => state.rows[id].remain), miss = vals.filter(x => x == null).length;
     const sum = vals.reduce((a, b) => a + (b ?? 0), 0);
     return miss ? `${g.name} ${v}석: 구역 ${miss}개 아직 없음` : sum !== v ? `⚠ ${g.name} ${v}석인데 구역 합은 ${sum}석입니다. 숫자를 확인하세요.` : '';
@@ -797,7 +802,8 @@ async function ocr(files) {
     }));
     raw.value = texts.join('');  // 원래 순서대로 (같은 구역이 여러 장이면 나중 장이 우선)
     const p = parseText(raw.value);
-    apply(p, newCapture(p, localISO(Math.max(...files.map(f => f.lastModified || Date.now())))));  // 집계 시각 = 가장 늦게 찍은 캡처 (붙여넣기는 지금)
+    // 집계 시각 = 가장 늦게 찍은 캡처 (붙여넣기는 지금). 좌석 숫자를 못 찾았으면 경기 판단은 건너뜀 (지난 숫자를 지우지 않게)
+    apply(p, Object.keys(p.found).length ? newCapture(p, localISO(Math.max(...files.map(f => f.lastModified || Date.now())))) : []);
   } catch (e) { status('인식 실패: ' + e.message); }
   await Promise.all(pairs.flat().map(w => w.terminate()));
 }
@@ -809,7 +815,7 @@ function ingest(text) {
   const p = parseText(text), fresh = Date.now() - lastIngest > 600e3;
   lastIngest = Date.now();
   raw.value = text;
-  apply(p, newCapture(p, localISO(), fresh));
+  apply(p, Object.keys(p.found).length ? newCapture(p, localISO(), fresh) : []);
 }
 window.fcIngest = s => editing && ingest(s);
 addEventListener('paste', e => {
