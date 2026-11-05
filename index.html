@@ -52,26 +52,27 @@
 <body>
 <main>
   <div id="boardWrap"><svg id="board" xmlns="http://www.w3.org/2000/svg" width="1280" height="1040" viewBox="0 0 1280 1040" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif"></svg></div>
-  <p class="hint mobile-only">현황판을 누르면 크게 보입니다 (좌우로 밀어서 보고, 다시 누르면 원래대로).</p>
+  <p class="hint mobile-only">현황판을 누르면 크게, 다시 누르면 원래대로</p>
   <div class="panel">
     <div class="box info">
       <h2>경기 정보</h2>
       <label><span>상대팀</span><select id="opp"><option value="">선택</option></select></label>
       <label><span>경기 일시</span><input type="date" id="day"><select id="time"><option value="">시간</option></select></label>
       <label><span>집계 시각</span><input type="datetime-local" id="at"><button id="now">지금</button></label>
-      <h2>저장·불러오기</h2>
-      <div class="row"><button id="png" class="main">PNG 저장</button><button id="story" class="main">인스타 스토리용 PNG</button><button id="share" class="main" hidden>스토리 공유</button></div>
-      <div class="row"><button id="saveJson">기록 파일 저장</button><button id="loadBtn">기록 파일 불러오기</button><input type="file" id="loadJson" accept=".json,application/json" hidden></div>
-      <p class="hint">기록 파일(JSON)에는 경기 정보, 집계 시각, 모든 구역 숫자가 담깁니다. 집계할 때마다 저장해 두면 나중에 불러와 그 시점 현황을 다시 보거나 이어서 입력할 수 있습니다.</p>
+      <h2>이미지</h2>
+      <div class="row"><button id="png" class="main">현황판 저장</button><button id="story" class="main">스토리 이미지 저장</button><button id="share" class="main" hidden>스토리로 공유</button></div>
+      <h2>집계 기록</h2>
+      <div class="row"><button id="saveJson">이번 집계 저장</button><button id="loadBtn">저장한 집계 열기</button><input type="file" id="loadJson" accept=".json,application/json" hidden></div>
+      <p class="hint">숫자 전체를 파일(JSON)로 저장하고 다시 엽니다.</p>
       <h2>직전 집계와 비교</h2>
-      <div class="row"><button id="baseNow">지금 값을 비교 기준으로</button><button id="baseLoad">기록 파일을 비교 기준으로</button><button id="baseClear">비교 끄기</button><input type="file" id="baseFile" accept=".json,application/json" hidden></div>
-      <p class="hint">새 숫자를 넣기 전에 '지금 값을 비교 기준으로'를 누르거나 지난 기록 파일을 비교 기준으로 고르면, 구역마다 그 사이 예매된 좌석이 +N으로 표시됩니다.</p>
+      <div class="row"><button id="baseNow">지금 숫자를 기준으로</button><button id="baseLoad">저장한 집계를 기준으로</button><button id="baseClear">비교 끄기</button><input type="file" id="baseFile" accept=".json,application/json" hidden></div>
+      <p class="hint">기준 이후 팔린 좌석이 구역마다 +N으로 나옵니다.</p>
       <div id="note"></div>
     </div>
     <div class="box seats">
       <h2>구역별 잔여석</h2>
-      <p class="hint">잔여를 비워 두면 '정보 없음', 0이면 매진입니다. '매진' 버튼을 누르면 잔여가 0으로 들어갑니다. 최대 좌석은 한 번 넣으면 남습니다. 원정석은 평소 1235석이고, 넓게 여는 날(최대 1713석)은 최대 칸을 바꾸세요.</p>
-      <div class="row"><button id="toMax">잔여석을 최대 좌석으로 저장</button><button id="clear">새 경기: 잔여석 비우기</button></div>
+      <p class="hint">빈칸 = 정보 없음, 0 = 매진. 원정석 최대는 평소 1235 (넓게 여는 날 최대 1713).</p>
+      <div class="row"><button id="clear">새 경기: 잔여 모두 지우기</button><button id="toMax">잔여를 최대로 복사</button></div>
       <div class="scroll"><table>
         <thead><tr><th>구역</th><th>매진</th><th>잔여</th><th>최대</th><th>잔여율</th></tr></thead>
         <tbody id="rows"></tbody>
@@ -79,11 +80,11 @@
     </div>
     <div class="box ocr">
       <h2>스크린샷 인식</h2>
-      <p class="hint">티켓링크 앱의 '등급/좌석 선택' 화면을 캡처해서 이 페이지에 Ctrl+V 하거나 파일을 고르세요. 등급마다 눌러 구역 목록이 보이게 여러 장 찍어 한 번에 넣으면 됩니다. 상대팀과 경기 일시도 화면 위쪽에서 읽어 채웁니다. 인식된 구역은 표에서 노랗게 표시되니 숫자를 확인하세요.</p>
+      <p class="hint">티켓링크 '등급/좌석 선택' 캡처를 붙여넣거나(Ctrl+V) 고르세요. 여러 장 가능, 인식된 구역은 표에 노랗게.</p>
       <input type="file" id="file" accept="image/*" multiple>
       <div id="status"></div>
-      <textarea id="raw" placeholder="인식된 글자가 여기에 나옵니다. 잘못 읽은 글자를 고치거나 직접 붙여넣을 수도 있습니다. (예: R8구역 28석 / 가변석 574 석)"></textarea>
-      <button id="reparse">이 글자로 표 채우기</button>
+      <textarea id="raw" placeholder="인식된 글자 (고친 뒤 아래 버튼으로 다시 채움. 예: R8구역 28석)"></textarea>
+      <button id="reparse">이 글자로 다시 채우기</button>
     </div>
   </div>
 </main>
@@ -389,7 +390,7 @@ function apply({ found, totals, opp, date }) {
   }).filter(Boolean);
   syncInputs(); fillTable(ids); save(); render();
   status((ids.length ? `${ids.length}개 구역을 채웠습니다. 노란 줄의 숫자를 확인하세요.`
-    : '구역 이름과 숫자를 찾지 못했습니다. 아래 글자를 고친 뒤 "이 글자로 표 채우기"를 누르거나 표에 직접 입력하세요.')
+    : '구역 숫자를 못 찾았습니다. 글자를 고쳐 다시 채우거나 표에 직접 넣으세요.')
     + (notes.length ? '\n' + [...new Set(notes)].join('\n') : ''));
 }
 
@@ -413,12 +414,12 @@ const changed = () => {
 ['opp', 'day', 'time', 'at'].forEach(id => $(id).addEventListener('input', changed));
 $('now').onclick = () => { $('at').value = nowLocal(); changed(); };
 $('toMax').onclick = () => {
-  if (!confirm('지금 입력된 잔여석을 각 구역의 최대 좌석으로 저장할까요?\n(예매가 막 열려 아직 팔린 좌석이 없을 때 쓰세요)')) return;
+  if (!confirm('지금 잔여를 각 구역의 최대로 복사할까요?\n(예매가 막 열려 팔린 좌석이 없을 때만)')) return;
   Object.values(state.rows).forEach(r => { if (r.remain != null) r.max = r.remain; });
   fillTable(); save(); render();
 };
 $('clear').onclick = () => {
-  if (!confirm('새 경기를 준비할까요?\n모든 구역의 잔여석과 비교 기준을 비웁니다. (최대 좌석은 그대로)')) return;
+  if (!confirm('잔여와 비교 기준을 모두 지울까요?\n(최대 좌석은 그대로)')) return;
   SECTIONS.forEach(s => state.rows[s.id].remain = null);
   state.base = null;
   fillTable([]); save(); render();
@@ -457,7 +458,7 @@ $('share').onclick = async () => {
 };
 $('saveJson').onclick = () => {
   download(fileBase() + '.json', new Blob([JSON.stringify({ app: 'fc-anyang-seats', version: 1, ...state }, null, 1)], { type: 'application/json' }));
-  note('기록 파일을 저장했습니다.');
+  note('저장했습니다.');
 };
 // 기록 파일 읽기: 이 프로그램이 저장한 형식인지 보고, 값은 0 이상 정수·목록에 있는 팀·날짜 형식만 받음
 async function readRecord(f) {
@@ -479,18 +480,18 @@ const pickFile = (input, fn) => input.onchange = async e => {
 $('loadBtn').onclick = () => $('loadJson').click();
 pickFile($('loadJson'), (f, d) => {
   if (Object.values(state.rows).some(r => r.remain != null)
-    && !confirm(`지금 입력된 내용을 "${f.name}" 기록으로 바꿀까요?\n지금 내용이 필요하면 취소하고 먼저 '기록 파일 저장'을 누르세요.`)) return;
+    && !confirm(`지금 숫자를 "${f.name}" 내용으로 바꿀까요?\n(지금 숫자가 필요하면 취소하고 먼저 '이번 집계 저장')`)) return;
   SECTIONS.forEach(s => Object.assign(state.rows[s.id], d.rows[s.id], { max: d.rows[s.id].max ?? KNOWN_MAX[s.id] ?? null }));
   Object.assign(state, { opp: d.opp, date: d.date, at: d.at || state.at, base: null });
   syncInputs(); fillTable([]); save(); render();
-  note(`"${f.name}"을(를) 불러왔습니다. 이어서 집계하려면 '지금 값을 비교 기준으로'를 누르고, 집계 시각 '지금'을 누른 뒤 새 숫자를 넣으세요.`);
+  note(`"${f.name}" 열었습니다.`);
 });
-$('baseNow').onclick = () => { state.base = snap(); save(); render(); note('지금 숫자를 비교 기준으로 고정했습니다. 새 숫자를 넣으면 구역마다 그 사이 예매된 좌석(+N)이 보입니다.'); };
+$('baseNow').onclick = () => { state.base = snap(); save(); render(); note('지금 숫자를 기준으로 정했습니다.'); };
 $('baseLoad').onclick = () => $('baseFile').click();
 pickFile($('baseFile'), (f, d) => {
   state.base = { at: d.at, rows: Object.fromEntries(SECTIONS.map(s => [s.id, d.rows[s.id].remain])) };
   save(); render();
-  note(`"${f.name}"을(를) 비교 기준으로 정했습니다.`);
+  note(`"${f.name}"을(를) 기준으로 정했습니다.`);
 });
 $('baseClear').onclick = () => { state.base = null; save(); render(); note('비교를 껐습니다.'); };
 
@@ -554,13 +555,13 @@ async function readShot(f, first, kor, eng) {
 }
 
 async function ocr(files) {
-  if (!window.Tesseract) return status('글자 인식 도구를 불러오지 못했습니다. 인터넷 연결을 확인하거나 표에 직접 입력하세요.');
+  if (!window.Tesseract) return status('글자 인식 도구를 못 불러왔습니다. 인터넷을 확인하거나 표에 직접 넣으세요.');
   // 코어·메모리가 넉넉하면 두 갈래로 나눠 동시에 읽음 (갈래마다 한글·영문 인식기 한 쌍)
   const lanes = Math.min(files.length, (navigator.hardwareConcurrency ?? 2) >= 4 && (navigator.deviceMemory ?? 4) >= 4 ? 2 : 1);
   const pairs = [], texts = [];
   let next = 0, done = 0;
   try {
-    status('글자 인식 준비 중… (처음 한 번은 인식 데이터를 내려받아 조금 걸립니다)');
+    status('글자 인식 준비 중… (처음엔 조금 걸림)');
     for (let i = 0; i < lanes; i++) pairs.push(await Promise.all([Tesseract.createWorker('kor+eng'), Tesseract.createWorker('eng')]));
     await Promise.all(pairs.map(([, eng]) => eng.setParameters({ tessedit_pageseg_mode: '7' })));
     await Promise.all(pairs.map(async ([kor, eng]) => {
