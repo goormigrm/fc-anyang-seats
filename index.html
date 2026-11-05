@@ -11,55 +11,72 @@
 <meta property="og:url" content="https://goormigrm.github.io/fc-anyang-seats/">
 <script src="emblem.js"></script>
 <style>
-  body { margin: 0; background: #f2f4f7; color: #1f2937; font: 14px 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; }
+  :root { --p8: #3e1a78; --p7: #4b2a85; --p5: #6a40ad; --p1: #f4effc; --ink: #1f2937; --sub: #4b5563; --edge: #cdd3dd; }
+  body { margin: 0; background: #f3f1f8; color: var(--ink); font: 15px/1.5 'Malgun Gothic', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; }
   main { max-width: 1280px; margin: 0 auto; padding: 16px; }
-  #board { display: block; width: 100%; height: auto; border-radius: 12px; box-shadow: 0 1px 3px #0001; }
+  #board { display: block; width: 100%; height: auto; border-radius: 14px; background: #fff; box-shadow: 0 2px 10px #2a0f5718; }
   .panel { display: grid; grid-template-columns: 1fr 1.2fr; grid-template-areas: "info seats" "ocr seats"; gap: 16px; margin-top: 16px; align-items: start; }
   .info { grid-area: info; } .seats { grid-area: seats; } .ocr { grid-area: ocr; }
-  .box { background: #fff; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 3px #0001; }
-  h2 { font-size: 15px; margin: 20px 0 8px; } h2:first-child { margin-top: 0; }
-  label { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
-  label > span { width: 70px; flex: none; color: #6b7280; }
-  input, textarea, button, select { font: inherit; }
-  input[type=date], input[type=datetime-local], select { flex: 1; min-width: 0; padding: 5px 8px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; }
-  #time { flex: 0 0 100px; }
-  textarea { width: 100%; box-sizing: border-box; height: 120px; margin: 6px 0; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 12px; }
-  button { padding: 6px 12px; border: 1px solid #c7cdd6; background: #fff; border-radius: 6px; cursor: pointer; }
-  button.main { background: #4b2a85; border-color: #4b2a85; color: #fff; }
-  a.btn { padding: 6px 12px; border: 1px solid #c7cdd6; background: #fff; border-radius: 6px; color: inherit; text-decoration: none; }
-  .row { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
-  .hint { margin: 4px 0 8px; color: #6b7280; font-size: 12px; }
-  #status, #note { min-height: 18px; margin: 6px 0; color: #4b2a85; font-size: 12px; white-space: pre-line; }
-  .scroll { max-height: 660px; overflow: auto; }
+  .panel > * { min-width: 0; }  /* 날짜 입력칸 같은 긴 칸이 휴대폰 화면 밖으로 밀어내지 않게 */
+  .box { background: #fff; border-radius: 14px; padding: 18px 20px; box-shadow: 0 1px 4px #2a0f5714; }
+  h2 { font-size: 16px; margin: 22px 0 8px; color: var(--p8); } h2:first-child { margin-top: 0; }
+  label { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+  label > span { width: 72px; flex: none; color: #374151; font-size: 14px; font-weight: 600; }
+  input, textarea, button, select, .btn { font: inherit; }
+  input[type=date], input[type=datetime-local], select { flex: 1; min-width: 0; height: 40px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--edge); border-radius: 8px; background: #fff; color: var(--ink); }
+  input:focus, select:focus, textarea:focus { outline: 2px solid #9572cf; outline-offset: 1px; border-color: #9572cf; }
+  #time { flex: 0 0 110px; }
+  textarea { width: 100%; box-sizing: border-box; height: 110px; margin: 8px 0; padding: 8px 10px; border: 1px solid var(--edge); border-radius: 8px; font-size: 13px; color: var(--ink); }
+  button, .btn { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-height: 40px; margin: 0; padding: 0 14px;
+    border: 1px solid #cbbfe6; border-radius: 8px; background: #fff; color: var(--p8); font-weight: 600; text-decoration: none; cursor: pointer; }
+  button:hover, .btn:hover { background: var(--p1); }
+  button.main, .btn.main { background: var(--p7); border-color: var(--p7); color: #fff; }
+  button.main:hover, .btn.main:hover { background: var(--p8); }
+  button.danger { color: #b42318; border-color: #f1c4c0; } button.danger:hover { background: #fef3f2; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0; }
+  .hint { margin: 4px 0 8px; color: var(--sub); font-size: 13px; }
+  .mode { display: inline-block; padding: 2px 10px; border-radius: 999px; background: var(--p8); color: #fff; font-size: 12px; font-weight: 700; }
+  #status, #note { min-height: 20px; margin: 8px 0; color: var(--p8); font-size: 13px; font-weight: 600; white-space: pre-line; }
+  .scroll { max-height: 680px; overflow: auto; border: 1px solid #ece7f5; border-radius: 10px; }
   table { width: 100%; border-collapse: collapse; }
-  th { position: sticky; top: 0; background: #f9fafb; color: #6b7280; font-size: 12px; font-weight: 600; }
-  th, td { padding: 4px 6px; border-bottom: 1px solid #eef0f3; text-align: center; }
-  td:first-child { text-align: left; font-weight: 600; }
-  td input[type=number] { width: 72px; padding: 3px 6px; border: 1px solid #d1d5db; border-radius: 5px; text-align: right; }
-  td button { padding: 2px 8px; font-size: 12px; white-space: nowrap; }
-  tr.hit td { background: #fff7d6; }
+  th { position: sticky; top: 0; z-index: 1; background: var(--p1); color: var(--p8); font-size: 13px; font-weight: 700; }
+  th, td { padding: 6px 8px; border-bottom: 1px solid #f0edf6; text-align: center; }
+  tbody tr:nth-child(even) td { background: #fbfaff; }
+  td:first-child { text-align: left; font-weight: 700; }
+  td input[type=number] { width: 84px; height: 34px; box-sizing: border-box; padding: 0 8px; border: 1px solid var(--edge); border-radius: 6px; text-align: right; font-size: 15px; }
+  td button { min-height: 32px; padding: 0 10px; font-size: 13px; white-space: nowrap; }
+  tr.hit td { background: #fff4c2 !important; }
   td.bad { color: #dc2626; font-weight: 700; }
   .mobile-only { display: none; }
-  .share { margin-top: 16px; } .share .row { margin: 0; }
+  /* 공유 상자: 현황판 위 보라 띠와 같은 색 */
+  .share { margin-top: 16px; background: linear-gradient(135deg, var(--p8), var(--p7)); }
+  .share .row { margin: 0; }
+  .share button { background: #ffffff1f; border-color: #ffffff59; color: #fff; }
+  .share button:hover { background: #ffffff38; }
+  .share button.main { background: #fff; border-color: #fff; color: var(--p8); }
+  .share #note { color: #e4dcf5; } .share #note:empty { display: none; }
   body:not(.editing) .edit { display: none; }
-  label.check { margin: 0; gap: 4px; font-size: 12px; color: #4b5563; }
-  /* 휴대폰: 현황 → 경기 정보 → 구역별 잔여석 → 스크린샷 인식 */
+  label.check { margin: 0; gap: 6px; color: #374151; font-size: 14px; font-weight: 600; }
+  label.check input { width: 18px; height: 18px; accent-color: var(--p7); }
+  /* 휴대폰: 현황(세로판) -> 공유 -> 경기 정보 -> 구역별 잔여석 -> 스크린샷 인식 */
   @media (max-width: 860px) {
-    main { padding: 8px; }
-    .mobile-only { display: block; margin: 6px 4px 0; }
-    #boardWrap.zoom { overflow-x: auto; border-radius: 12px; }
-    #boardWrap.zoom #board { width: 1280px; max-width: none; }
-    .panel { grid-template-columns: 1fr; grid-template-areas: "info" "seats" "ocr"; gap: 10px; margin-top: 10px; }
-    .share { margin-top: 10px; }
-    .box { padding: 14px; }
+    main { padding: 10px; }
+    .mobile-only { display: block; margin: 8px 4px 0; text-align: center; }
+    #boardWrap.zoom { overflow-x: auto; border-radius: 14px; }
+    #boardWrap.zoom #board { width: 1080px; max-width: none; }
+    .panel { grid-template-columns: 1fr; grid-template-areas: "info" "seats" "ocr"; gap: 12px; margin-top: 12px; }
+    .share { margin-top: 12px; }
+    .box { padding: 16px; }
     .scroll { max-height: none; }
-    td input[type=number] { width: 60px; }
+    .row > button, .row > .btn { flex: 1 1 auto; }
+    input, select, textarea, td input[type=number] { font-size: 16px; }  /* 아이폰이 입력할 때 화면을 확대하지 않게 */
+    td input[type=number] { width: 72px; }
   }
 </style>
 </head>
 <body>
 <main>
-  <div id="boardWrap"><svg id="board" xmlns="http://www.w3.org/2000/svg" width="1280" height="1330" viewBox="0 0 1280 1330" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif"></svg></div>
+  <div id="boardWrap"><svg id="board" xmlns="http://www.w3.org/2000/svg" width="1280" height="1350" viewBox="0 0 1280 1350" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif"></svg></div>
   <p class="hint mobile-only">현황판을 누르면 크게, 다시 누르면 원래대로</p>
   <div class="box share">
     <div class="row"><button id="png" class="main">현황판 저장</button><button id="story" class="main">스토리 이미지 저장</button><button id="share" class="main" hidden>스토리로 공유</button><button id="link">링크 공유</button><button id="copy">요약 글 복사</button></div>
@@ -67,15 +84,15 @@
   </div>
   <div class="panel edit">
     <div class="box info">
+      <p class="hint"><span class="mode">입력 화면</span> Ctrl+Shift+E 로 끄고 켭니다</p>
       <div class="row"><button id="viewMode">보기 화면으로</button><a class="btn" href="guide/" target="_blank">작업 가이드</a><a class="btn" href="guide/guide.pdf" download="FC안양_예매현황_집계가이드.pdf">가이드 PDF</a></div>
-      <p class="hint">입력 화면 (Ctrl+Shift+E 로 끄고 켬)</p>
       <h2>경기 정보</h2>
       <label><span>상대팀</span><select id="opp"><option value="">선택</option></select></label>
       <label><span>경기 일시</span><input type="date" id="day"><select id="time"><option value="">시간</option></select></label>
       <label><span>집계 시각</span><input type="datetime-local" id="at"><button id="now">지금</button></label>
       <h2>발행</h2>
       <div class="row"><button id="publish" class="main">최신 집계 발행</button><label class="check"><input type="checkbox" id="autoPub">숫자가 들어오면 바로 발행 (경고 없을 때)</label></div>
-      <div class="row"><button id="unpub">마지막 발행 지우기</button><button id="unpubAll">발행 모두 지우기</button></div>
+      <div class="row"><button id="unpub" class="danger">마지막 발행 지우기</button><button id="unpubAll" class="danger">발행 모두 지우기</button></div>
       <p class="hint">발행 = 지금 현황판을 누구나 보는 기본 화면(과 다른 사이트)에 올리기. 발행하기 전 숫자는 이 브라우저에만 있습니다. 처음 한 번 GitHub 토큰을 묻습니다. 시험으로 발행했으면 '마지막 발행 지우기'로 그 전 발행으로 되돌립니다.</p>
       <h2>집계 기록</h2>
       <div class="row"><button id="saveJson">이번 집계 저장</button><button id="loadBtn">저장한 집계 열기</button><input type="file" id="loadJson" accept=".json,application/json" hidden></div>
@@ -96,7 +113,8 @@
     <div class="box ocr">
       <h2>스크린샷 인식</h2>
       <p class="hint">티켓링크 '등급/좌석 선택' 캡처 여러 장을 한 번에 고르거나, 끌어다 놓거나, 붙여넣으세요(Ctrl+V). PC 화면은 통째로 복사(Ctrl+A, Ctrl+C)해 붙여넣으면 인식 없이 그대로 들어갑니다.</p>
-      <input type="file" id="file" accept="image/*" multiple>
+      <div class="row"><label class="btn main" for="file">캡처 고르기 (여러 장)</label></div>
+      <input type="file" id="file" accept="image/*" multiple hidden>
       <div id="status"></div>
       <textarea id="raw" placeholder="인식된 글자 (고친 뒤 아래 버튼으로 다시 채움. 예: R8구역 28석)"></textarea>
       <button id="reparse">이 글자로 다시 채우기</button>
@@ -105,7 +123,7 @@
 </main>
 <script>
 // FULL: 만석 1만 1,542석 (2026-04-05 서울전 기사). 중립석 신설(8월) 뒤에도 원정석 쪽 좌석을 나눠 파는 것이라 그대로 씀
-const KEY = 'fc-anyang-seat-status', FULL = 11542, W = 1280, H = 1330, FONT = "'Malgun Gothic','Apple SD Gothic Neo',sans-serif";
+const KEY = 'fc-anyang-seat-status', FULL = 11542, W = 1280, H = 1350, MH = 2060, FONT = "'Malgun Gothic','Apple SD Gothic Neo',sans-serif";
 // 지도: 경기장 중심 (CX, CY), 직선 반길이 L, 스탠드 안쪽/바깥 반지름 RI/RO
 const CX = 600, CY = 375, L = 240, RI = 285, RO = 360;
 const PURPLE = ['#c3b1e6', '#9572cf', '#6a40ad', '#3e1a78'];  // 잔여율 1~24 / 25~49 / 50~74 / 75%+
@@ -290,20 +308,21 @@ let history = [];
 const tick = s => `${s.slice(5, 10).replace('-', '.')}(${'일월화수목금토'[new Date(s.slice(0, 10) + 'T00:00').getDay()]}) ${s.slice(11, 16)}`;  // "11.04(수) 16:18"
 const span = ms => { const m = Math.round(ms / 60000), d = m / 1440 | 0, h = m % 1440 / 60 | 0; return d ? `${d}일 ${h}시간` : h ? `${h}시간 ${m % 60}분` : `${m % 60}분`; };
 const nice = r => { const e = 10 ** Math.floor(Math.log10(r)), f = r / e; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * e; };
-// 이번 경기 점들 (최근 8번). 아직 발행 안 한 지금 숫자도 마지막 점으로
+// 이번 경기 점들. 아직 발행 안 한 지금 숫자도 마지막 점으로
 function trendPoints() {
   const me = (state.opp || '') + state.date.slice(0, 10), t = stats();
   const pts = history.filter(p => (p.opponent || '') + String(p.kickoff || '').slice(0, 10) === me && typeof p.at === 'string' && Number.isInteger(p.booked))
     .map(p => ({ at: p.at.slice(0, 16), booked: p.booked }));
   if (t.empty.length < SECTIONS.length && state.at && !pts.some(p => p.at === state.at)) pts.push({ at: state.at, booked: FULL - t.avail });
-  return pts.sort((a, b) => a.at < b.at ? -1 : 1).slice(-8);
+  return pts.sort((a, b) => a.at < b.at ? -1 : 1);
 }
-function chart(x0, y0, w, h) {
-  const pts = trendPoints(), last = pts.at(-1), prev = pts.at(-2), ink = '#3e1a78';
-  const out = [`<rect x="${x0}" y="${y0}" width="${w}" height="${h}" rx="12" fill="#fff" stroke="#eceff3"/>`,
-    text(x0 + 20, y0 + 30, '예매된 좌석 추이', 15, '#111827', 700, 'start'),
-    text(x0 + 150, y0 + 30, '집계할 때마다 기록 · 점선 = 마지막 증가 속도가 경기 시작까지 이어질 때 예상', 11, '#9ca3af', 400, 'start')];
-  if (!pts.length) return out.join('') + text(x0 + w / 2, y0 + h / 2 + 10, '발행할 때마다 예매된 좌석이 여기 쌓여 증감을 보여 줍니다.', 13, '#9ca3af');
+// k: 글자와 여백 배율 (휴대폰 세로판은 크게), n: 보여 줄 최근 집계 수
+function chart(x0, y0, w, h, k = 1, n = 8) {
+  const pts = trendPoints().slice(-n), last = pts.at(-1), prev = pts.at(-2), ink = '#3e1a78', z = v => v * k, two = k > 1;  // two: 설명을 다음 줄로
+  const out = [`<rect x="${x0}" y="${y0}" width="${w}" height="${h}" rx="${z(12)}" fill="#fff" stroke="#eceff3"/>`,
+    text(x0 + z(20), y0 + z(30), '예매된 좌석 추이', z(15), '#111827', 700, 'start'),
+    text(two ? x0 + z(20) : x0 + 150, two ? y0 + z(50) : y0 + 30, '집계할 때마다 기록 · 점선 = 마지막 증가 속도가 경기 시작까지 이어질 때 예상', z(two ? 10 : 11), '#9ca3af', 400, 'start')];
+  if (!pts.length) return out.join('') + text(x0 + w / 2, y0 + h / 2 + z(10), '발행할 때마다 예매된 좌석이 여기 쌓여 증감을 보여 줍니다.', z(13), '#9ca3af');
   // 예상: 마지막 두 점의 증가 속도로 경기 시작 시각까지
   let fc = null;
   if (prev && state.date.length > 10 && state.date > last.at) {
@@ -314,27 +333,27 @@ function chart(x0, y0, w, h) {
   // 아래위 여유: 맨 아래 점의 숫자가 날짜 글자와, 맨 위 점의 증감 글자가 제목과 겹치지 않게
   const step = nice((Math.max(...vals) - Math.min(...vals) || 400) / 4), lo = Math.max(0, Math.floor((Math.min(...vals) - step * 0.6) / step) * step);
   const hi = Math.max(Math.ceil((Math.max(...vals) + step * 0.3) / step) * step, lo + step);
-  const L = x0 + 90, R = x0 + w - 80, T = y0 + 78, B = y0 + h - 62;
+  const L = x0 + z(90), R = x0 + w - z(80), T = y0 + z(two ? 96 : 78), B = y0 + h - z(62);
   const X = i => all.length === 1 ? (L + R) / 2 : L + i * (R - L) / (all.length - 1), Y = v => B - (v - lo) / (hi - lo) * (B - T);
   for (let v = lo; v <= hi; v += step)
-    out.push(`<line x1="${L - 20}" x2="${R + 30}" y1="${Y(v)}" y2="${Y(v)}" stroke="#eef0f3"/>`, text(L - 28, Y(v) + 4, fmt(v), 11, '#9ca3af', 400, 'end'));
-  out.push(`<path d="M${pts.map((p, i) => X(i) + ',' + Y(p.booked)).join('L')}" fill="none" stroke="${ink}" stroke-width="2.5"/>`);
-  if (fc) out.push(`<path d="M${X(pts.length - 1)},${Y(last.booked)}L${X(pts.length)},${Y(fc.booked)}" fill="none" stroke="#9572cf" stroke-width="2" stroke-dasharray="6 5"/>`);
+    out.push(`<line x1="${L - z(20)}" x2="${R + z(30)}" y1="${Y(v)}" y2="${Y(v)}" stroke="#eef0f3"/>`, text(L - z(28), Y(v) + z(4), fmt(v), z(11), '#9ca3af', 400, 'end'));
+  out.push(`<path d="M${pts.map((p, i) => X(i) + ',' + Y(p.booked)).join('L')}" fill="none" stroke="${ink}" stroke-width="${z(2.5)}"/>`);
+  if (fc) out.push(`<path d="M${X(pts.length - 1)},${Y(last.booked)}L${X(pts.length)},${Y(fc.booked)}" fill="none" stroke="#9572cf" stroke-width="${z(2)}" stroke-dasharray="${z(6)} ${z(5)}"/>`);
   all.forEach((p, i) => {
     const x = X(i), y = Y(p.booked), f = p === fc, pc = (p.booked / FULL * 100).toFixed(1) + '%';
     if (i) {  // 앞 점과의 증감과 걸린 시간
-      const q = all[i - 1], d = p.booked - q.booked, mx = (X(i - 1) + x) / 2, my = Math.min(Y(q.booked), y) - 26;
-      out.push(text(mx, my, (f ? '예상 ' : '') + signed(d) + '석', 12, d < 0 ? '#dc2626' : f ? '#6a40ad' : ink, 700), text(mx, my + 14, span(new Date(p.at) - new Date(q.at)), 10, '#9ca3af'));
+      const q = all[i - 1], d = p.booked - q.booked, mx = (X(i - 1) + x) / 2, my = Math.min(Y(q.booked), y) - z(26);
+      out.push(text(mx, my, (f ? '예상 ' : '') + signed(d) + '석', z(12), d < 0 ? '#dc2626' : f ? '#6a40ad' : ink, 700), text(mx, my + z(14), span(new Date(p.at) - new Date(q.at)), z(10), '#9ca3af'));
     }
-    out.push(f ? `<circle cx="${x}" cy="${y}" r="6" fill="#fff" stroke="#6a40ad" stroke-width="2.5"/>` : `<circle cx="${x}" cy="${y}" r="5.5" fill="${ink}" stroke="#fff" stroke-width="2"/>`,
-      text(x, y + 22, (f ? '약 ' : '') + fmt(p.booked), 13, f ? '#6a40ad' : '#111827', 700), text(x, y + 36, f ? `${pc} · 남은 약 ${fmt(FULL - p.booked)}` : pc, 10, '#9ca3af'),
-      text(x, B + 34, tick(p.at), 12, '#374151', 700), text(x, B + 49, f ? '경기 시작 예상' : '집계', 10, '#9ca3af'));
+    out.push(f ? `<circle cx="${x}" cy="${y}" r="${z(6)}" fill="#fff" stroke="#6a40ad" stroke-width="${z(2.5)}"/>` : `<circle cx="${x}" cy="${y}" r="${z(5.5)}" fill="${ink}" stroke="#fff" stroke-width="${z(2)}"/>`,
+      text(x, y + z(22), (f ? '약 ' : '') + fmt(p.booked), z(13), f ? '#6a40ad' : '#111827', 700), text(x, y + z(36), f ? `${pc} · 남은 약 ${fmt(FULL - p.booked)}` : pc, z(10), '#9ca3af'),
+      text(x, B + z(34), tick(p.at), z(two ? 11 : 12), '#374151', 700), text(x, B + z(49), f ? '경기 시작 예상' : '집계', z(10), '#9ca3af'));
   });
-  if (pts.length === 1) out.push(text(x0 + w / 2, y0 + 58, '다음 집계부터 증감이 나옵니다.', 12, '#9ca3af'));
+  if (pts.length === 1) out.push(text(x0 + w / 2, y0 + z(two ? 74 : 58), '다음 집계부터 증감이 나옵니다.', z(12), '#9ca3af'));
   return out.join('');
 }
 
-// 현황판 SVG 내용. story=false: 1280×1330 가로판 (맨 아래 추이), story=true: 인스타 스토리 1080×1920
+// 현황판 SVG 내용. story=false: 1280×1350 가로판 (맨 아래 추이), true: 인스타 스토리 1080×1920, 'mobile': 휴대폰 화면용 세로판 1080×2060 (스토리 + 추이)
 function build(story) {
   const { avail, soldSum, soldOut, empty } = stats(), soldN = soldOut.length, emptyN = empty.length;
   let noMax = false;
@@ -367,7 +386,7 @@ function build(story) {
       : `만석 대비 ${pc(FULL - avail)} 예매 (선택 중 좌석 포함)${miss}`, baseAt ? `${baseAt} 이후 ${signed(soldSum)}석` : `${pc(FULL - avail)} 예매`],
     ['매진 구역', String(soldN), ' 개', `전체 ${SECTIONS.length}개 구역 중`, `${SECTIONS.length}개 구역 중`],
   ];
-  const card = (x, title, big, small, note) => `<g transform="translate(${x},100)"><rect width="400" height="88" rx="10" fill="#fff" stroke="#e5e7eb"/>`
+  const card = (x, title, big, small, note) => `<g transform="translate(${x},122)"><rect width="400" height="88" rx="10" fill="#fff" stroke="#e5e7eb"/>`
     + text(18, 26, title, 12, '#6b7280', 400, 'start')
     + `<text x="18" y="61" font-size="28" font-weight="700" fill="#111827">${esc(big)}<tspan font-size="14" font-weight="600" fill="#4b5563">${esc(small)}</tspan></text>`
     + text(18, 79, note, 11, '#9ca3af', 400, 'start') + '</g>';
@@ -410,21 +429,22 @@ function build(story) {
   const at = state.at ? `집계 ${state.at.replace(/-/g, '.').replace('T', ' ')} (KST)` : '';
   const foot = '구역 안 숫자 = 예매 가능 / 최대 좌석' + (baseAt ? ` · +N = ${baseAt} 이후 예매된 좌석` : '');
 
-  if (!story) return defs + `<rect width="${W}" height="${H}" fill="#fff"/>`
-    + text(30, 50, title + ' 예매 현황', 26, '#111827', 700, 'start')
-    + text(30, 78, [when, '안양종합운동장', 'K리그1'].filter(Boolean).join(' · '), 13, '#6b7280', 400, 'start')
-    + text(1250, 50, at, 12, '#4b5563', 600, 'end')
-    + text(1250, 70, '티켓링크 등급/좌석 선택 화면 잔여석 기준', 11, '#9ca3af', 400, 'end')
+  if (!story) return defs + `<rect width="${W}" height="${H}" fill="#fff"/><rect width="${W}" height="170" fill="#3e1a78"/>`
+    + (typeof EMBLEM === 'string' ? `<image href="${EMBLEM}" x="30" y="16" width="92" height="93"/>` : '')
+    + text(140, 60, title + ' 예매 현황', 28, '#fff', 700, 'start')
+    + text(140, 92, [when, '안양종합운동장', 'K리그1'].filter(Boolean).join(' · '), 14, '#e4dcf5', 400, 'start')
+    + text(1250, 56, at, 13, '#fff', 600, 'end')
+    + text(1250, 80, '티켓링크 등급/좌석 선택 화면 잔여석 기준', 12, '#c3b1e6', 400, 'end')
     + sums.map((c, i) => card(30 + i * 410, ...c)).join('')
-    + `<rect x="20" y="200" width="1240" height="828" rx="12" fill="#f7f8fa" stroke="#eceff3"/>`
-    + `<g transform="translate(40,212)">${map}</g>`
-    + legend(40, 996, 12, 1240)
-    + text(40, 1018, foot, 11, '#9ca3af', 400, 'start')
-    + chart(20, 1040, 1240, 280);
+    + `<rect x="20" y="222" width="1240" height="828" rx="12" fill="#f7f8fa" stroke="#eceff3"/>`
+    + `<g transform="translate(40,234)">${map}</g>`
+    + legend(40, 1018, 12, 1240)
+    + text(40, 1040, foot, 11, '#9ca3af', 400, 'start')
+    + chart(20, 1060, 1240, 280);
 
   // 스토리: 맨 위·아래는 인스타 화면(프로필, 답장 칸)에 가려서 내용은 y 200~1660 사이에 둠
   const S = 1000 / 1224;  // 지도 전체 폭(관중석 바깥 포함 1224)을 1000에 맞춤
-  return defs + `<rect width="1080" height="1920" fill="#fff"/><rect width="1080" height="640" fill="#3e1a78"/>`
+  const st = `<rect width="1080" height="1920" fill="#fff"/><rect width="1080" height="640" fill="#3e1a78"/>`
     + (typeof EMBLEM === 'string' ? `<image href="${EMBLEM}" x="490" y="200" width="100" height="101"/>` : '')
     + text(540, 385, title, 58, '#fff', 700)
     + text(540, 440, [when, '안양종합운동장'].filter(Boolean).join(' · '), 28, '#e4dcf5')
@@ -435,10 +455,16 @@ function build(story) {
     + legend(40, 1490, 22, 1040)
     + text(540, 1640, foot, 20, '#9ca3af')
     + text(540, 1672, '티켓링크 잔여석 기준', 18, '#b0b5bf');
+  // 휴대폰 화면: 인스타가 가리는 위 여백을 140 줄이고 아래에 큰 글자 추이 (최근 4번)
+  if (story === 'mobile') return defs + `<rect width="1080" height="${MH}" fill="#fff"/><g transform="translate(0,-140)">${st}</g>` + chart(20, 1560, 1040, 480, 1.8, 4);
+  return defs + st;
 }
 
+const portrait = matchMedia('(max-width: 860px)');  // 휴대폰: 스토리처럼 세로판으로 보여 줌 (저장 PNG 는 그대로)
 function render() {
-  board.innerHTML = build(false);
+  const [w, h] = portrait.matches ? [1080, MH] : [W, H];
+  board.setAttribute('viewBox', `0 0 ${w} ${h}`); board.setAttribute('width', w); board.setAttribute('height', h);
+  board.innerHTML = build(portrait.matches ? 'mobile' : false);
   for (const tr of tbody.rows) {
     const r = state.rows[tr.dataset.id], c = tr.cells[4];
     const d = sold(tr.dataset.id);
@@ -456,7 +482,7 @@ const note = m => $('note').textContent = m;
 const isCell = s => /^[A-Z]+\d/.test(s.id);
 [...SECTIONS].sort((a, b) => isCell(a) - isCell(b) || (isCell(a) ? a.id.localeCompare(b.id, 'en', { numeric: true }) : 0))
   .forEach(s => tbody.insertAdjacentHTML('beforeend', `<tr data-id="${s.id}"><td>${s.name || s.id}</td><td><button>매진</button></td>`
-    + `<td><input type="number" min="0" data-k="remain"></td><td><input type="number" min="0" data-k="max"></td><td></td></tr>`));
+    + `<td><input type="number" min="0" inputmode="numeric" data-k="remain"></td><td><input type="number" min="0" inputmode="numeric" data-k="max"></td><td></td></tr>`));
 Object.values(TEAMS).forEach(n => $('opp').add(new Option(n)));
 for (let m = 600; m <= 1320; m += 30) $('time').add(new Option(`${String(m / 60 | 0).padStart(2, '0')}:${m % 60 ? '30' : '00'}`));  // 10:00~22:00, 30분 단위
 
@@ -874,6 +900,7 @@ document.body.classList.toggle('editing', editing);
 const toggleEdit = () => { try { localStorage.setItem(EDIT, editing ? '0' : '1'); } catch {} location.replace(location.pathname + location.search); };
 addEventListener('keydown', e => { if (e.ctrlKey && e.shiftKey && e.code === 'KeyE') { e.preventDefault(); toggleEdit(); } });
 $('viewMode').onclick = toggleEdit;
+portrait.addEventListener('change', render);
 if (editing) { syncInputs(); fillTable(); render(); loadHistory(); }
 else {
   SECTIONS.forEach(s => Object.assign(state.rows[s.id], { remain: null, max: KNOWN_MAX[s.id] ?? null }));
