@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "description": "현황판 만들기.bat 이 쓰는 화면 없는 브라우저",
+  "dependencies": {
+    "playwright": "1.63.0"
+  }
+}
