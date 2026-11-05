@@ -5,6 +5,8 @@ FC안양 홈 경기(안양종합운동장)의 티켓링크 구역별 잔여석�
 - 주소: https://goormigrm.github.io/fc-anyang-seats/ (GitHub Pages, `main` 브랜치 루트. 푸시하면 바로 반영)
 - 검색엔진 노출은 막아 두었습니다 (`noindex`).
 
+실제 작업 순서는 [작업 가이드](https://goormigrm.github.io/fc-anyang-seats/guide/) ([PDF](https://goormigrm.github.io/fc-anyang-seats/guide/guide.pdf))를 봅니다. 입력 화면 맨 위 '작업 가이드', '가이드 PDF' 버튼으로도 엽니다.
+
 ## 보기 화면과 입력 화면
 
 | 화면 | 누가 | 보이는 것 |
@@ -188,6 +190,7 @@ console.log(d.match.opponent, d.booked, d.capacity, d.updatedAt);
 | `index.html` | 화면, 그리기, 입력, 인식, 발행 전부 |
 | `emblem.js` | 앰블럼 (PNG를 base64로 담은 상수 `EMBLEM`) |
 | `fc-anyang-send.user.js` | 보내기 스크립트 (Tampermonkey) |
+| `guide/` | 작업 가이드 (`index.html`, 그림, `guide.pdf`). 고치면 `node tools/guide-pdf.js` 로 PDF 다시 만듦 |
 | `현황판 만들기.bat`, `tools/make.sh`, `tools/make.js` | bat -> WSL -> 화면 없는 브라우저(Playwright)로 `index.html` 의 인식, 그리기, 발행 코드를 그대로 실행 |
 | `.gitignore` | `좌석스크린샷/`, `예시/`, `결과/`, `tools/node_modules/`, `tools/.profile/` |
 
@@ -199,6 +202,7 @@ console.log(d.match.opponent, d.booked, d.capacity, d.updatedAt);
 
 ## 변경 이력
 
+- 11/05: 작업 가이드(HTML, PDF), 입력 화면에서 열기.
 - 11/05: 기본은 마지막 발행 현황만 보이는 보기 화면, 입력 화면은 Ctrl+Shift+E (`#edit`). 발행(data 브랜치 JSON, 이미지)과 다른 사이트용 API, 링크 공유, 요약 글, 바로 발행. PC 화면 복사 붙여넣기, 보내기 스크립트, 끌어다 놓기, bat. 집계 시각, 비교 기준, 새 경기 자동, 빠진 구역 하나 등급 합계로 채움, 잔여 > 최대 경고. 상대팀은 앞 3장에서 읽음.
 - 11/05: 화면 설명을 한 줄로 줄이고 버튼 이름을 하는 일 그대로 바꿈.
 - 11/05: 원정석 기본값 1235(넓게 열면 1713), 카드를 만석 11,542석 기준으로 (예매된 좌석 = 만석 - 모든 구역 잔여).

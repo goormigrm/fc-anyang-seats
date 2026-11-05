@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>FC안양 예매현황 집계 가이드</title>
+<style>
+  @page { size: A4; margin: 14mm 14mm 16mm; }
+  body { margin: 0; background: #f2f4f7; color: #1f2937; font: 14px/1.65 'Malgun Gothic', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; word-break: keep-all; }
+  main { max-width: 820px; margin: 0 auto; padding: 24px 16px 40px; }
+  header { background: #3e1a78; color: #fff; border-radius: 14px; padding: 22px 26px; }
+  header h1 { margin: 0 0 4px; font-size: 24px; }
+  header p { margin: 0; color: #e4dcf5; font-size: 13px; }
+  header a { color: #fff; }
+  h2 { font-size: 18px; margin: 28px 0 10px; color: #3e1a78; break-after: avoid; }
+  h3 { font-size: 15px; margin: 0 0 6px; }
+  .box { background: #fff; border-radius: 12px; padding: 16px 20px; margin: 10px 0; box-shadow: 0 1px 3px #0001; break-inside: avoid; }
+  .flow { display: flex; align-items: stretch; gap: 6px; margin: 12px 0 4px; }
+  .flow div { flex: 1; background: #f4effc; border: 1px solid #d9cdf0; border-radius: 10px; padding: 10px; text-align: center; font-size: 13px; }
+  .flow b { display: block; color: #3e1a78; font-size: 14px; }
+  .flow span { align-self: center; color: #9572cf; font-weight: 700; }
+  ol { margin: 6px 0; padding-left: 22px; } li { margin: 4px 0; }
+  .time { display: inline-block; background: #ede7f8; color: #3e1a78; border-radius: 999px; padding: 0 10px; font-size: 12px; font-weight: 700; margin-left: 6px; vertical-align: 2px; }
+  code { background: #f3f4f6; border-radius: 4px; padding: 1px 5px; font-size: 13px; word-break: break-all; }
+  img { display: block; max-width: 100%; border: 1px solid #e5e7eb; border-radius: 8px; margin: 10px 0; }
+  .shot { max-width: 420px; }
+  .note { color: #6b7280; font-size: 13px; }
+  .warn { border-left: 4px solid #dc2626; }
+  .ok { border-left: 4px solid #6a40ad; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { border-bottom: 1px solid #eef0f3; padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { color: #6b7280; font-weight: 600; width: 32%; }
+  @media print { body { background: #fff; } main { padding: 0; max-width: none; } .box { box-shadow: none; border: 1px solid #e5e7eb; } }
+  @media (max-width: 600px) { .flow { flex-direction: column; } .flow span { transform: rotate(90deg); } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>FC안양 예매현황 집계 가이드</h1>
+    <p>2026-11-05 | 현황판 <a href="https://goormigrm.github.io/fc-anyang-seats/">goormigrm.github.io/fc-anyang-seats</a></p>
+  </header>
+
+  <h2>한눈에 보기</h2>
+  <div class="box ok">
+    <p style="margin:0"><b>추천 방법:</b> PC 크롬에서 티켓링크 예매 화면을 열고 <b>등급을 차례로 누르기만</b> 하면, 옆 탭의 현황판에 숫자가 저절로 들어가고 10초 뒤 저절로 발행됩니다. 캡처도, 숫자 입력도 하지 않습니다.</p>
+    <div class="flow">
+      <div><b>티켓링크 탭</b>등급 4개를<br>차례로 누름</div><span>-&gt;</span>
+      <div><b>현황판 탭</b>숫자가<br>저절로 들어감</div><span>-&gt;</span>
+      <div><b>10초 뒤</b>저절로<br>발행</div><span>-&gt;</span>
+      <div><b>보는 사람</b>현황판 주소,<br>다른 사이트</div>
+    </div>
+    <p class="note" style="margin:8px 0 0">처음 한 번 10분 정도 준비하면, 그다음부터는 집계 한 번에 1~2분이면 됩니다.</p>
+  </div>
+
+  <h2>처음 한 번만 준비 <span class="time">약 10분</span></h2>
+  <div class="box">
+    <h3>1. 크롬에 Tampermonkey 설치</h3>
+    <ol>
+      <li>크롬 웹 스토어에서 <b>Tampermonkey</b> 를 찾아 '크롬에 추가'를 누릅니다.</li>
+      <li>크롬 주소창에 <code>chrome://extensions</code> 를 열고, Tampermonkey 의 '세부정보'에서 <b>사용자 스크립트 허용</b>을 켭니다. (크롬 버전에 따라 이 항목이 없으면 오른쪽 위 <b>개발자 모드</b>를 켭니다.)</li>
+    </ol>
+  </div>
+  <div class="box">
+    <h3>2. 보내기 스크립트 설치</h3>
+    <ol>
+      <li>크롬에서 <code>https://goormigrm.github.io/fc-anyang-seats/fc-anyang-send.user.js</code> 를 엽니다.</li>
+      <li>Tampermonkey 설치 화면이 뜨면 <b>설치</b>를 누릅니다.</li>
+    </ol>
+    <p class="note">이 스크립트는 티켓링크 화면에 보이는 글자를 읽어 현황판 탭에 넘겨주기만 합니다. 대신 누르거나, 새로고침하거나, 티켓링크에 요청을 보내지 않습니다.</p>
+  </div>
+  <div class="box">
+    <h3>3. 현황판 입력 화면 열고 '바로 발행' 켜기</h3>
+    <ol>
+      <li>크롬에서 <code>https://goormigrm.github.io/fc-anyang-seats/#edit</code> 를 열고 <b>북마크</b>해 둡니다. (현황판에서 Ctrl+Shift+E 를 눌러도 입력 화면이 됩니다.)</li>
+      <li>'발행' 칸의 <b>숫자가 들어오면 바로 발행</b>을 체크합니다.</li>
+    </ol>
+    <img class="shot" src="edit.png" alt="입력 화면의 발행 칸, '숫자가 들어오면 바로 발행' 체크">
+  </div>
+  <div class="box">
+    <h3>4. GitHub 토큰 만들기 (발행용)</h3>
+    <ol>
+      <li>github.com 로그인 -&gt; 오른쪽 위 프로필 사진 -&gt; <b>Settings</b> -&gt; 맨 아래 <b>Developer settings</b> -&gt; <b>Personal access tokens</b> -&gt; <b>Fine-grained tokens</b> -&gt; <b>Generate new token</b>.</li>
+      <li>이름은 아무거나, 기간은 1년 정도. <b>Repository access</b> 는 <b>Only select repositories</b> 에서 <code>fc-anyang-seats</code> 하나만 고릅니다.</li>
+      <li><b>Permissions</b> 의 <b>Contents</b> 를 <b>Read and write</b> 로 바꾸고 만든 뒤, 나온 토큰을 복사해 둡니다.</li>
+      <li>처음 집계할 때 '최신 집계 발행'을 한 번 누르면 토큰을 묻습니다. 붙여넣으면 그 브라우저가 기억하고, 그 뒤로는 저절로 발행됩니다.</li>
+    </ol>
+  </div>
+
+  <h2>매번 집계할 때 <span class="time">1~2분</span></h2>
+  <div class="box">
+    <ol>
+      <li>크롬에서 <b>현황판 입력 화면</b>(북마크)을 열어 둡니다. 이 탭은 닫지 않습니다.</li>
+      <li>같은 크롬의 다른 탭에서 티켓링크에 로그인하고, FC안양 경기 -&gt; <b>예매하기</b> -&gt; <b>등급/좌석 선택</b> 화면까지 갑니다. 좌석을 고르거나 결제할 필요는 없습니다.</li>
+      <li>오른쪽 '등급 선택' 목록에서 구역이 여러 개인 등급 4개를 차례로 한 번씩 누릅니다. 하나 누를 때마다 1~2초 기다립니다.
+        <br><b>가변석</b>, <b>서포터즈석</b>, <b>해링턴플레이스존</b>, <b>퍼스트 스탠딩석</b>
+        <br><span class="note">나머지 등급(일반지정석, 원정석, 피크닉존 등)은 목록에 잔여석이 같이 보여서 따로 누르지 않아도 됩니다.</span></li>
+      <li>현황판 탭에서 숫자가 들어왔는지 봅니다. 들어온 구역은 표에 노랗게 칠해지고, 마지막 입력 10초 뒤 '발행했습니다'가 나옵니다.</li>
+      <li>필요하면 공유합니다: <b>스토리 이미지 저장</b>, <b>요약 글 복사</b>(인스타, 카톡용 글), <b>링크 공유</b>.</li>
+    </ol>
+    <img src="share.png" alt="공유 버튼: 현황판 저장, 스토리 이미지 저장, 링크 공유, 요약 글 복사">
+  </div>
+  <div class="box">
+    <h3>저절로 되는 것</h3>
+    <table>
+      <tr><th>집계 시각</th><td>숫자를 받은 시각으로 들어갑니다. '지금' 버튼을 누를 필요가 없습니다.</td></tr>
+      <tr><th>직전 대비 +N</th><td>같은 경기를 다시 집계하면 지난 숫자와 비교해 구역마다 팔린 좌석이 +N 으로 나옵니다.</td></tr>
+      <tr><th>새 경기</th><td>상대팀이나 날짜가 바뀌면 지난 숫자를 지우고 원정석 최대를 1235로 되돌립니다. '새 경기' 버튼을 누를 필요가 없습니다.</td></tr>
+      <tr><th>빠진 구역 하나</th><td>등급 합계로 계산해 채웁니다.</td></tr>
+      <tr><th>발행</th><td>보기 화면(누구나 보는 기본 주소)과 다른 사이트가 가져가는 데이터가 바뀝니다. 보는 쪽에는 5분 안에 반영됩니다.</td></tr>
+    </table>
+  </div>
+
+  <h2>이럴 때는</h2>
+  <div class="box warn">
+    <h3>경고(⚠)가 나왔을 때</h3>
+    <p style="margin:0">경고가 있으면 저절로 발행하지 않습니다. 표에서 숫자를 고친 뒤 <b>최신 집계 발행</b>을 직접 누릅니다.
+      원정석을 넓게 연 날(최대 1713석)에는 '잔여가 최대보다 많음' 경고가 나오니, 표에서 원정석 '최대'를 1713으로 바꿉니다.</p>
+  </div>
+  <div class="box">
+    <h3>숫자가 안 들어올 때 (다른 방법)</h3>
+    <ol>
+      <li><b>PC 화면 복사:</b> 티켓링크 화면에서 Ctrl+A, Ctrl+C -&gt; 현황판 탭 빈 곳을 누르고 Ctrl+V. 등급마다 반복합니다. 결과는 같습니다.</li>
+      <li><b>휴대폰 캡처:</b> 티켓링크 앱에서 등급마다 눌러 구역 목록이 보이게 캡처합니다. 휴대폰 브라우저로 현황판 입력 화면(<code>.../fc-anyang-seats/#edit</code>)을 열고 '파일 선택'에서 캡처를 <b>한꺼번에</b> 고릅니다. 글자 인식이라 노란 줄의 숫자를 한 번 확인합니다.</li>
+      <li>그래도 안 되면 티켓링크 화면에서 복사한 글자를 개발자에게 보내 주세요. 티켓링크 PC 화면 형식에 맞춰 고칩니다.</li>
+    </ol>
+  </div>
+  <div class="box warn">
+    <h3>하지 말 것</h3>
+    <p style="margin:0">티켓링크 화면 자동 새로고침 확장, 매크로, 자동 클릭 프로그램은 쓰지 않습니다. 티켓링크 약관(제32조)에 따라 계정이 제한될 수 있고, 그러면 실제 예매도 못 합니다.</p>
+  </div>
+
+  <h2>참고</h2>
+  <div class="box">
+    <table>
+      <tr><th>보기 화면</th><td><code>https://goormigrm.github.io/fc-anyang-seats/</code> 누구나 마지막 발행 현황을 봅니다.</td></tr>
+      <tr><th>입력 화면</th><td>주소 끝 <code>#edit</code>, 또는 Ctrl+Shift+E. 맨 위 '보기 화면으로'로 돌아갑니다.</td></tr>
+      <tr><th>다른 사이트용 데이터</th><td><code>https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/latest.json</code> (설명은 저장소 README)</td></tr>
+      <tr><th>PC 캡처 묶음</th><td>이 PC에서는 캡처를 <code>현황판 만들기.bat</code> 위로 끌어다 놓아도 결과 파일을 만들고 발행합니다.</td></tr>
+    </table>
+  </div>
+</main>
+</body>
+</html>
