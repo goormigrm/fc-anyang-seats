@@ -70,7 +70,7 @@
     </div>
     <div class="box seats">
       <h2>구역별 잔여석</h2>
-      <p class="hint">잔여를 비워 두면 '정보 없음', 0이면 매진입니다. '매진' 버튼을 누르면 잔여가 0으로 들어갑니다. 최대 좌석은 한 번 넣으면 남습니다.</p>
+      <p class="hint">잔여를 비워 두면 '정보 없음', 0이면 매진입니다. '매진' 버튼을 누르면 잔여가 0으로 들어갑니다. 최대 좌석은 한 번 넣으면 남습니다. 원정석은 평소 1235석이고, 넓게 여는 날(최대 1713석)은 최대 칸을 바꾸세요.</p>
       <div class="row"><button id="toMax">잔여석을 최대 좌석으로 저장</button><button id="clear">새 경기: 잔여석 비우기</button></div>
       <div class="scroll"><table>
         <thead><tr><th>구역</th><th>매진</th><th>잔여</th><th>최대</th><th>잔여율</th></tr></thead>
@@ -88,7 +88,8 @@
   </div>
 </main>
 <script>
-const KEY = 'fc-anyang-seat-status', W = 1280, H = 1040, FONT = "'Malgun Gothic','Apple SD Gothic Neo',sans-serif";
+// FULL: 만석 1만 1,542석 (2026-04-05 서울전 기사). 중립석 신설(8월) 뒤에도 원정석 쪽 좌석을 나눠 파는 것이라 그대로 씀
+const KEY = 'fc-anyang-seat-status', FULL = 11542, W = 1280, H = 1040, FONT = "'Malgun Gothic','Apple SD Gothic Neo',sans-serif";
 // 지도: 경기장 중심 (CX, CY), 직선 반길이 L, 스탠드 안쪽/바깥 반지름 RI/RO
 const CX = 600, CY = 375, L = 240, RI = 285, RO = 360;
 const PURPLE = ['#c3b1e6', '#9572cf', '#6a40ad', '#3e1a78'];  // 잔여율 1~24 / 25~49 / 50~74 / 75%+
@@ -115,13 +116,13 @@ cells(['R14'], -460, -170, 160, 45);
 cells(['R13', 'R12', 'R11'], -460, -125, 70, 250 / 3, true);
 cells(Rs(1, 7, 'FS').reverse(), -390, -125, 90, 250 / 7, true);  // FS7이 R14 쪽, FS1이 R10 쪽 (실제로는 R14~R10 앞 전체에 걸쳐 있음)
 cells(['R10'], -460, 125, 160, 45);
-// 스크린샷 좌석도에서 센 구역별 좌석 수 (센 남은 좌석이 화면의 잔여석과 모두 일치). 11/1 부천전, FS1은 10/24 전북전, 원정석은 확인받은 값
+// 스크린샷 좌석도에서 센 구역별 좌석 수 (센 남은 좌석이 화면의 잔여석과 모두 일치). 11/1 부천전, FS1은 10/24 전북전, 원정석은 평소 값(넓게 여는 날은 최대 1713석, 표에서 바꿈)
 // R6·R7·R12·R13·T1·T2는 myseatcheck.com 2025년 좌석도 (실제 예매가 열리면 대조). 모르는 구역(FS3~5·FS7, T3, 스탠드)은 비워 둠
 const KNOWN_MAX = {
   R1: 141, R2: 123, R3: 123, R4: 123, R5: 120, R6: 135, R7: 123, R8: 99, R9: 108, R10: 126, R11: 63, R12: 63, R13: 63, R14: 123,
   R15: 141, R16: 138, R17: 123, R18: 123, R19: 138, R20: 123, R21: 123, R22: 138, R23: 123, R24: 123, R25: 138, R26: 138,
   FS1: 50, FS2: 26, FS6: 26,
-  T1: 117, T2: 60, T4: 62, P: 226, 원정석: 1218,
+  T1: 117, T2: 60, T4: 62, P: 226, 원정석: 1235,
 };
 // 상대팀 = 2026 K리그1에서 안양을 뺀 11팀. key: 스크린샷 맨 위 "FC안양 vs 부천FC1995"에서 찾을 한글 지명 (영문은 OCR이 자주 깨뜨림)
 const TEAMS = {
@@ -190,6 +191,7 @@ console.assert(t.found.R8 === 28 && t.found.R9 === 58 && t.found.FS6 === 1 && !(
 const state = { opp: '', date: '', at: '', base: null, rows: {} };  // base: 비교 기준 { at, rows: { 구역: 잔여 } }
 try { Object.assign(state, JSON.parse(localStorage.getItem(KEY))); } catch {}
 SECTIONS.forEach(s => (state.rows[s.id] ??= { remain: null, max: null }).max ??= KNOWN_MAX[s.id] ?? null);
+if (state.rows.원정석.max === 1218) state.rows.원정석.max = 1235;  // 11/05 잠깐 쓰던 원정석 기본값
 // 예전 버전에서 글자로 넣은 상대팀·일시는 목록·달력 형식이 아니면 비움
 if (!Object.values(TEAMS).includes(state.opp)) state.opp = '';
 if (!/^\d{4}-\d{2}-\d{2}/.test(state.date)) state.date = '';
@@ -237,14 +239,14 @@ const fmtDate = s => {
 
 // 현황판 SVG 내용. story=false: 1280×1040 가로판, story=true: 인스타 스토리 1080×1920
 function build(story) {
-  let avail = 0, cap = 0, soldN = 0, noMax = false, empty = false, soldSum = 0;
+  let avail = 0, soldN = 0, noMax = false, emptyN = 0, soldSum = 0;
   const parts = [];
   for (const s of SECTIONS) {
     const r = state.rows[s.id], v = look(s, r), d = sold(s.id);
     if (r.remain === 0) soldN++;
-    if (r.remain != null && r.max) { avail += Math.min(r.remain, r.max); cap += r.max; }
-    noMax ||= !!v.noMax; empty ||= !!v.empty;
-    if (r.max) soldSum += d;  // 카드 숫자와 같은 범위(총석을 아는 구역)만 더함
+    if (r.remain != null) avail += Math.min(r.remain, r.max ?? r.remain);
+    noMax ||= !!v.noMax; emptyN += !!v.empty;
+    soldSum += d;
     const stroke = v.empty ? 'stroke="#b9c2ce" stroke-width="1.5" stroke-dasharray="4 3"' : 'stroke="#fff" stroke-width="3"';
     const lines = [s.name || s.id, ...v.sub], dl = d ? signed(d) : '', hi = dl && (v.ink === '#fff' ? '#fde68a' : '#9a3412');
     if (s.rect) {
@@ -260,13 +262,14 @@ function build(story) {
     }
   }
 
-  const pc = x => cap ? (x / cap * 100).toFixed(1) + '%' : '-';
+  const none = emptyN === SECTIONS.length, num = x => none ? '-' : fmt(x);  // 아직 아무 숫자도 없으면 '100% 예매'로 보이지 않게
+  const pc = x => none ? '-' : (x / FULL * 100).toFixed(1) + '%', miss = emptyN && !none ? ` · 정보 없는 구역 ${emptyN}개 빠짐` : '';
   const baseAt = state.base ? state.base.at ? state.base.at.slice(5).replace('-', '.').replace('T', ' ') : '비교 기준' : '';  // "11.25 12:00"
   // [제목, 큰 숫자, 뒤 글자, 설명, 스토리용 짧은 설명]
   const sums = [
-    ['예매 가능 좌석', fmt(avail), ` / ${fmt(cap)}석`, `총석을 아는 구역 대비 ${pc(avail)} 남음`, `${pc(avail)} 남음`],
-    ['예매된 좌석', fmt(cap - avail), ` / ${fmt(cap)}석`, baseAt ? `총석을 아는 구역 대비 ${pc(cap - avail)} 예매 · ${baseAt} 이후 ${signed(soldSum)}석`
-      : `총석을 아는 구역 대비 ${pc(cap - avail)} 예매 (선택 중 좌석 포함)`, baseAt ? `${baseAt} 이후 ${signed(soldSum)}석` : `${pc(cap - avail)} 예매`],
+    ['예매 가능 좌석', num(avail), ` / ${fmt(FULL)}석`, `만석 대비 ${pc(avail)} 남음${miss}`, `${pc(avail)} 남음`],
+    ['예매된 좌석', num(FULL - avail), ` / ${fmt(FULL)}석`, baseAt ? `만석 대비 ${pc(FULL - avail)} 예매 · ${baseAt} 이후 ${signed(soldSum)}석`
+      : `만석 대비 ${pc(FULL - avail)} 예매 (선택 중 좌석 포함)${miss}`, baseAt ? `${baseAt} 이후 ${signed(soldSum)}석` : `${pc(FULL - avail)} 예매`],
     ['매진 구역', String(soldN), ' 개', `전체 ${SECTIONS.length}개 구역 중`, `${SECTIONS.length}개 구역 중`],
   ];
   const card = (x, title, big, small, note) => `<g transform="translate(${x},100)"><rect width="400" height="88" rx="10" fill="#fff" stroke="#e5e7eb"/>`
@@ -280,7 +283,7 @@ function build(story) {
 
   const items = [[PURPLE[3], '75% 이상'], [PURPLE[2], '50~74%'], [PURPLE[1], '25~49%'], [PURPLE[0], '1~24%'], [RED, '원정석 (같은 구간, 빨강)'],
     ['#b4b1a7', '매진']];
-  if (empty) items.push(['#fff', '정보 없음', 'stroke="#b9c2ce" stroke-dasharray="3 2"']);
+  if (emptyN) items.push(['#fff', '정보 없음', 'stroke="#b9c2ce" stroke-dasharray="3 2"']);
   if (noMax) items.push(['#857d96', '총석 모름 (잔여만)']);
   const legend = (x0, y0, fs, maxX) => {  // 폭이 모자라면 다음 줄로
     const start = x0 + tw('잔여율', fs) + fs;
