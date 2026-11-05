@@ -525,7 +525,8 @@ $('clear').onclick = () => {
 // 새로 찍은 캡처 묶음: 다른 경기면 새 경기로 비우고, 같은 경기면 직전 숫자를 비교 기준으로 (버튼을 누를 필요 없게)
 function newCapture({ opp, date }, at, snapshot = true) {
   const had = SECTIONS.some(s => state.rows[s.id].remain != null);
-  const other = (opp && state.opp && opp !== state.opp) || (date && state.date && date.slice(0, 10) !== state.date.slice(0, 10));
+  // 지금 값에 상대팀이나 날짜가 비어 있어도(손으로 넣던 값, 시험 값) 새로 읽은 경기와 다르면 새 경기로 봄
+  const other = (opp && opp !== state.opp) || (date && date.slice(0, 10) !== state.date.slice(0, 10));
   if (other) newGame();
   else if (snapshot && had && at !== state.at) state.base = snap();
   state.at = at;
