@@ -46,12 +46,13 @@ FC안양 홈 경기(안양종합운동장)의 티켓링크 구역별 잔여석�
 - bat 은 이 PC 의 GitHub 로그인(`gh`)으로 발행해서 토큰이 따로 필요 없습니다.
 
 ### 이미지와 글
-- '현황판 저장' 1280x1040(2배 해상도), '스토리 이미지 저장' 1080x1920. 휴대폰에서는 '스토리로 공유'로 공유 창에 바로 보냅니다.
+- '현황판 저장' 1280x1330(2배 해상도, 맨 아래 추이 그래프 포함), '스토리 이미지 저장' 1080x1920. 휴대폰에서는 '스토리로 공유'로 공유 창에 바로 보냅니다.
 - '요약 글 복사': 인스타, 카톡에 붙일 글 (경기, 기준 시각, 예매 수와 비율, 직전 대비, 매진 구역).
 
 ## 화면 구성
 
 - 현황판: 위쪽 카드 3개(예매 가능 좌석, 예매된 좌석, 매진 구역)와 배치도. 휴대폰에서는 현황판을 누르면 실제 크기로 커져 좌우로 밀어 볼 수 있습니다.
+- 예매된 좌석 추이 (맨 아래): 발행할 때마다 이번 경기의 예매된 좌석을 점으로 쌓고(최근 8번), 점 사이에 증감과 걸린 시간을 적습니다. 점선은 마지막 두 집계의 증가 속도가 경기 시작까지 이어질 때 예상입니다. 입력 화면에서는 아직 발행 안 한 지금 숫자도 마지막 점으로 보입니다. 스토리 이미지에는 넣지 않았습니다.
 - 카드 숫자: 예매 가능 좌석 = 모든 구역 잔여의 합, 예매된 좌석 = 만석 11,542석 - 예매 가능 좌석. 잔여를 넣지 않은 구역이 있으면 카드에 '정보 없는 구역 N개 빠짐'이 붙고, 그만큼 예매된 좌석이 많게 나옵니다.
 - 구역 색: 잔여율 75% 이상, 50~74%, 25~49%, 1~24% 를 보라색 4단계로(원정석은 빨간색 4단계), 매진은 회색, 정보 없음은 흰색 점선, 최대 좌석을 모르는 구역은 잔여만 회색 보라로 표시합니다.
 - 구역별 잔여석 표: 구역, 매진 버튼, 잔여, 최대, 잔여율. 잔여가 최대보다 크면 잔여율이 빨갛게 표시됩니다.
@@ -64,8 +65,9 @@ FC안양 홈 경기(안양종합운동장)의 티켓링크 구역별 잔여석�
 | 주소 | 내용 |
 |------|------|
 | https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/latest.json | 최신 집계 |
-| https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/latest.png | 현황판 이미지 (2560x2080) |
+| https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/latest.png | 현황판 이미지 (2560x2660) |
 | https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/latest-story.png | 스토리 이미지 (1080x1920) |
+| https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/history.json | 발행 기록 (추이 그래프용, 최근 500번) `[{ at, opponent, kickoff, booked, unknown }]` |
 
 ```js
 const d = await (await fetch('https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/latest.json')).json();
@@ -82,10 +84,10 @@ console.log(d.match.opponent, d.booked, d.capacity, d.updatedAt);
 | `soldOut`, `unknown` | 매진 구역 id, 잔여 정보가 없는 구역 id (`unknown` 이 있으면 `booked` 가 그만큼 많게 나옴) |
 | `sections[]` | `id`, `name`, `grade`(티켓링크 등급), `remain` 잔여, `max` 최대 좌석(모르면 `null`), `sold` 직전 이후 팔린 좌석 |
 | `summary` | 요약 글 |
-| `images` | 위 이미지 주소 |
+| `images`, `history` | 위 이미지 주소, 발행 기록 주소 |
 
 - GitHub 캐시 때문에 새 발행은 최대 5분 늦게 보일 수 있습니다.
-- 지난 발행은 남기지 않습니다 (저장소가 커지지 않게). 기록이 필요하면 가져가는 쪽에서 `updatedAt` 별로 저장합니다.
+- 지난 발행의 이미지와 전체 숫자는 남기지 않습니다 (저장소가 커지지 않게). 시각별 예매 수는 `history.json` 에 남고, 구역별 숫자가 필요하면 가져가는 쪽에서 `updatedAt` 별로 저장합니다.
 
 ## 구역과 티켓링크 등급
 
@@ -202,6 +204,7 @@ console.log(d.match.opponent, d.booked, d.capacity, d.updatedAt);
 
 ## 변경 이력
 
+- 11/05: 현황판 맨 아래 예매된 좌석 추이 그래프 (발행 기록 history.json, 증감, 경기 시작 예상).
 - 11/05: 작업 가이드(HTML, PDF), 입력 화면에서 열기.
 - 11/05: 기본은 마지막 발행 현황만 보이는 보기 화면, 입력 화면은 Ctrl+Shift+E (`#edit`). 발행(data 브랜치 JSON, 이미지)과 다른 사이트용 API, 링크 공유, 요약 글, 바로 발행. PC 화면 복사 붙여넣기, 보내기 스크립트, 끌어다 놓기, bat. 집계 시각, 비교 기준, 새 경기 자동, 빠진 구역 하나 등급 합계로 채움, 잔여 > 최대 경고. 상대팀은 앞 3장에서 읽음.
 - 11/05: 화면 설명을 한 줄로 줄이고 버튼 이름을 하는 일 그대로 바꿈.
