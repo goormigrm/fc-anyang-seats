@@ -27,7 +27,7 @@
   label { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
   label > span { width: 72px; flex: none; color: #374151; font-size: 14px; font-weight: 600; }
   input, textarea, button, select, .btn { font: inherit; }
-  input[type=date], input[type=datetime-local], select { flex: 1; min-width: 0; height: 40px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--edge); border-radius: 8px; background: #fff; color: var(--ink); }
+  input[type=date], input[type=datetime-local], select, #crowd { flex: 1; min-width: 0; height: 40px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--edge); border-radius: 8px; background: #fff; color: var(--ink); }
   input:focus, select:focus, textarea:focus { outline: 2px solid #9572cf; outline-offset: 1px; border-color: #9572cf; }
   #time { flex: 0 0 110px; }
   textarea { width: 100%; box-sizing: border-box; height: 110px; margin: 8px 0; padding: 8px 10px; border: 1px solid var(--edge); border-radius: 8px; font-size: 13px; color: var(--ink); }
@@ -53,7 +53,7 @@
   td.bad { color: #dc2626; font-weight: 700; }
   td input.guess { border-style: dashed; border-color: #d4a72c; background: #fffbea; color: #8a6100; }  /* 처음 본 잔여로 넣은 추정 최대 */
   .mobile-only { display: none; }
-  .foot { margin: 16px 4px 4px; color: var(--sub); font-size: 12px; text-align: center; }
+  .foot { margin: 16px 4px 4px; color: var(--sub); font-size: 12px; text-align: center; } .foot a { color: var(--p7); }
   /* 공유 상자: 현황판 위 보라 띠와 같은 색 */
   .share { margin-top: 16px; background: linear-gradient(135deg, var(--p8), var(--p7)); }
   .share .row { margin: 0; }
@@ -62,6 +62,8 @@
   .share button.main { background: #fff; border-color: #fff; color: var(--p8); }
   .share #note { color: #e4dcf5; } .share #note:empty { display: none; }
   body:not(.editing) .edit { display: none; }
+  .embed main { max-width: none; padding: 0; } .embed #boardWrap { border-radius: 0; box-shadow: none; }
+  .embed .share, .embed .panel, .embed .mobile-only, .embed .foot, .embed:not(.embed-trend) #trend { display: none; }
   label.check { margin: 0; gap: 6px; color: #374151; font-size: 14px; font-weight: 600; }
   label.check input { width: 18px; height: 18px; accent-color: var(--p7); }
   /* 휴대폰: 보라 띠와 카드 -> 경기장 -> 공유 -> (입력 화면) -> 예매 추이 */
@@ -84,11 +86,11 @@
 </head>
 <body>
 <main>
-  <div id="boardWrap"><svg id="board" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 1062" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif"></svg>
-    <div id="stadiumWrap"><svg id="stadium" xmlns="http://www.w3.org/2000/svg" viewBox="0 740 1080 960" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif"></svg></div></div>
+  <div id="boardWrap"><svg id="board" role="img" aria-label="FC안양 예매 현황판" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 1062" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif"></svg>
+    <div id="stadiumWrap"><svg id="stadium" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 740 1080 960" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif"></svg></div></div>
   <p class="hint mobile-only">경기장을 누르면 크게, 다시 누르면 원래대로</p>
   <div class="box share">
-    <div class="row"><button id="png" class="main">현황판 저장</button><button id="story" class="main">스토리 이미지 저장</button><button id="share" class="main" hidden>스토리로 공유</button><button id="link">링크 공유</button><button id="copy">요약 글 복사</button></div>
+    <div class="row"><button id="png" class="main">현황판 저장</button><button id="story" class="main">스토리 이미지 저장</button><button id="share" class="main" hidden>스토리로 공유</button><button id="trendImg">추이 이미지</button><button id="link">링크 공유</button><button id="copy">요약 글 복사</button></div>
     <div id="note"></div>
   </div>
   <div class="panel edit">
@@ -99,9 +101,11 @@
       <label><span>상대팀</span><select id="opp"><option value="">선택</option></select></label>
       <label><span>경기 일시</span><input type="date" id="day"><select id="time"><option value="">시간</option></select></label>
       <label><span>집계 시각</span><input type="datetime-local" id="at"><button id="now">지금</button></label>
+      <label><span>공식 관중</span><input type="number" id="crowd" min="0" inputmode="numeric" placeholder="경기 뒤 전광판 숫자 (선택)"></label>
       <h2>발행</h2>
       <div class="row"><button id="publish" class="main">최신 집계 발행</button><label class="check"><input type="checkbox" id="autoPub">숫자가 들어오면 바로 발행 (경고 없을 때)</label></div>
-      <div class="row"><button id="unpub" class="danger">마지막 발행 지우기</button><button id="unpubAll" class="danger">발행 모두 지우기</button></div>
+      <div class="row"><button id="unpub" class="danger">마지막 발행 지우기</button><button id="unpubAll" class="danger">발행 모두 지우기</button><button id="tokenSet">토큰 설정</button></div>
+      <p class="hint" id="tokenHint"></p>
       <p class="hint">발행 = 지금 현황판을 누구나 보는 기본 화면(과 다른 사이트)에 올리기. 발행하기 전 숫자는 이 브라우저에만 있습니다. 처음 한 번 GitHub 토큰을 묻습니다. 시험으로 발행했으면 '마지막 발행 지우기'로 그 전 발행으로 되돌립니다.</p>
       <h2>집계 기록</h2>
       <div class="row"><button id="saveJson">이번 집계 저장</button><button id="loadBtn">저장한 집계 열기</button><input type="file" id="loadJson" accept=".json,application/json" hidden></div>
@@ -129,8 +133,8 @@
       <button id="reparse">이 글자로 다시 채우기</button>
     </div>
   </div>
-  <svg id="trend" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 280" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif"></svg>
-  <p class="foot">FC안양 팬이 만든 비공식 현황판입니다. 티켓링크 화면의 잔여석을 사람이 확인해 올린 것이라 실제와 다를 수 있습니다.</p>
+  <svg id="trend" role="img" aria-label="예매된 좌석 추이" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 280" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif"></svg>
+  <p class="foot">FC안양 팬이 만든 비공식 현황판입니다. 티켓링크 화면의 잔여석을 사람이 확인해 올린 것이라 실제와 다를 수 있습니다. · <a href="season.html">경기별 기록</a></p>
 </main>
 <script>
 // FULL: 만석 1만 1,542석 (2026-04-05 서울전 기사). 중립석 신설(8월) 뒤에도 원정석 쪽 좌석을 나눠 파는 것이라 그대로 씀
@@ -257,7 +261,7 @@ const t1 = parseText('R10구역 26석\nR11구역 1석\nR12구역 0석\nR14구역
 console.assert(t1.found.R13 === 0 && t1.filled.join() === 'R13', 'fillByTotals self-check', t1);
 }
 
-const state = { opp: '', date: '', at: '', base: null, rows: {} };  // base: 비교 기준 { at, rows: { 구역: 잔여 } }
+const state = { opp: '', date: '', at: '', base: null, crowd: null, rows: {} };  // base: 비교 기준 { at, rows: { 구역: 잔여 } }, crowd: 공식 관중
 try { Object.assign(state, JSON.parse(localStorage.getItem(KEY))); } catch {}
 if (!state.rows || typeof state.rows !== 'object') state.rows = {};  // 손상된 저장값이면 새로
 if (state.base && typeof state.base.rows !== 'object') state.base = null;
@@ -302,6 +306,8 @@ function look(s, r) {
 const sold = id => { const b = state.base?.rows?.[id], r = state.rows[id]; return b == null || r.remain == null ? 0 : b - r.remain; };
 const signed = d => (d > 0 ? '+' : d < 0 ? '−' : '') + fmt(Math.abs(d));
 const snap = () => ({ at: state.at, rows: Object.fromEntries(SECTIONS.map(s => [s.id, state.rows[s.id].remain])) });
+// 경기 전후: 시작 뒤 3시간까지는 '경기 중', 그 뒤는 '지난 경기'
+const phase = () => { const k = state.date.length > 10 ? new Date(state.date) : null, now = Date.now(); return !k || now < k ? '' : now < +k + 3 * 3600e3 ? '경기 중 (예매 마감)' : '지난 경기'; };
 const baseLabel = () => state.base ? state.base.at ? state.base.at.slice(5).replace('-', '.').replace('T', ' ') : '비교 기준' : '';  // "11.25 12:00"
 const nameOf = id => SECTIONS.find(s => s.id === id).name || id;
 // 카드, 요약 글, 발행 JSON 이 같이 쓰는 합계
@@ -349,7 +355,8 @@ function chart(x0, y0, w, h, k = 1, n = 8) {
   if (!pts.length) return out.join('') + text(x0 + w / 2, y0 + h / 2 + z(10), '발행할 때마다 예매된 좌석이 여기 쌓여 증감을 보여 줍니다.', z(13), '#9ca3af');
   // 예상: 마지막 두 점의 증가 속도로 경기 시작 시각까지
   let fc = null;
-  if (prev && state.date.length > 10 && state.date > last.at) {
+  if (state.crowd != null && state.date.length > 10) fc = { at: state.date > last.at ? state.date : last.at, booked: state.crowd, crowd: true };  // 경기 뒤 공식 관중
+  else if (prev && state.date.length > 10 && state.date > last.at) {
     const rate = (last.booked - prev.booked) / (new Date(last.at) - new Date(prev.at));
     if (isFinite(rate)) fc = { at: state.date, booked: Math.max(0, Math.min(FULL, Math.round(last.booked + rate * (new Date(state.date) - new Date(last.at))))) };
   }
@@ -364,14 +371,17 @@ function chart(x0, y0, w, h, k = 1, n = 8) {
   out.push(`<path d="M${pts.map((p, i) => X(i) + ',' + Y(p.booked)).join('L')}" fill="none" stroke="${ink}" stroke-width="${z(2.5)}"/>`);
   if (fc) out.push(`<path d="M${X(pts.length - 1)},${Y(last.booked)}L${X(pts.length)},${Y(fc.booked)}" fill="none" stroke="#9572cf" stroke-width="${z(2)}" stroke-dasharray="${z(6)} ${z(5)}"/>`);
   all.forEach((p, i) => {
-    const x = X(i), y = Y(p.booked), f = p === fc, pc = (p.booked / FULL * 100).toFixed(1) + '%';
+    const x = X(i), y = Y(p.booked), f = p === fc && !p.crowd, cw = p === fc && p.crowd, pc = (p.booked / FULL * 100).toFixed(1) + '%';
     if (i) {  // 앞 점과의 증감과 걸린 시간
       const q = all[i - 1], d = p.booked - q.booked, mx = (X(i - 1) + x) / 2, my = Math.min(Y(q.booked), y) - z(26);
-      out.push(text(mx, my, (f ? '예상 ' : '') + signed(d) + '석', z(12), d < 0 ? '#dc2626' : f ? '#6a40ad' : ink, 700), text(mx, my + z(14), span(new Date(p.at) - new Date(q.at)), z(10), '#9ca3af'));
+      out.push(text(mx, my, cw ? '예매 대비 ' + signed(d) : (f ? '예상 ' : '') + signed(d) + '석', z(12), cw ? '#b7791f' : d < 0 ? '#dc2626' : f ? '#6a40ad' : ink, 700),
+        text(mx, my + z(14), cw ? '관중 - 마지막 예매' : span(new Date(p.at) - new Date(q.at)), z(10), '#9ca3af'));
     }
-    out.push(f ? `<circle cx="${x}" cy="${y}" r="${z(6)}" fill="#fff" stroke="#6a40ad" stroke-width="${z(2.5)}"/>` : `<circle cx="${x}" cy="${y}" r="${z(5.5)}" fill="${ink}" stroke="#fff" stroke-width="${z(2)}"/>`,
-      text(x, y + z(22), (f ? '약 ' : '') + fmt(p.booked), z(13), f ? '#6a40ad' : '#111827', 700), text(x, y + z(36), f ? `${pc} · 남은 약 ${fmt(FULL - p.booked)}` : pc, z(10), '#9ca3af'),
-      text(x, B + z(34), tick(p.at), z(two ? 11 : 12), '#374151', 700), text(x, B + z(49), f ? '경기 시작 예상' : '집계', z(10), '#9ca3af'));
+    out.push(cw ? `<circle cx="${x}" cy="${y}" r="${z(7)}" fill="#f6c453" stroke="#b7791f" stroke-width="${z(2)}"/>`
+      : f ? `<circle cx="${x}" cy="${y}" r="${z(6)}" fill="#fff" stroke="#6a40ad" stroke-width="${z(2.5)}"/>` : `<circle cx="${x}" cy="${y}" r="${z(5.5)}" fill="${ink}" stroke="#fff" stroke-width="${z(2)}"/>`,
+      text(x, y + z(22), (f ? '약 ' : '') + fmt(p.booked) + (cw ? '명' : ''), z(13), cw ? '#b7791f' : f ? '#6a40ad' : '#111827', 700),
+      text(x, y + z(36), cw ? `관중 ${pc}` : f ? `${pc} · 남은 약 ${fmt(FULL - p.booked)}` : pc, z(10), '#9ca3af'),
+      text(x, B + z(34), tick(p.at), z(two ? 11 : 12), '#374151', 700), text(x, B + z(49), cw ? '공식 관중' : f ? '경기 시작 예상' : '집계', z(10), '#9ca3af'));
   });
   if (pts.length === 1) out.push(text(x0 + w / 2, y0 + z(two ? 74 : 58), '다음 집계부터 증감이 나옵니다.', z(12), '#9ca3af'));
   return out.join('');
@@ -463,6 +473,7 @@ function build(story) {
     + text(140, 92, [when, '안양종합운동장', 'K리그1'].filter(Boolean).join(' · '), 14, '#e4dcf5', 400, 'start')
     + text(1250, 56, at, 13, '#fff', 600, 'end')
     + text(1250, 80, '티켓링크 등급/좌석 선택 화면 잔여석 기준', 12, '#c3b1e6', 400, 'end')
+    + text(1250, 104, [state.crowd != null && `공식 관중 ${fmt(state.crowd)}명`, phase()].filter(Boolean).join(' · '), 14, '#fde68a', 700, 'end')
     + sums.map((c, i) => card(30 + i * 410, ...c)).join('')
     + `<rect x="20" y="222" width="1240" height="828" rx="12" fill="#f7f8fa" stroke="#eceff3"/>`
     + `<g transform="translate(40,234)">${map}</g>`
@@ -476,6 +487,7 @@ function build(story) {
     + text(540, 385, title, 58, '#fff', 700)
     + text(540, 440, [when, '안양종합운동장'].filter(Boolean).join(' · '), 28, '#e4dcf5')
     + text(540, 486, ['K리그1 예매 현황', at].filter(Boolean).join(' · '), 24, '#c3b1e6')
+    + text(540, 526, [state.crowd != null && `공식 관중 ${fmt(state.crowd)}명`, phase()].filter(Boolean).join(' · '), 24, '#fde68a', 700)
     + sums.map((c, i) => scard(30 + i * 345, c)).join('')
     + `<rect x="20" y="760" width="1040" height="660" rx="24" fill="#f7f8fa" stroke="#eceff3"/>`
     + `<g transform="translate(${40 + 12 * S},${780 - 3 * S}) scale(${S})">${map}</g>`
@@ -488,6 +500,7 @@ function build(story) {
 // 휴대폰: 스토리 모양을 위(보라 띠, 카드)와 경기장(범례 포함)으로 잘라 따로 보여 줌. 저장 PNG 는 그대로
 const portrait = matchMedia('(max-width: 860px)'), show = (el, vb, svg) => { el.setAttribute('viewBox', vb); el.innerHTML = svg; };
 function render() {
+  board.setAttribute('aria-label', summaryText());  // 화면 읽기 프로그램용 요약
   if (portrait.matches) {
     const st = build(true);
     show(board, '0 140 1080 600', `<g id="mstory">${st}</g>`); show(stadium, '0 740 1080 960', '<use href="#mstory"/>');
@@ -528,7 +541,7 @@ function fillTable(hits) {
 function syncInputs() {
   const time = state.date.slice(11, 16);
   if (time && ![...$('time').options].some(o => o.value === time)) $('time').add(new Option(time));  // 목록에 없는 시각(인식·불러오기)도 보이게
-  $('opp').value = state.opp; $('day').value = state.date.slice(0, 10); $('time').value = time; $('at').value = state.at;
+  $('opp').value = state.opp; $('day').value = state.date.slice(0, 10); $('time').value = time; $('at').value = state.at; $('crowd').value = state.crowd ?? '';
 }
 function apply({ found, totals, filled = [], unknown = [], opp, date }, pre = []) {
   const ids = Object.keys(found).filter(id => state.rows[id]);
@@ -575,9 +588,10 @@ tbody.addEventListener('click', e => {  // 매진 버튼: 잔여 0
 const changed = () => {
   state.opp = $('opp').value; state.at = $('at').value;
   state.date = $('day').value ? $('day').value + ($('time').value ? 'T' + $('time').value : '') : '';
+  state.crowd = $('crowd').value === '' ? null : Math.min(99999, Math.max(0, Math.round(+$('crowd').value)));
   save(); render();
 };
-['opp', 'day', 'time', 'at'].forEach(id => $(id).addEventListener('input', changed));
+['opp', 'day', 'time', 'at', 'crowd'].forEach(id => $(id).addEventListener('input', changed));
 $('now').onclick = () => { $('at').value = localISO(); changed(); };
 $('toMax').onclick = () => {
   if (!confirm('지금 잔여를 각 구역의 최대로 복사할까요?\n(예매가 막 열려 팔린 좌석이 없을 때만)')) return;
@@ -585,7 +599,7 @@ $('toMax').onclick = () => {
   fillTable(); save(); render();
 };
 // 새 경기: 잔여, 비교 기준을 비우고 원정석 최대는 평소 값으로 (넓게 열었던 날 값이 남지 않게)
-const newGame = () => { SECTIONS.forEach(s => state.rows[s.id].remain = null); state.rows.원정석.max = KNOWN_MAX.원정석; state.base = null; };
+const newGame = () => { SECTIONS.forEach(s => state.rows[s.id].remain = null); state.rows.원정석.max = KNOWN_MAX.원정석; state.base = null; state.crowd = null; };
 $('clear').onclick = () => {
   if (!confirm('잔여와 비교 기준을 모두 지울까요?\n(최대 좌석은 그대로, 원정석은 1235로)')) return;
   newGame(); fillTable([]); save(); render();
@@ -597,7 +611,7 @@ $('restore').onclick = () => {
   try { d = JSON.parse(localStorage.getItem(BACKUP)); } catch {}
   if (!d?.rows || !confirm('지난 경기 숫자로 되돌릴까요? 지금 숫자는 사라집니다.')) return;
   SECTIONS.forEach(s => d.rows[s.id] && Object.assign(state.rows[s.id], d.rows[s.id]));
-  Object.assign(state, { opp: d.opp || '', date: d.date || '', at: d.at || state.at, base: d.base || null });
+  Object.assign(state, { opp: d.opp || '', date: d.date || '', at: d.at || state.at, base: d.base || null, crowd: d.crowd ?? null });
   try { localStorage.removeItem(BACKUP); } catch {}
   $('restore').hidden = true; syncInputs(); fillTable([]); save(); render(); status('지난 경기 숫자를 되살렸습니다.');
 };
@@ -624,11 +638,23 @@ const download = (name, blob) => {
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 };
 const fileBase = () => `안양_${state.opp || '경기'}_${state.date.slice(0, 10).replace(/-/g, '')}_집계${state.at.replace(/\D/g, '')}`;
+// 추이 스토리 이미지 (1080x1920): 위에 지금 예매 수와 직전 대비, 가운데 추이 그래프. 인스타가 가리는 위아래(200, 260)는 비움
+function trendStory() {
+  const pts = trendPoints(), last = pts.at(-1), prev = pts.at(-2), d = last && prev ? last.booked - prev.booked : null;
+  return `<rect width="1080" height="1920" fill="#fff"/><rect width="1080" height="700" fill="#3e1a78"/>`
+    + `<image href="${exporting ? EMBLEM : 'emblem.png'}" x="490" y="200" width="100" height="101"/>`
+    + text(540, 385, `FC안양 vs ${state.opp || '상대팀'}`, 58, '#fff', 700)
+    + text(540, 440, [state.date && fmtDate(state.date), '예매 추이'].filter(Boolean).join(' · '), 28, '#e4dcf5')
+    + (last ? text(540, 560, `예매 ${fmt(last.booked)}석 (${(last.booked / FULL * 100).toFixed(1)}%)`, 60, '#fff', 700) : '')
+    + (d != null ? text(540, 630, `직전 집계보다 ${signed(d)}석 · ${span(new Date(last.at) - new Date(prev.at))} 동안`, 32, '#fde68a', 700) : '')
+    + chart(30, 760, 1020, 820, 2, 5)
+    + text(540, 1640, 'FC안양 팬이 만든 비공식 현황 · 티켓링크 잔여석 기준', 20, '#9ca3af');
+}
 async function pngBlob(story) {
   if (typeof EMBLEM !== 'string') await loadScript('emblem.js');
   const [w, h, z] = story ? [1080, 1920, 1] : [W, H, 2];
   exporting = true;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" font-family="${FONT}">${build(story)}</svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" font-family="${FONT}">${story === 'trend' ? trendStory() : build(story)}</svg>`;
   exporting = false;
   const img = new Image();
   img.src = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
@@ -654,6 +680,7 @@ function summaryText() {
   return [`FC안양 vs ${state.opp || '상대팀'}${state.date ? ' ' + fmtDate(state.date) : ''} 예매 현황 (${state.at.slice(5).replace('-', '.').replace('T', ' ')} 기준)`,
     `예매 ${fmt(FULL - t.avail)}석 / ${fmt(FULL)}석 (${((FULL - t.avail) / FULL * 100).toFixed(1)}%)` + (b ? `, ${b} 이후 ${signed(t.soldSum)}석` : ''),
     t.soldOut.length ? '매진: ' + t.soldOut.map(nameOf).sort((a, b) => a.localeCompare(b, 'en', { numeric: true })).join(', ') : '',
+    state.crowd != null ? `공식 관중 ${fmt(state.crowd)}명 (예매 ${fmt(FULL - t.avail)}석 대비 ${signed(state.crowd - (FULL - t.avail))})` : '',
     t.empty.length ? `(정보 없는 구역 ${t.empty.length}개 빠짐)` : ''].filter(Boolean).join('\n');
 }
 $('copy').onclick = async () => {
@@ -667,7 +694,7 @@ function record() {
   const t = stats(), kst = s => s ? (s.length > 10 ? s + ':00+09:00' : s) : null;
   return {
     app: 'fc-anyang-seats', version: 1, updatedAt: kst(state.at),
-    match: { opponent: state.opp || null, kickoff: kst(state.date), venue: '안양종합운동장', competition: 'K리그1' },
+    match: { opponent: state.opp || null, kickoff: kst(state.date), venue: '안양종합운동장', competition: 'K리그1', attendance: state.crowd ?? null },
     capacity: FULL, available: t.avail, booked: FULL - t.avail,
     sinceBase: state.base ? { at: kst(state.base.at), booked: t.soldSum } : null,
     soldOut: t.soldOut, unknown: t.empty,
@@ -773,27 +800,70 @@ function unpublish(token, all, branch = 'data') {
     return '마지막 발행을 지우고 그 전 발행으로 되돌렸습니다. 보기 화면에는 곧 반영됩니다.';
   });
 }
-const savedToken = () => { try { return localStorage.getItem(TOKEN) || ''; } catch { return ''; } };
+// 발행 토큰: 비밀번호로 잠글 수 있음(AES-GCM, 같은 주소의 다른 페이지가 읽어도 못 쓰게). 잠그면 탭을 처음 열 때 한 번 묻고 그 탭 동안 기억
+const EXP = 'fc-anyang-token-exp';
+const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k) || ''; v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch { return ''; } };
+const b2s = a => btoa(String.fromCharCode(...new Uint8Array(a))), s2b = t => Uint8Array.from(atob(t), c => c.charCodeAt(0));
+const keyFrom = async (pin, salt) => crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 200000, hash: 'SHA-256' },
+  await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveKey']), { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+async function lockToken(token, pin) {
+  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+  const d = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await keyFrom(pin, salt), new TextEncoder().encode(token));
+  return 'enc:' + JSON.stringify({ s: b2s(salt), i: b2s(iv), d: b2s(d) });
+}
+const unlockToken = async (v, pin) => { const o = JSON.parse(v.slice(4)); return new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: s2b(o.i) }, await keyFrom(pin, s2b(o.s)), s2b(o.d))); };
+async function getToken(ask) {
+  const v = ls(TOKEN);
+  if (!v.startsWith('enc:')) return v;
+  try { const t = sessionStorage.getItem(TOKEN); if (t) return t; } catch {}
+  const pin = ask && prompt('발행 토큰 잠금 비밀번호');
+  if (!pin) return '';
+  try { const t = await unlockToken(v, pin); try { sessionStorage.setItem(TOKEN, t); } catch {} return t; } catch { note('비밀번호가 틀렸습니다.'); return ''; }
+}
+// 토큰 상태와 만료 알림 (GitHub 가 브라우저에 만료일을 알려 주지 않아서 넣을 때 적어 둔 날짜로)
+function tokenInfo() {
+  const v = ls(TOKEN), exp = ls(EXP), left = exp ? Math.ceil((new Date(exp + 'T23:59') - Date.now()) / 86400e3) : null;
+  $('tokenHint').textContent = !v ? '토큰: 없음 (처음 발행할 때 묻습니다)' : `토큰: ${v.startsWith('enc:') ? '잠금' : '저장됨'}` + (exp ? ` · 만료 ${exp} (${left}일 남음)` : ' · 만료일 모름');
+  if (v && left != null && left <= 30) note(left < 0 ? '⚠ 발행 토큰이 만료됐습니다. 새로 만들어 "토큰 설정"으로 넣으세요.' : `⚠ 발행 토큰 만료가 ${left}일 남았습니다. 새로 만들어 "토큰 설정"으로 넣으세요.`);
+}
+$('tokenSet').onclick = async () => {
+  const v = prompt('새 GitHub 토큰 (비우면 지금 토큰 그대로, "삭제"라고 쓰면 지움)');
+  if (v === null) return;
+  if (v.trim() === '삭제') { ls(TOKEN, null); ls(EXP, null); try { sessionStorage.removeItem(TOKEN); } catch {} tokenInfo(); return note('토큰을 지웠습니다.'); }
+  const token = v.trim() || await getToken(true);
+  if (!token) return;
+  const exp = (prompt('토큰 만료 날짜 (예: 2027-11-05). 적어 두면 30일 전부터 알려 줍니다. 모르면 비움', ls(EXP)) ?? ls(EXP)).trim();
+  const pin = prompt('잠금 비밀번호 (비우면 잠그지 않음. 잠그면 탭을 처음 열 때 한 번 묻습니다)') || '';
+  ls(TOKEN, pin ? await lockToken(token, pin) : token);
+  try { pin ? sessionStorage.setItem(TOKEN, token) : sessionStorage.removeItem(TOKEN); } catch {}
+  ls(EXP, /^\d{4}-\d{2}-\d{2}$/.test(exp) ? exp : null);
+  tokenInfo(); note('토큰을 저장했습니다' + (pin ? ' (잠금)' : '') + '.');
+};
 // ask: 토큰이 없으면 물어봄 (자동 발행은 묻지 않고 건너뜀)
 async function publishNow(ask) {
-  let token = savedToken();
-  if (!token && ask) token = (prompt('GitHub 토큰 (fc-anyang-seats 저장소 Contents 읽기/쓰기). 이 브라우저에만 저장됩니다.') || '').trim();
-  if (!token) return note(ask ? '' : '자동 발행 건너뜀: "최신 집계 발행"을 한 번 눌러 토큰을 넣으세요.');
+  let token = await getToken(ask), fresh = false;
+  if (!token && ask && !ls(TOKEN)) { token = (prompt('GitHub 토큰 (fc-anyang-seats 저장소 Contents 읽기/쓰기). 이 브라우저에만 저장됩니다.') || '').trim(); fresh = true; }
+  if (!token) return note(ask ? '' : '자동 발행 건너뜀: 토큰이 없거나 잠겨 있습니다. "최신 집계 발행"을 한 번 누르세요.');
   note('발행 중…');
   try {
     await publish(token);
-    try { localStorage.setItem(TOKEN, token); } catch {}
-    note('발행했습니다. 다른 사이트에는 5분 안에 반영됩니다.');
+    if (fresh) {  // 처음 넣은 토큰: 저장하고 만료일을 물어 둠
+      ls(TOKEN, token);
+      const exp = (prompt('토큰 만료 날짜를 적어 두면 30일 전부터 알려 줍니다 (예: 2027-11-05, 모르면 비움)') || '').trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(exp)) ls(EXP, exp);
+      tokenInfo();
+    }
+    note('발행했습니다. 보기 화면과 다른 사이트에 곧 반영됩니다.');
   } catch (e) {
-    if ([401, 404].includes(e.status)) try { localStorage.removeItem(TOKEN); } catch {}  // 잘못되거나 만료된 토큰은 다음에 다시 묻게 (403 요청 한도는 그대로)
-    note('발행 실패: ' + e.message);
+    if ([401, 404].includes(e.status)) { ls(TOKEN, null); try { sessionStorage.removeItem(TOKEN); } catch {} tokenInfo(); }  // 잘못되거나 만료된 토큰은 다음에 다시 묻게 (403 요청 한도는 그대로)
+    note('발행 실패: ' + e.message + (e.status === 401 ? ' (토큰이 만료됐거나 잘못됐습니다. 새로 만들어 넣으세요)' : ''));
   }
 }
 $('publish').onclick = () => publishNow(true);
 async function unpublishNow(all) {
-  const token = savedToken();
-  if (!token) return note('먼저 "최신 집계 발행"으로 토큰을 넣으세요.');
-  if (!confirm(all ? '발행한 현황과 추이 기록을 모두 지울까요?\n보기 화면에는 "아직 발행된 집계가 없습니다"가 나옵니다.' : '마지막 발행을 지우고 그 전 발행으로 되돌릴까요?')) return;
+  const token = await getToken(true);
+  if (!token) return note('먼저 "최신 집계 발행"이나 "토큰 설정"으로 토큰을 넣으세요.');
+  if (!confirm(all ? '이번 경기 발행(최신 현황, 이번 경기 추이)을 모두 지울까요?\n보기 화면에는 "아직 발행된 집계가 없습니다"가 나옵니다. 지난 경기 보관본은 남습니다.' : '마지막 발행을 지우고 그 전 발행으로 되돌릴까요?')) return;
   clearTimeout(pubTimer);  // 기다리던 자동 발행도 취소
   note('지우는 중…');
   try { note(await unpublish(token, all)); render(); } catch (e) { note('지우기 실패: ' + e.message); }
@@ -815,6 +885,13 @@ const autoPublish = warned => {
   pubTimer = setTimeout(() => $('autoPub').checked && publishNow(false), 30e3);
 };
 
+// 추이 이미지: 휴대폰은 공유 창으로, 못 띄우면 파일로
+$('trendImg').onclick = async () => {
+  const name = fileBase() + '_추이.png', blob = await pngBlob('trend'), file = new File([blob], name, { type: 'image/png' });
+  try { if (navigator.canShare?.({ files: [file] })) return await navigator.share({ files: [file], title: `FC안양 vs ${state.opp || '상대팀'} 예매 추이` }); }
+  catch (e) { if (e.name === 'AbortError') return; }
+  download(name, blob);
+};
 $('saveJson').onclick = () => {
   download(fileBase() + '.json', new Blob([JSON.stringify({ app: 'fc-anyang-seats', version: 1, ...state }, null, 1)], { type: 'application/json' }));
   note('저장했습니다.');
@@ -826,7 +903,7 @@ async function readRecord(f) {
   const num = v => Number.isInteger(v) && v >= 0 ? v : null;
   return {
     rows: Object.fromEntries(SECTIONS.map(s => { const r = d.rows[s.id] || {}; return [s.id, { remain: num(r.remain), max: num(r.max) }]; })),
-    opp: Object.values(TEAMS).includes(d.opp) ? d.opp : '',
+    opp: Object.values(TEAMS).includes(d.opp) ? d.opp : '', crowd: num(d.crowd),
     date: /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/.test(d.date) ? d.date : '',
     at: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(d.at) ? d.at : '',
   };
@@ -841,7 +918,7 @@ pickFile($('loadJson'), (f, d) => {
   if (Object.values(state.rows).some(r => r.remain != null)
     && !confirm(`지금 숫자를 "${f.name}" 내용으로 바꿀까요?\n(지금 숫자가 필요하면 취소하고 먼저 '이번 집계 저장')`)) return;
   SECTIONS.forEach(s => Object.assign(state.rows[s.id], d.rows[s.id], { max: d.rows[s.id].max ?? KNOWN_MAX[s.id] ?? null }));
-  Object.assign(state, { opp: d.opp, date: d.date, at: d.at || state.at, base: null });
+  Object.assign(state, { opp: d.opp, date: d.date, at: d.at || state.at, base: null, crowd: d.crowd });
   syncInputs(); fillTable([]); save(); render();
   note(`"${f.name}" 열었습니다.`);
 });
@@ -910,6 +987,8 @@ async function readShot(f, first, kor, eng) {
     await kor.setParameters({ tessedit_pageseg_mode: '6' });
     out += (await kor.recognize(cut(bmp, 0, H0 * 0.11, W0 * 0.8, H0 * 0.09))).data.text + '\n';
   }
+  // 정해 둔 위치에서 좌석 숫자를 못 찾으면(화면 비율이 다른 기기) 통째로 한 번 더 읽음
+  if (!/\d\s*석/.test(out)) { await kor.setParameters({ tessedit_pageseg_mode: '4' }); out += (await kor.recognize(bmp)).data.text + '\n'; }
   return out;
 }
 
@@ -993,10 +1072,11 @@ $('link').onclick = async () => {
 const fetchData = name => fetch(`${API}contents/${name}?ref=data`, { headers: { Accept: 'application/vnd.github.raw+json' }, cache: 'no-store' })
   .then(r => r.ok ? r : Promise.reject(r.status)).catch(() => fetch(RAW + name + '?t=' + Date.now(), { cache: 'no-cache' }));
 const ago = s => { const m = Math.round((Date.now() - new Date(s)) / 60000); return m < 1 ? '방금' : m < 60 ? m + '분 전' : m < 1440 ? (m / 60 | 0) + '시간 전' : (m / 1440 | 0) + '일 전'; };
-const showAgo = () => state.at && note(`마지막 집계 ${ago(state.at)} (${state.at.slice(5).replace('-', '.').replace('T', ' ')})`);
+const showAgo = () => state.at && note(`마지막 집계 ${ago(state.at)} (${state.at.slice(5).replace('-', '.').replace('T', ' ')})`
+  + (phase() === '지난 경기' ? ' · 지난 경기 기록입니다. 다음 경기 예매가 열리면 바뀝니다.' : phase() ? ' · ' + phase() : ''));
 const loadHistory = () => fetchData('history.json')
   .then(r => r.ok ? r.json() : []).then(h => { if (Array.isArray(h)) { history = h; render(); } }).catch(() => {});
-const blank = () => { SECTIONS.forEach(s => state.rows[s.id] = { remain: null, max: KNOWN_MAX[s.id] ?? null }); Object.assign(state, { opp: '', date: '', at: '', base: null }); };
+const blank = () => { SECTIONS.forEach(s => state.rows[s.id] = { remain: null, max: KNOWN_MAX[s.id] ?? null }); Object.assign(state, { opp: '', date: '', at: '', base: null, crowd: null }); };
 // 보기 화면: 마지막으로 발행한 집계만 보여 줌 (이 기기의 입력값은 건드리지 않고 저장도 안 함). 5분마다 새로 받음
 async function loadPublished() {
   try {
@@ -1007,7 +1087,7 @@ async function loadPublished() {
     const secs = Object.fromEntries((d.sections || []).map(x => [x.id, x]));
     SECTIONS.forEach(s => { const x = secs[s.id] || {}; Object.assign(state.rows[s.id], { remain: num(x.remain), max: num(x.max) ?? KNOWN_MAX[s.id] ?? null }); });
     Object.assign(state, {
-      opp: Object.values(TEAMS).includes(d.match?.opponent) ? d.match.opponent : '', date: local(d.match?.kickoff), at: local(d.updatedAt),
+      opp: Object.values(TEAMS).includes(d.match?.opponent) ? d.match.opponent : '', date: local(d.match?.kickoff), at: local(d.updatedAt), crowd: num(d.match?.attendance),
       base: d.sinceBase ? { at: local(d.sinceBase.at), rows: Object.fromEntries(SECTIONS.map(s => {
         const x = secs[s.id] || {}; return [s.id, num(x.remain) != null && Number.isInteger(x.sold) ? x.remain + x.sold : null]; })) } : null,
     });
@@ -1017,14 +1097,17 @@ async function loadPublished() {
 
 // 입력 화면은 개발자 모드에서만: Ctrl+Shift+E, 또는 주소 끝 #edit (이 기기에 기억). 보기 화면은 누구나
 const EDIT = 'fc-anyang-edit';
-let editing = location.hash === '#edit';
-try { editing ||= localStorage.getItem(EDIT) === '1'; if (editing) localStorage.setItem(EDIT, '1'); } catch {}
+// ?embed: 다른 사이트 iframe 용 (현황판만, 입력 화면 안 열림), ?embed=trend 면 추이도
+const params = new URLSearchParams(location.search), embed = params.has('embed');
+let editing = !embed && location.hash === '#edit';
+try { if (!embed) { editing ||= localStorage.getItem(EDIT) === '1'; if (editing) localStorage.setItem(EDIT, '1'); } } catch {}
 document.body.classList.toggle('editing', editing);
+document.body.classList.toggle('embed', embed); document.body.classList.toggle('embed-trend', params.get('embed') === 'trend');
 const toggleEdit = () => { try { localStorage.setItem(EDIT, editing ? '0' : '1'); } catch {} location.replace(location.pathname + location.search); };
-addEventListener('keydown', e => { if (e.ctrlKey && e.shiftKey && e.code === 'KeyE') { e.preventDefault(); toggleEdit(); } });
+addEventListener('keydown', e => { if (!embed && e.ctrlKey && e.shiftKey && e.code === 'KeyE') { e.preventDefault(); toggleEdit(); } });
 $('viewMode').onclick = toggleEdit;
 portrait.addEventListener('change', render);
-if (editing) { syncInputs(); fillTable(); render(); loadHistory(); }
+if (editing) { syncInputs(); fillTable(); render(); loadHistory(); tokenInfo(); }
 else {
   blank();
   render(); loadPublished().then(loadHistory); setInterval(() => loadPublished().then(loadHistory), 300e3); setInterval(showAgo, 60e3);

@@ -67,7 +67,36 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   });
   check('추이: 10분 안 점은 지금 숫자 하나로', r.join() === '10:00,12:08', r.join());
 
+  // 공식 관중: 기록, 요약 글, 추이의 관중 점
+  r = await p.evaluate(() => { history = []; document.getElementById('crowd').value = '4464'; document.getElementById('crowd').dispatchEvent(new Event('input')); return { att: record().match.attendance, sum: summaryText(), chart: document.getElementById('trend').innerHTML.includes('공식 관중') }; });
+  check('공식 관중: 기록, 요약 글, 추이 점', r.att === 4464 && /공식 관중 4,464명/.test(r.sum) && r.chart, JSON.stringify(r).slice(0, 200));
+  // 추이 이미지
+  r = await p.evaluate(async () => { const bl = await pngBlob('trend'), im = await createImageBitmap(bl); return [im.width, im.height, bl.size]; });
+  check('추이 이미지 (1080x1920)', r[0] === 1080 && r[1] === 1920 && r[2] > 20000, r.join());
+  // 토큰 잠금: 잠그고 풀기, 탭 동안 기억
+  r = await p.evaluate(async () => { const v = await lockToken('ghp_test123', '0000'); localStorage.setItem(TOKEN, v); sessionStorage.removeItem(TOKEN); const no = await getToken(false); const ok = await unlockToken(v, '0000'); let bad = ''; try { await unlockToken(v, '1111'); bad = 'opened'; } catch { bad = 'refused'; } sessionStorage.setItem(TOKEN, ok); const again = await getToken(false); localStorage.removeItem(TOKEN); sessionStorage.removeItem(TOKEN); return { enc: v.startsWith('enc:') && !v.includes('ghp_test123'), no, ok, bad, again }; });
+  check('토큰 잠금 (비밀번호, 틀리면 안 열림, 탭 동안 기억)', r.enc && r.no === '' && r.ok === 'ghp_test123' && r.bad === 'refused' && r.again === 'ghp_test123', JSON.stringify(r));
+  r = await p.evaluate(() => { localStorage.setItem(TOKEN, 'x'); localStorage.setItem('fc-anyang-token-exp', new Date(Date.now() + 10 * 86400e3).toISOString().slice(0, 10)); tokenInfo(); const n = document.getElementById('note').innerText, h = document.getElementById('tokenHint').innerText; localStorage.removeItem(TOKEN); localStorage.removeItem('fc-anyang-token-exp'); return { n, h }; });
+  check('토큰 만료 30일 전 알림', /만료가 1?\d일 남았습니다/.test(r.n) && /만료 \d{4}-/.test(r.h), JSON.stringify(r));
   await p.context().close();
+
+  // 다른 사이트용 화면 (?embed)
+  p = await open(b, { url: URL + '?embed' });
+  r = await p.evaluate(() => ['.share', '.panel', '#trend', '.foot'].map(q => getComputedStyle(document.querySelector(q)).display).join() + '|' + document.body.classList.contains('editing'));
+  check('다른 사이트용 화면: 현황판만', r === 'none,none,none,none|false', r);
+  await p.context().close();
+
+  // 경기별 기록 화면
+  const game = (opp, kick, booked, crowd) => ({ app: 'fc-anyang-seats', updatedAt: kick.slice(0, 10) + 'T12:00:00+09:00', match: { opponent: opp, kickoff: kick, attendance: crowd }, capacity: 11542, booked, soldOut: ['R10'], unknown: [] });
+  const sctx = await b.newContext();
+  await sctx.route(/api\.github\.com/, r => r.fulfill({ json: { tree: [{ path: 'games/2026-11-01_부천FC1995.json', type: 'blob' }] } }));
+  await sctx.route(/raw\.githubusercontent\.com/, r => r.fulfill({ json: r.request().url().includes('games/') ? game('부천FC1995', '2026-11-01T16:30:00+09:00', 4500, 4464) : game('제주SK', '2026-11-28T14:00:00+09:00', 6931, null) }));
+  p = await sctx.newPage();
+  await p.goto(pathToFileURL(path.join(ROOT, 'season.html')).href);
+  await p.waitForFunction(() => document.querySelectorAll('#rows tr').length > 0);
+  r = await p.evaluate(() => [...document.querySelectorAll('#rows tr')].map(tr => tr.innerText.replace(/\s+/g, ' ')).join(' / '));
+  check('경기별 기록: 보관 경기 + 지금 경기', /부천FC1995 4,500석.*4,464명.*-36/.test(r) && /제주SK 6,931석/.test(r), r);
+  await sctx.close();
 
   // 보기 화면: 발행본을 그리고 이 기기 입력값은 그대로
   const pub = { app: 'fc-anyang-seats', version: 1, updatedAt: '2026-11-27T12:00:00+09:00', match: { opponent: '제주SK', kickoff: '2026-11-28T14:00:00+09:00' },

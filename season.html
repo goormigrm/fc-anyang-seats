@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>FC안양 경기별 예매 기록</title>
+<style>
+  :root { --p8: #3e1a78; --p7: #4b2a85; --p1: #f4effc; --ink: #1f2937; --sub: #4b5563; }
+  body { margin: 0; background: #f3f1f8; color: var(--ink); font: 15px/1.5 'Malgun Gothic', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; }
+  main { max-width: 1080px; margin: 0 auto; padding: 16px; }
+  header { display: flex; align-items: center; gap: 16px; padding: 18px 22px; border-radius: 14px; background: linear-gradient(135deg, var(--p8), var(--p7)); color: #fff; }
+  header img { width: 64px; height: 64px; }
+  header h1 { margin: 0; font-size: 22px; } header p { margin: 2px 0 0; color: #e4dcf5; font-size: 13px; }
+  .box { margin-top: 16px; padding: 18px 20px; border-radius: 14px; background: #fff; box-shadow: 0 1px 4px #2a0f5714; overflow-x: auto; }
+  #chart { display: block; width: 100%; height: auto; }
+  table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+  th { background: var(--p1); color: var(--p8); font-size: 13px; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid #f0edf6; text-align: right; }
+  th:nth-child(-n+2), td:nth-child(-n+2) { text-align: left; }
+  .now td { background: #fbfaff; font-weight: 700; }
+  #msg { color: var(--sub); font-size: 13px; }
+  .foot { margin: 16px 4px; color: var(--sub); font-size: 12px; text-align: center; } .foot a { color: var(--p7); }
+  @media (max-width: 860px) { main { padding: 10px; } header { padding: 14px; } header img { width: 48px; height: 48px; } }
+</style>
+</head>
+<body>
+<main>
+  <header><img src="emblem.png" alt=""><div><h1>FC안양 경기별 예매 기록</h1><p>경기마다 마지막으로 발행한 집계와 공식 관중 (티켓링크 잔여석 기준)</p></div></header>
+  <div class="box"><svg id="chart" role="img" aria-label="경기별 예매된 좌석과 공식 관중" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 360" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif"></svg><p id="msg">불러오는 중…</p></div>
+  <div class="box"><table>
+    <thead><tr><th>경기</th><th>상대</th><th>예매(마지막 집계)</th><th>공식 관중</th><th>관중 - 예매</th><th>매진 구역</th><th>마지막 집계</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table></div>
+  <p class="foot">FC안양 팬이 만든 비공식 기록입니다. · <a href="./">현황판으로</a></p>
+</main>
+<script>
+// 발행 데이터(data 브랜치)의 games/*.json (경기가 바뀔 때 보관한 지난 경기)과 latest.json (지금 경기)을 모아 보여 줌
+const API = 'https://api.github.com/repos/goormigrm/fc-anyang-seats/', RAW = 'https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/';
+const fmt = n => n.toLocaleString('ko-KR'), esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const day = s => { const d = new Date(String(s).slice(0, 10) + 'T00:00'); return isNaN(d) ? '' : `${s.slice(5, 10).replace('-', '.')}(${'일월화수목금토'[d.getDay()]})`; };
+const json = path => fetch(RAW + path + '?t=' + Date.now(), { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).catch(() => null);
+const num = v => Number.isInteger(v) && v >= 0 ? v : null;
+
+(async () => {
+  const tree = await fetch(API + 'git/trees/data?recursive=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null);
+  const paths = (tree?.tree || []).filter(f => /^games\/[^/]+\.json$/.test(f.path)).map(f => f.path);
+  const recs = (await Promise.all([...paths, 'latest.json'].map(async p => ({ now: p === 'latest.json', d: await json(p) })))).filter(x => x.d?.app === 'fc-anyang-seats');
+  // 같은 경기는 마지막 집계 하나만
+  const games = Object.values(recs.reduce((m, { now, d }) => {
+    const k = (d.match?.opponent || '') + String(d.match?.kickoff || '').slice(0, 10);
+    if (!m[k] || String(d.updatedAt) > String(m[k].d.updatedAt)) m[k] = { now, d };
+    return m;
+  }, {})).sort((a, b) => String(a.d.match?.kickoff || a.d.updatedAt).localeCompare(String(b.d.match?.kickoff || b.d.updatedAt)));
+  const msg = document.getElementById('msg');
+  if (!games.length) { msg.textContent = '아직 발행된 기록이 없습니다.'; return; }
+  msg.textContent = games.some(g => g.d.unknown?.length) ? '정보 없는 구역이 있던 집계는 예매 수가 조금 많게 나옵니다.' : '';
+
+  document.getElementById('rows').innerHTML = games.map(({ now, d }) => {
+    const b = num(d.booked), cap = num(d.capacity), crowd = num(d.match?.attendance);
+    return `<tr class="${now ? 'now' : ''}"><td>${esc(day(d.match?.kickoff || ''))} ${esc(String(d.match?.kickoff || '').slice(11, 16))}${now ? ' (지금)' : ''}</td><td>${esc(d.match?.opponent || '-')}</td>`
+      + `<td>${b == null ? '-' : `${fmt(b)}석 (${cap ? (b / cap * 100).toFixed(1) : '-'}%)`}</td><td>${crowd == null ? '-' : fmt(crowd) + '명'}</td>`
+      + `<td>${crowd == null || b == null ? '-' : (crowd - b > 0 ? '+' : '') + fmt(crowd - b)}</td><td>${Array.isArray(d.soldOut) ? d.soldOut.length + '개' : '-'}</td>`
+      + `<td>${esc(day(d.updatedAt || ''))} ${esc(String(d.updatedAt || '').slice(11, 16))}</td></tr>`;
+  }).join('');
+
+  // 막대: 예매(보라), 공식 관중(금색). 최근 10경기
+  const g = games.slice(-10), top = Math.max(...g.flatMap(({ d }) => [num(d.booked) || 0, num(d.match?.attendance) || 0]), 1000);
+  const L = 70, R = 980, T = 30, B = 290, slot = (R - L) / g.length, bw = Math.min(36, slot / 3), Y = v => B - v / top * (B - T);
+  const t = (x, y, s, size, fill, w = 400, a = 'middle') => `<text x="${x}" y="${y}" font-size="${size}" font-weight="${w}" fill="${fill}" text-anchor="${a}">${esc(s)}</text>`;
+  let svg = [0, 0.25, 0.5, 0.75, 1].map(f => `<line x1="${L}" x2="${R}" y1="${Y(top * f)}" y2="${Y(top * f)}" stroke="#eef0f3"/>` + t(L - 8, Y(top * f) + 4, fmt(Math.round(top * f)), 11, '#9ca3af', 400, 'end')).join('');
+  g.forEach(({ d }, i) => {
+    const cx = L + slot * (i + 0.5), b = num(d.booked), crowd = num(d.match?.attendance);
+    if (b != null) svg += `<rect x="${cx - bw - 2}" y="${Y(b)}" width="${bw}" height="${B - Y(b)}" rx="4" fill="#6a40ad"/>` + t(cx - bw / 2 - 2, Y(b) - 6, fmt(b), 11, '#3e1a78', 700);
+    if (crowd != null) svg += `<rect x="${cx + 2}" y="${Y(crowd)}" width="${bw}" height="${B - Y(crowd)}" rx="4" fill="#f6c453"/>` + t(cx + bw / 2 + 2, Y(crowd) - 6, fmt(crowd), 11, '#b7791f', 700);
+    svg += t(cx, B + 22, d.match?.opponent || '-', 12, '#374151', 700) + t(cx, B + 40, day(d.match?.kickoff || ''), 11, '#9ca3af');
+  });
+  svg += `<rect x="${L}" y="6" width="12" height="12" fill="#6a40ad"/>` + t(L + 18, 17, '예매(마지막 집계)', 12, '#4b5563', 400, 'start')
+    + `<rect x="${L + 150}" y="6" width="12" height="12" fill="#f6c453"/>` + t(L + 168, 17, '공식 관중', 12, '#4b5563', 400, 'start');
+  document.getElementById('chart').innerHTML = svg;
+})();
+</script>
+</body>
+</html>

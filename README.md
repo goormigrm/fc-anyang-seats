@@ -52,8 +52,18 @@ FC안양 홈 경기(안양종합운동장)의 티켓링크 구역별 잔여석�
 - **발행이 겹치지 않게:** 발행과 지우기는 한 번에 하나만 돌고, 다른 탭과는 1분 잠금을 둡니다. 쓰기 직전에 그사이 다른 곳에서 발행했는지 확인해 덮어쓰지 않습니다. GitHub 에서 읽기가 실패하면 빈 기록으로 덮어쓰지 않고 발행을 멈춥니다.
 
 ### 이미지와 글
+- '추이 이미지': 예매된 좌석 추이를 스토리 크기(1080x1920)로. 지금 예매 수, 직전 집계 대비 증감, 추이 그래프. 휴대폰은 공유 창으로.
 - '현황판 저장' 1280x1062(2배 해상도), '스토리 이미지 저장' 1080x1920. 휴대폰에서는 '스토리로 공유'로 공유 창에 바로 보냅니다.
-- '요약 글 복사': 인스타, 카톡에 붙일 글 (경기, 기준 시각, 예매 수와 비율, 직전 대비, 매진 구역).
+- '요약 글 복사': 인스타, 카톡에 붙일 글 (경기, 기준 시각, 예매 수와 비율, 직전 대비, 매진 구역, 공식 관중).
+
+### 공식 관중
+입력 화면 '공식 관중' 칸에 경기 뒤 전광판 관중 수를 넣고 발행하면, 현황판 위쪽, 요약 글, 추이 그래프(금색 점, 마지막 예매 대비), 발행 JSON(`match.attendance`), 경기별 기록에 들어갑니다. 새 경기가 되면 비워집니다.
+
+### 경기별 기록
+https://goormigrm.github.io/fc-anyang-seats/season.html : 보관한 지난 경기(`games/`)와 지금 경기의 마지막 집계, 공식 관중, 관중 - 예매, 매진 구역 수를 표와 막대그래프로 봅니다. 보기 화면 맨 아래 '경기별 기록' 링크.
+
+### 발행 토큰 설정
+'토큰 설정'으로 새 토큰 넣기, 만료일 적기(30일 전부터 알림), 비밀번호로 잠그기(선택), "삭제" 로 지우기를 합니다. 잠그면 `goormigrm.github.io` 의 다른 페이지가 저장값을 읽어도 토큰을 쓸 수 없고, 탭을 처음 열 때 한 번 비밀번호를 묻습니다(자동 발행 전에 한 번 '최신 집계 발행'으로 풀어 둡니다). GitHub 는 만료일을 브라우저에 알려 주지 않아서 직접 적습니다.
 
 ## 화면 구성
 
@@ -66,6 +76,13 @@ FC안양 홈 경기(안양종합운동장)의 티켓링크 구역별 잔여석�
 - 집계 기록(JSON): '이번 집계 저장'으로 경기 정보, 집계 시각, 모든 구역 숫자를 파일로 저장하고 '저장한 집계 열기'로 다시 엽니다. '저장한 집계를 기준으로'로 비교 기준으로 쓸 수도 있습니다.
 
 ## 다른 사이트에서 가져가기 (API)
+
+현황판을 그대로 넣으려면 iframe 으로 `https://goormigrm.github.io/fc-anyang-seats/?embed` (현황판만, 폭에 맞춤, 휴대폰은 세로판), 추이도 넣으려면 `?embed=trend`.
+
+```html
+<iframe src="https://goormigrm.github.io/fc-anyang-seats/?embed" style="width:100%;aspect-ratio:1280/1062;border:0"></iframe>
+```
+
 
 발행할 때마다 `data` 브랜치가 최신 집계 하나로 덮어써집니다. 어느 사이트에서나 브라우저로 바로 받을 수 있습니다 (CORS 허용).
 
@@ -85,11 +102,11 @@ console.log(d.match.opponent, d.booked, d.capacity, d.updatedAt);
 |------|----|
 | `version` | 형식 버전 (지금 1) |
 | `updatedAt` | 집계 시각 (`2026-11-27T12:00:00+09:00`) |
-| `match` | `opponent` 상대팀, `kickoff` 경기 일시, `venue`, `competition` |
+| `match` | `opponent` 상대팀, `kickoff` 경기 일시, `venue`, `competition`, `attendance` 공식 관중(넣었을 때) |
 | `capacity`, `available`, `booked` | 만석, 예매 가능 좌석(모든 구역 잔여 합), 예매된 좌석(만석 - 예매 가능) |
 | `sinceBase` | 직전 집계 이후 `{ at, booked }`, 비교 기준이 없으면 `null` |
 | `soldOut`, `unknown` | 매진 구역 id, 잔여 정보가 없는 구역 id (`unknown` 이 있으면 `booked` 가 그만큼 많게 나옴) |
-| `sections[]` | `id`, `name`, `grade`(티켓링크 등급), `remain` 잔여, `max` 최대 좌석(모르면 `null`), `sold` 직전 이후 팔린 좌석 |
+| `sections[]` | `id`, `name`, `grade`(티켓링크 등급), `remain` 잔여, `max` 최대 좌석(모르면 `null`), `maxGuess` 처음 본 잔여로 넣은 추정이면 `true`, `sold` 직전 이후 팔린 좌석 |
 | `summary` | 요약 글 |
 | `images`, `history` | 위 이미지 주소, 발행 기록 주소 |
 
@@ -203,6 +220,8 @@ console.log(d.match.opponent, d.booked, d.capacity, d.updatedAt);
 | `fc-anyang-send.user.js` | 보내기 스크립트 (Tampermonkey) |
 | `guide/` | 작업 가이드 (`index.html`, 그림, `guide.pdf`). 고치면 `node tools/guide-pdf.js` 로 PDF 다시 만듦 |
 | `현황판 만들기.bat`, `tools/make.sh`, `tools/make.js` | bat -> WSL -> 화면 없는 브라우저(Playwright)로 `index.html` 의 인식, 그리기, 발행 코드를 그대로 실행 |
+| `season.html` | 경기별 기록 화면 |
+| `emblem.png`, `favicon.png`, `apple-touch-icon.png` | 앰블럼 (화면용 파일, 탭 아이콘, 홈 화면 아이콘). `emblem.js` 는 PNG 를 만들 때만 불러오는 그림 데이터 |
 | `.gitignore` | `좌석스크린샷/`, `예시/`, `결과/`, `tools/node_modules/`, `tools/.profile/` |
 
 - 빌드 과정은 없습니다. `index.html` 을 브라우저로 열면 됩니다 (입력 화면은 주소 끝 `#edit`).
@@ -214,6 +233,7 @@ console.log(d.match.opponent, d.booked, d.capacity, d.updatedAt);
 
 ## 변경 이력
 
+- 11/06: 2, 3단계. 공식 관중, 추이 이미지, 다른 사이트용 화면(?embed), 경기별 기록(season.html), 경기 전후 표시(경기 중, 지난 경기), 토큰 설정(잠금, 만료 알림), 캡처를 정해 둔 위치에서 못 읽으면 통째로 다시, 화면 읽기 프로그램용 요약 글.
 - 11/06: 코드 점검 반영. 발행 안전(읽기 실패 시 멈춤, 캐시 안 씀, 한 번에 하나, 그사이 발행 확인, 되돌리면 추이도 그때로), 경기별 보관(games/), 모두 지우기는 이번 경기만, 원정 경기 화면 무시, 반쪽 숫자 자동 발행 막기, 배운 최대 좌석 '추정' 표시, 다른 경기로 지운 숫자 되살리기, 자동 발행 끄면 대기 취소, 예상선은 1시간 넘게 떨어진 점과, bat 토큰은 Node 쪽에서만, 글자 인식 스크립트 무결성 확인(SRI), 화면은 앰블럼 파일(PNG 만들 때만 그림 데이터), 보내기 스크립트 3판.
 - 11/06: 1단계 개선. 모르는 등급 알림, 퍼스트석과 스탠딩석 칸(합계 정확), 같은 경기 10분 안 발행은 추이 점 하나로, 자동 발행 30초, 보기 화면은 GitHub API 로 바로 받고 경과 시간 표시, 비공식 표시, 자동 시험 묶음(tools/test.js), 가이드에 예매 여는 날 점검표.
 - 11/06: 예매 추이를 현황판에서 떼어 페이지 맨 아래로, 휴대폰은 경기장만 눌러 키움. 탭 아이콘.
