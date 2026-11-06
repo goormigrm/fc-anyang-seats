@@ -16,7 +16,10 @@
   :root { --p8: #3e1a78; --p7: #4b2a85; --p5: #6a40ad; --p1: #f4effc; --ink: #1f2937; --sub: #4b5563; --edge: #cdd3dd; }
   body { margin: 0; background: #f3f1f8; color: var(--ink); font: 15px/1.5 'Malgun Gothic', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; }
   main { max-width: 1280px; margin: 0 auto; padding: 16px; }
-  #board { display: block; width: 100%; height: auto; border-radius: 14px; background: #fff; box-shadow: 0 2px 10px #2a0f5718; }
+  #boardWrap { background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 10px #2a0f5718; }
+  #board, #stadium, #trend { display: block; width: 100%; height: auto; }
+  #stadiumWrap { display: none; }
+  #trend { margin-top: 16px; border-radius: 14px; background: #fff; box-shadow: 0 1px 4px #2a0f5714; }
   .panel { display: grid; grid-template-columns: 1fr 1.2fr; grid-template-areas: "info seats" "ocr seats"; gap: 16px; margin-top: 16px; align-items: start; }
   .info { grid-area: info; } .seats { grid-area: seats; } .ocr { grid-area: ocr; }
   .panel > * { min-width: 0; }  /* 날짜 입력칸 같은 긴 칸이 휴대폰 화면 밖으로 밀어내지 않게 */
@@ -60,12 +63,14 @@
   body:not(.editing) .edit { display: none; }
   label.check { margin: 0; gap: 6px; color: #374151; font-size: 14px; font-weight: 600; }
   label.check input { width: 18px; height: 18px; accent-color: var(--p7); }
-  /* 휴대폰: 현황(세로판) -> 공유 -> 경기 정보 -> 구역별 잔여석 -> 스크린샷 인식 */
+  /* 휴대폰: 보라 띠와 카드 -> 경기장 -> 공유 -> (입력 화면) -> 예매 추이 */
   @media (max-width: 860px) {
     main { padding: 10px; }
     .mobile-only { display: block; margin: 8px 4px 0; text-align: center; }
-    #boardWrap.zoom { overflow-x: auto; border-radius: 14px; }
-    #boardWrap.zoom #board { width: 1080px; max-width: none; }
+    #stadiumWrap { display: block; }
+    #stadiumWrap.zoom { overflow: auto; }
+    #stadiumWrap.zoom #stadium { width: 1000px; max-width: none; }
+    #trend { margin-top: 12px; }
     .panel { grid-template-columns: 1fr; grid-template-areas: "info" "seats" "ocr"; gap: 12px; margin-top: 12px; }
     .share { margin-top: 12px; }
     .box { padding: 16px; }
@@ -78,8 +83,9 @@
 </head>
 <body>
 <main>
-  <div id="boardWrap"><svg id="board" xmlns="http://www.w3.org/2000/svg" width="1280" height="1350" viewBox="0 0 1280 1350" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif"></svg></div>
-  <p class="hint mobile-only">현황판을 누르면 크게, 다시 누르면 원래대로</p>
+  <div id="boardWrap"><svg id="board" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 1062" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif"></svg>
+    <div id="stadiumWrap"><svg id="stadium" xmlns="http://www.w3.org/2000/svg" viewBox="0 740 1080 960" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif"></svg></div></div>
+  <p class="hint mobile-only">경기장을 누르면 크게, 다시 누르면 원래대로</p>
   <div class="box share">
     <div class="row"><button id="png" class="main">현황판 저장</button><button id="story" class="main">스토리 이미지 저장</button><button id="share" class="main" hidden>스토리로 공유</button><button id="link">링크 공유</button><button id="copy">요약 글 복사</button></div>
     <div id="note"></div>
@@ -122,10 +128,11 @@
       <button id="reparse">이 글자로 다시 채우기</button>
     </div>
   </div>
+  <svg id="trend" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 280" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif"></svg>
 </main>
 <script>
 // FULL: 만석 1만 1,542석 (2026-04-05 서울전 기사). 중립석 신설(8월) 뒤에도 원정석 쪽 좌석을 나눠 파는 것이라 그대로 씀
-const KEY = 'fc-anyang-seat-status', FULL = 11542, W = 1280, H = 1350, MH = 2060, FONT = "'Malgun Gothic','Apple SD Gothic Neo',sans-serif";
+const KEY = 'fc-anyang-seat-status', FULL = 11542, W = 1280, H = 1062, FONT = "'Malgun Gothic','Apple SD Gothic Neo',sans-serif";
 // 지도: 경기장 중심 (CX, CY), 직선 반길이 L, 스탠드 안쪽/바깥 반지름 RI/RO
 const CX = 600, CY = 375, L = 240, RI = 285, RO = 360;
 const PURPLE = ['#c3b1e6', '#9572cf', '#6a40ad', '#3e1a78'];  // 잔여율 1~24 / 25~49 / 50~74 / 75%+
@@ -355,7 +362,7 @@ function chart(x0, y0, w, h, k = 1, n = 8) {
   return out.join('');
 }
 
-// 현황판 SVG 내용. story=false: 1280×1350 가로판 (맨 아래 추이), true: 인스타 스토리 1080×1920, 'mobile': 휴대폰 화면용 세로판 1080×2060 (스토리 + 추이)
+// 현황판 SVG 내용. story=false: 1280×1062 가로판, true: 인스타 스토리 1080×1920 (휴대폰 화면도 이것을 위, 경기장으로 잘라 씀)
 function build(story) {
   const { avail, soldSum, soldOut, empty } = stats(), soldN = soldOut.length, emptyN = empty.length;
   let noMax = false;
@@ -441,8 +448,7 @@ function build(story) {
     + `<rect x="20" y="222" width="1240" height="828" rx="12" fill="#f7f8fa" stroke="#eceff3"/>`
     + `<g transform="translate(40,234)">${map}</g>`
     + legend(40, 1018, 12, 1240)
-    + text(40, 1040, foot, 11, '#9ca3af', 400, 'start')
-    + chart(20, 1060, 1240, 280);
+    + text(40, 1040, foot, 11, '#9ca3af', 400, 'start');
 
   // 스토리: 맨 위·아래는 인스타 화면(프로필, 답장 칸)에 가려서 내용은 y 200~1660 사이에 둠
   const S = 1000 / 1224;  // 지도 전체 폭(관중석 바깥 포함 1224)을 1000에 맞춤
@@ -457,16 +463,20 @@ function build(story) {
     + legend(40, 1490, 22, 1040)
     + text(540, 1640, foot, 20, '#9ca3af')
     + text(540, 1672, '티켓링크 잔여석 기준', 18, '#b0b5bf');
-  // 휴대폰 화면: 인스타가 가리는 위 여백을 140 줄이고 아래에 큰 글자 추이 (최근 4번)
-  if (story === 'mobile') return defs + `<rect width="1080" height="${MH}" fill="#fff"/><g transform="translate(0,-140)">${st}</g>` + chart(20, 1560, 1040, 480, 1.8, 4);
   return defs + st;
 }
 
-const portrait = matchMedia('(max-width: 860px)');  // 휴대폰: 스토리처럼 세로판으로 보여 줌 (저장 PNG 는 그대로)
+// 휴대폰: 스토리 모양을 위(보라 띠, 카드)와 경기장(범례 포함)으로 잘라 따로 보여 줌. 저장 PNG 는 그대로
+const portrait = matchMedia('(max-width: 860px)'), show = (el, vb, svg) => { el.setAttribute('viewBox', vb); el.innerHTML = svg; };
 function render() {
-  const [w, h] = portrait.matches ? [1080, MH] : [W, H];
-  board.setAttribute('viewBox', `0 0 ${w} ${h}`); board.setAttribute('width', w); board.setAttribute('height', h);
-  board.innerHTML = build(portrait.matches ? 'mobile' : false);
+  if (portrait.matches) {
+    const st = build(true);
+    show(board, '0 140 1080 600', st); show(stadium, '0 740 1080 960', st);
+    show(trend, '0 0 1040 480', chart(1, 1, 1038, 478, 1.8, 4));
+  } else {
+    show(board, `0 0 ${W} ${H}`, build(false));
+    show(trend, '0 0 1240 280', chart(1, 1, 1238, 278));
+  }
   for (const tr of tbody.rows) {
     const r = state.rows[tr.dataset.id], c = tr.cells[4];
     const d = sold(tr.dataset.id);
@@ -478,7 +488,7 @@ function render() {
 
 // ---------- 입력 ----------
 const $ = id => document.getElementById(id);
-const board = $('board'), tbody = $('rows'), raw = $('raw');
+const board = $('board'), stadium = $('stadium'), trend = $('trend'), tbody = $('rows'), raw = $('raw');
 const status = m => $('status').textContent = m;
 const note = m => $('note').textContent = m;
 const isCell = s => /^[A-Z]+\d/.test(s.id);
@@ -853,12 +863,12 @@ addEventListener('paste', e => {
   else if (!e.target.closest?.('input, textarea') && /\d\s*석/.test(s)) { e.preventDefault(); ingest(s); }
 });
 
-// 휴대폰: 현황판을 누르면 실제 크기(1280px)로 키워 좌우로 밀어 보고, 다시 누르면 원래대로
-$('boardWrap').onclick = () => {
-  if (!matchMedia('(max-width: 860px)').matches) return;
-  const wrap = $('boardWrap');
-  wrap.classList.toggle('zoom');
-  wrap.scrollLeft = (wrap.scrollWidth - wrap.clientWidth) / 2;  // 경기장 가운데부터
+// 휴대폰: 경기장을 누르면 그 자리에서 크게 (칸 높이는 그대로 두고 상하좌우로 밀어 봄). 위 카드와 아래 버튼은 움직이지 않음
+$('stadiumWrap').onclick = () => {
+  const wrap = $('stadiumWrap'), zoom = !wrap.classList.contains('zoom');
+  wrap.style.height = zoom ? wrap.offsetHeight + 'px' : '';
+  wrap.classList.toggle('zoom', zoom);
+  if (zoom) { wrap.scrollLeft = (wrap.scrollWidth - wrap.clientWidth) / 2; wrap.scrollTop = wrap.scrollHeight * 0.36 - wrap.clientHeight / 2; }  // 경기장 가운데부터
 };
 
 // 끌어다 놓기: 캡처 여러 장을 페이지 아무 데나
