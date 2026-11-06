@@ -18,8 +18,15 @@ const win = p => { try { return execSync(`wslpath -w "${p}"`, { encoding: 'utf8'
 
 (async () => {
   // 프로필을 남겨 두어 지난 집계(비교 기준, 바꾼 최대 좌석)와 인식 데이터 캐시가 다음 실행에 이어짐
-  const ctx = await chromium.launchPersistentContext(path.join(__dirname, '.profile'), { acceptDownloads: true });
+  const ctx = await chromium.launchPersistentContext(path.join(__dirname, '.profile'), { acceptDownloads: true, timezoneId: 'Asia/Seoul' });
   const page = ctx.pages()[0] || await ctx.newPage();
+  // GitHub 요청은 이 통로로 Node 에서 보내고 토큰도 여기서만 붙임 (넓은 권한의 gh 토큰이 외부 스크립트가 도는 페이지에 들어가지 않게)
+  let token = '';
+  await page.exposeFunction('fcFetch', async (url, { method, headers, body }) => {
+    if (!url.startsWith('https://api.github.com/repos/goormigrm/fc-anyang-seats/')) throw new Error('허용되지 않은 주소: ' + url);
+    const r = await fetch(url, { method, body, headers: { ...headers, Authorization: 'Bearer ' + token } });
+    return { ok: r.ok, status: r.status, text: await r.text() };
+  });
   page.on('pageerror', e => console.log('페이지 오류:', e.message));
   await page.goto(pathToFileURL(path.join(ROOT, 'index.html')).href + '#edit');  // 입력 화면
   console.log(`캡처 ${files.length}장 인식 중…`);
@@ -39,11 +46,6 @@ const win = p => { try { return execSync(`wslpath -w "${p}"`, { encoding: 'utf8'
   const base = saved[2].replace(/\.json$/, ''), text = await page.evaluate(() => summaryText());
   fs.writeFileSync(base + '_요약.txt', text + '\n');
   saved.push(base + '_요약.txt');
-  if (fromIn) {
-    const dir = base + '_캡처';
-    fs.mkdirSync(dir, { recursive: true });
-    files.forEach(f => fs.renameSync(f, path.join(dir, path.basename(f))));
-  }
   console.log(`\n${text}\n\n만든 파일 (${win(OUT)}):\n` + saved.map(f => '  ' + path.basename(f)).join('\n'));
 
   if (!noPublish) {
@@ -53,14 +55,19 @@ const win = p => { try { return execSync(`wslpath -w "${p}"`, { encoding: 'utf8'
       ok = /^y/i.test(await rl.question('\n경고가 있습니다. 그래도 발행할까요? (y/N) '));
       rl.close();
     }
-    let token = '';
     try { token = execSync('gh auth token', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch {}
     if (!ok) console.log('\n발행하지 않았습니다. 숫자를 고친 뒤 웹 페이지의 "최신 집계 발행"을 쓰세요.');
     else if (!token) console.log('\n발행하지 않았습니다: GitHub 로그인이 없습니다 (gh auth login).');
     else {
-      await page.evaluate(t => publish(t), token);
+      await page.evaluate(() => publish(''));
       console.log('\n발행했습니다: https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/latest.json');
     }
+  }
+  // 쓴 캡처는 결과/<이름>_캡처/ 로 옮김 (다음에 다시 읽지 않게). 발행이 실패해도 다시 돌릴 수 있게 맨 마지막에
+  if (fromIn) {
+    const dir = base + '_캡처';
+    fs.mkdirSync(dir, { recursive: true });
+    files.forEach(f => fs.renameSync(f, path.join(dir, path.basename(f))));
   }
   await ctx.close();
 })().catch(e => { console.error('\n실패: ' + e.message); process.exit(1); });

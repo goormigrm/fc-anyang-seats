@@ -12,7 +12,7 @@ const check = (name, ok, info = '') => { results.push(ok); console.log(`${ok ? '
 
 // 발행 데이터(raw, API)는 기본으로 404, data 를 주면 그 내용으로 응답
 async function open(browser, { url = URL + '#edit', data = {}, device, live } = {}) {
-  const ctx = await browser.newContext(device ? { ...devices[device] } : { viewport: { width: 1280, height: 900 } });
+  const ctx = await browser.newContext({ ...(device ? devices[device] : { viewport: { width: 1280, height: 900 } }), timezoneId: 'Asia/Seoul' });
   await ctx.route(live ? /raw\.githubusercontent\.com/ : /raw\.githubusercontent\.com|api\.github\.com/, r => {  // live: 발행 시험은 실제 API
     const name = Object.keys(data).find(n => r.request().url().includes(n));
     return name ? r.fulfill({ json: data[name] }) : r.fulfill({ status: 404, body: '' });
@@ -24,7 +24,7 @@ async function open(browser, { url = URL + '#edit', data = {}, device, live } = 
   await page.goto(url);
   return page;
 }
-const ingest = (page, text) => page.evaluate(t => { lastIngest = 0; fcIngest(t); return { status: document.getElementById('status').innerText, state: JSON.parse(JSON.stringify(state)) }; }, text);
+const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status: document.getElementById('status').innerText, state: JSON.parse(JSON.stringify(state)) }; }, text);
 
 (async () => {
   const b = await chromium.launch();
@@ -43,14 +43,23 @@ const ingest = (page, text) => page.evaluate(t => { lastIngest = 0; fcIngest(t);
   r = await ingest(p, H + '원정석\n1500 석\nR6구역\n137 석');
   check('최대보다 조금 많으면 최대를 늘림, 많이 넘으면 경고', r.state.rows.R6.max === 137 && r.state.rows.원정석.max === 1235 && /⚠ 잔여가 최대보다 많음: 원정석/.test(r.status), r.status);
 
-  r = await p.evaluate(() => { lastIngest = 0; const before = state.rows.R10.remain; fcIngest('FC안양 vs 울산HD\n안양종합운동장 | 2026.12.05(토) 14:00\n예매하기'); return { opp: state.opp, R10: state.rows.R10.remain, before }; });
-  check('좌석 숫자 없는 화면은 무시 (다른 경기 일정)', r.opp === '제주SK' && r.R10 === r.before, JSON.stringify(r));
+  r = await p.evaluate(() => { const before = state.rows.R10.remain; fcIngest('FC안양 vs 울산HD\n안양종합운동장 | 2026.12.05(토) 14:00\n예매하기\nS1구역\n6 석'); return { opp: state.opp, R10: state.rows.R10.remain, before }; });
+  check('현황판 구역 숫자 없는 화면은 무시 (다른 경기 일정, S1~ 만)', r.opp === '제주SK' && r.R10 === r.before, JSON.stringify(r));
+  r = await p.evaluate(() => { const before = state.rows.일반지정석.remain; fcIngest('울산HD vs FC안양\n울산문수축구경기장 | 2026.12.12(토) 14:00\n등급 선택\n지정석 S\n1200 석'); return { st: document.getElementById('status').innerText, v: state.rows.일반지정석.remain, before }; });
+  check('원정 경기 화면은 무시 (안양종합운동장 아님)', r.v === r.before && /안양종합운동장 경기 화면이 아니라/.test(r.st), JSON.stringify(r));
 
-  r = await p.evaluate(() => { state.at = '2026-11-27T09:00'; lastIngest = 0; fcIngest('FC안양 vs 제주SK\n안양종합운동장 | 2026.11.28(토) 14:00\nR10구역\n20 석'); return { base: state.base?.rows?.R10, at: state.at }; });
+  r = await p.evaluate(() => { state.at = '2026-11-27T09:00'; fcIngest('FC안양 vs 제주SK\n안양종합운동장 | 2026.11.28(토) 14:00\nR10구역\n20 석'); return { base: state.base?.rows?.R10, at: state.at }; });
   check('같은 경기 새 집계는 직전 숫자를 비교 기준으로', r.base === 26, JSON.stringify(r));
 
   r = await ingest(p, 'FC안양 vs 울산HD\n안양종합운동장 | 2026.12.05(토) 14:00\n등급 선택\nR10구역\n100 석');
-  check('다른 경기는 새 경기로 (지난 숫자, 원정석 최대 되돌림)', r.state.opp === '울산HD' && r.state.rows.일반지정석.remain === null && r.state.rows.원정석.max === 1235 && /다른 경기라/.test(r.status), r.status);
+  check('다른 경기는 새 경기로 (지난 숫자, 원정석 최대 되돌림, ⚠)', r.state.opp === '울산HD' && r.state.rows.일반지정석.remain === null && r.state.rows.원정석.max === 1235 && /⚠ 다른 경기라/.test(r.status), r.status);
+  r = await p.evaluate(() => { window.confirm = () => true; document.getElementById('restore').click(); return { opp: state.opp, v: state.rows.일반지정석.remain, hidden: document.getElementById('restore').hidden }; });
+  check('지난 경기 숫자 되살리기', r.opp === '제주SK' && r.v === 1426 && r.hidden, JSON.stringify(r));
+  r = await p.evaluate(() => { document.getElementById('autoPub').checked = true; newGame(); fcIngest('FC안양 vs 제주SK\n안양종합운동장 | 2026.11.28(토) 14:00\n등급 선택\n일반 지정석(2층)\n1400 석'); return document.getElementById('note').innerText; });
+  check('정보 없는 구역이 많으면 자동 발행 기다림', /자동 발행을 기다립니다/.test(r), r);
+  r = await p.evaluate(() => { const b = state.rows.일반지정석; fcIngest('FC안양 vs 제주SK\n안양종합운동장 | 2026.11.28(토) 14:00\n등급 선택\n일반 지정석(2층)\n1600 석'); return { max: b.max, learned: b.learned, guess: document.querySelector('tr[data-id="일반지정석"] [data-k=max]').classList.contains('guess') }; });
+  check('배운 최대 좌석은 추정 표시, 더 큰 잔여면 늘림', r.max === 1600 && r.learned && r.guess, JSON.stringify(r));
+  await ingest(p, 'FC안양 vs 울산HD\n안양종합운동장 | 2026.12.05(토) 14:00\n등급 선택\nR10구역\n100 석');
 
   r = await p.evaluate(() => {  // 추이: 같은 경기 10분 안 점은 하나로
     history = [['2026-12-04T10:00', 3000], ['2026-12-04T12:00', 3500], ['2026-12-04T12:05', 3600]].map(([at, booked]) => ({ at: at + ':00+09:00', opponent: '울산HD', kickoff: '2026-12-05T14:00:00+09:00', booked, unknown: 0 }));
@@ -67,6 +76,11 @@ const ingest = (page, text) => page.evaluate(t => { lastIngest = 0; fcIngest(t);
   await p.waitForFunction(() => document.getElementById('board').innerHTML.includes('제주SK'));
   r = await p.evaluate(() => ({ panel: getComputedStyle(document.querySelector('.panel')).display, svg: document.getElementById('board').innerHTML, note: document.getElementById('note').innerText }));
   check('보기 화면: 발행본 그림, 입력 칸 숨김, 경과 시간', r.panel === 'none' && r.svg.includes('980/1235') && r.svg.includes('+20') && /마지막 집계/.test(r.note), r.note);
+  await p.context().close();
+
+  p = await open(b, { url: URL });
+  await p.waitForFunction(() => /없습니다|못했습니다/.test(document.getElementById('note').innerText));
+  check('보기 화면: 발행 없으면 안내', /아직 발행된 집계가 없습니다/.test(await p.locator('#note').innerText()));
   await p.context().close();
 
   // 휴대폰: 경기장만 키움
@@ -92,13 +106,18 @@ const ingest = (page, text) => page.evaluate(t => { lastIngest = 0; fcIngest(t);
     const token = execSync('gh auth token', { encoding: 'utf8' }).trim(), B = 'data-test', raw = f => { try { return JSON.parse(execSync(`gh api "repos/goormigrm/fc-anyang-seats/contents/${f}?ref=${B}" -H "Accept: application/vnd.github.raw+json"`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })); } catch { return null; } };
     p = await open(b, { live: true });
     for (const [at, v] of [['2026-11-26T12:30', 6000], ['2026-11-26T12:35', 5900], ['2026-11-27T12:00', 5000]])
-      await p.evaluate(([at, v, t, B]) => { lastIngest = 0; fcIngest('FC안양 vs 제주SK\n안양종합운동장 | 2026.11.28(토) 14:00\n일반지정석(2층)\n' + v + ' 석'); state.at = at; return publish(t, B); }, [at, v, token, B]);
+      await p.evaluate(([at, v, t, B]) => { fcIngest('FC안양 vs 제주SK\n안양종합운동장 | 2026.11.28(토) 14:00\n일반지정석(2층)\n' + v + ' 석'); state.at = at; return publish(t, B); }, [at, v, token, B]);
     let h = raw('history.json');
     check('발행: 10분 안 발행은 점 하나 (3번 발행 -> 2점)', h?.map(x => x.at.slice(11, 16)).join() === '12:35,12:00', JSON.stringify(h));
     const msg = await p.evaluate(([t, B]) => unpublish(t, false, B), [token, B]);
-    check('마지막 발행 지우기 -> 그 전 발행', raw('latest.json')?.updatedAt.startsWith('2026-11-26T12:35') && /되돌렸습니다/.test(msg), msg);
+    h = raw('history.json');
+    check('마지막 발행 지우기 -> 그 전 발행과 그때 추이', raw('latest.json')?.updatedAt.startsWith('2026-11-26T12:35') && h?.length === 1 && /되돌렸습니다/.test(msg), msg + JSON.stringify(h));
+    await p.evaluate(([t, B]) => { fcIngest('FC안양 vs 울산HD\n안양종합운동장 | 2026.12.05(토) 14:00\n일반지정석(2층)\n3000 석'); state.at = '2026-12-04T10:00'; return publish(t, B); }, [token, B]);
+    const tree = execSync(`gh api "repos/goormigrm/fc-anyang-seats/git/trees/${B}?recursive=1" --jq "[.tree[].path]|join(\\",\\")"`, { encoding: 'utf8' });
+    check('경기가 바뀌면 지난 경기를 games/ 에 보관', /games\/2026-11-28_제주SK\.json/.test(tree), tree);
     await p.evaluate(([t, B]) => unpublish(t, true, B), [token, B]);
-    check('발행 모두 지우기', raw('latest.json') === null);
+    h = raw('history.json');
+    check('발행 모두 지우기: 이번 경기만 지우고 보관과 다른 경기 추이는 남김', raw('latest.json') === null && raw('games/2026-11-28_제주SK.json')?.match.opponent === '제주SK' && h?.every(x => x.opponent === '제주SK'), JSON.stringify(h));
     try { execSync(`gh api -X DELETE repos/goormigrm/fc-anyang-seats/git/refs/heads/${B}`, { stdio: 'ignore' }); } catch {}
     await p.context().close();
   }
