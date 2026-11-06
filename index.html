@@ -242,14 +242,15 @@ function fillByTotals(found, totals) {
 
 // 화면 글자 해석: 오른쪽 구역 목록 "R8구역 (줄바꿈) 28석", 왼쪽 등급 목록 "가변석 574 석", 상단 "FC안양 vs 상대 / 날짜"
 function parseText(text) {
-  const t = text.replace(/(\d),(?=\d{3})/g, '$1'), seen = {}, totals = [], unknown = [], grades = [];
+  // 한글 인식기가 구역 이름의 W 를 \/, \\, VV 로 읽음: 구역 번호 앞이면 W 로 (원정 구장 W11구역 등)
+  const t = text.replace(/(\d),(?=\d{3})/g, '$1').replace(/(^|[^A-Za-z])(?:\\+\/?|VV|vv)(?=\s*\d{1,2}\s*구\s*역)/gm, '$1W'), seen = {}, totals = [], unknown = [], grades = [];
   const add = (id, v) => (seen[id] ??= []).push(v);
   for (const [, a, n, v] of t.matchAll(/(?<![A-Za-z])([A-Z]{1,2})\s*(\d{1,2})\s*구\s*역\s*(\d+)\s*석/gi)) add(a.toUpperCase() + n, +v);
   // 등급 줄의 "석"을 OCR이 4로 읽는 일이 잦아서("204석" → "2044"), 줄 끝의 남는 4는 석으로 봄
   // PC 화면에서 복사한 글자는 등급 이름과 "158 석"이 다음 줄로 나뉘기도 해서 줄바꿈 하나까지 허용
   for (const [, name, v] of t.matchAll(/([가-힣A-Za-z][가-힣A-Za-z0-9() \t]*?)[ \t]*\n?[ \t]*(\d+)(?:[ \t]*\n?[ \t]*석|4(?=[^\d\n]{0,2}$))/gm)) {
     const g = GRADES.find(g => g.re.test(name));
-    grades.push([name.trim(), +v]);
+    if (!/구\s*역$/.test(name.trim())) grades.push([name.trim(), +v]);  // 구역 줄은 빼고 등급 줄만
     if (!g) { if (/석(\([^)]*\))?$/.test(name.trim())) unknown.push(`${name.trim()} ${v}석`); continue; }  // 이름이 '석'으로 끝나는 줄만 등급으로 봄
     if (g.ids.length === 1) add(g.ids[0], +v);  // 등급 = 구역 하나
     else if (+v === 0) g.ids.forEach(id => add(id, 0));  // 등급 전체 0석이면 구역도 전부 0
@@ -285,6 +286,7 @@ console.assert(t.found.R8 === 28 && t.found.R9 === 58 && t.found.FS6 === 1 && !(
 const t2 = parseText('FC안양 vs 전북현대모터스\n안양종합운동장 | 2026.10.24(토) 14:00\n피크닉존 돗자리석(P)\n158\n석\n퍼스트 스탠딩석\n44 석\nFS1구역\n27 석\nFS5구역\n0 석');
 console.assert(t2.found.P === 158 && t2.found.FS1 === 27 && t2.found.FS5 === 0 && t2.totals[0]?.[1] === 44 && t2.opp === '전북현대'
   && t2.date === '2026-10-24T14:00', 'PC text self-check', t2);
+console.assert(parseText('\\\\/12구역 196 석\n\\11구역 0석\nVV13구역 267 석').found.W12 === 196, 'W 읽기 self-check');
 const t1 = parseText('R10구역 26석\nR11구역 1석\nR12구역 0석\nR14구역 52석\n서포터즈석 79 석');
 console.assert(t1.found.R13 === 0 && t1.filled.join() === 'R13', 'fillByTotals self-check', t1);
 }
@@ -1045,7 +1047,7 @@ async function readCards(col, kor, eng) {
 async function readShot(f, first, kor, eng) {
   const bmp = await createImageBitmap(f), W0 = bmp.width, H0 = bmp.height;
   await kor.setParameters({ tessedit_pageseg_mode: '4' });
-  if (H0 < W0 * 1.2) return (await kor.recognize(bmp)).data.text + '\n';  // 가로 캡처(PC)는 통째로
+  if (H0 < W0 * 1.2) return (await kor.recognize(cut(bmp, 0, 0, W0, H0, W0 < 1600 ? 2 : 1))).data.text + '\n';  // 가로 캡처(PC)는 통째로, 글자가 작아 2배로 (인식 도구는 ImageBitmap 을 못 읽어 캔버스로)
   // 티켓링크 앱 세로 캡처: 아래 목록만, 왼쪽 등급 목록과 오른쪽 구역 카드를 따로 읽음
   // shortcut: 목록 위치를 화면 비율(아래 60~90%, 66%에서 나눔)로 고정, 다른 기기에서 못 읽으면 비율 조정
   let out = (await kor.recognize(cut(bmp, 0, H0 * 0.6, W0 * 0.66, H0 * 0.3))).data.text + '\n';
@@ -1055,7 +1057,7 @@ async function readShot(f, first, kor, eng) {
     out += (await kor.recognize(cut(bmp, 0, H0 * 0.11, W0 * 0.8, H0 * 0.09))).data.text + '\n';
   }
   // 정해 둔 위치에서 좌석 숫자를 못 찾으면(화면 비율이 다른 기기) 통째로 한 번 더 읽음
-  if (!/\d\s*석/.test(out)) { await kor.setParameters({ tessedit_pageseg_mode: '4' }); out += (await kor.recognize(bmp)).data.text + '\n'; }
+  if (!/\d\s*석/.test(out)) { await kor.setParameters({ tessedit_pageseg_mode: '4' }); out += (await kor.recognize(cut(bmp, 0, 0, W0, H0))).data.text + '\n'; }
   return out;
 }
 
@@ -1100,7 +1102,8 @@ $('file').onchange = e => { window.ocrDone = ocr([...e.target.files]); e.target.
 // 글자로 받은 현황: 티켓링크 PC 화면을 통째로 복사해 붙여넣거나, 보내기 스크립트(fc-anyang-send.user.js)가 넘겨줌
 // 인식 없이 화면 숫자 그대로. 10분 안에 이어 들어오면 같은 집계로 보고 비교 기준을 다시 잡지 않음
 function ingest(text) {
-  if (!text.includes(VENUE)) return status(`${VENUE} 경기 화면이 아니라 넘겼습니다 (다른 구장, 다른 화면).`);
+  raw.value = text;  // 받은 글자는 먼저 보여 줌 (안 맞으면 무엇이 왔는지 확인할 수 있게)
+  if (!text.includes(VENUE)) return status(`받은 글자에 '${VENUE}'가 없어 넘겼습니다 (다른 구장, 다른 화면). 아래 글자 칸에서 받은 내용을 확인하세요.`);
   const p = parseText(text), fresh = !state.at || Math.abs(Date.now() - new Date(state.at)) > 600e3;  // 손으로 바꾼 집계 시각이 미래여도
   raw.value = text;
   apply(p, hasSeats(p) ? newCapture(p, localISO(), fresh) : []);

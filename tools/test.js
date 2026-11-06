@@ -46,7 +46,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   r = await p.evaluate(() => { const before = state.rows.R10.remain; fcIngest('FC안양 vs 울산HD\n안양종합운동장 | 2026.12.05(토) 14:00\n예매하기\nS1구역\n6 석'); return { opp: state.opp, R10: state.rows.R10.remain, before }; });
   check('현황판 구역 숫자 없는 화면은 무시 (다른 경기 일정, S1~ 만)', r.opp === '제주SK' && r.R10 === r.before, JSON.stringify(r));
   r = await p.evaluate(() => { const before = state.rows.일반지정석.remain; fcIngest('울산HD vs FC안양\n울산문수축구경기장 | 2026.12.12(토) 14:00\n등급 선택\n지정석 S\n1200 석'); return { st: document.getElementById('status').innerText, v: state.rows.일반지정석.remain, before }; });
-  check('원정 경기 화면은 무시 (안양종합운동장 아님)', r.v === r.before && /안양종합운동장 경기 화면이 아니라/.test(r.st), JSON.stringify(r));
+  check('원정 경기 화면은 무시 (안양종합운동장 아님)', r.v === r.before && /'안양종합운동장'가 없어 넘겼습니다/.test(r.st), JSON.stringify(r));
 
   r = await p.evaluate(() => { state.at = '2026-11-27T09:00'; fcIngest('FC안양 vs 제주SK\n안양종합운동장 | 2026.11.28(토) 14:00\nR10구역\n20 석'); return { base: state.base?.rows?.R10, at: state.at }; });
   check('같은 경기 새 집계는 직전 숫자를 비교 기준으로', r.base === 26, JSON.stringify(r));
@@ -129,7 +129,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       home: JSON.parse(localStorage.getItem('fc-anyang-seat-status')).rows.R10.remain, away: !!localStorage.getItem('fc-anyang-seat-status-gimcheon'), path: record().images.board };
   });
   check('원정(김천): 구역 47개, 원정석 등급 카드, 상대 고정', r.n === 47 && r.S11 === 50 && r.opp === '김천상무' && r.svg && /등급: 원정석 650석/.test(r.st), JSON.stringify(r));
-  check('원정(김천): 안양 홈 글자는 무시, 홈 입력값과 따로, 데이터 폴더', /김천종합운동장 경기 화면이 아니라/.test(r.st2) && r.home === 7 && r.away && r.path.endsWith('/data/gimcheon/latest.png'), JSON.stringify(r));
+  check('원정(김천): 안양 홈 글자는 무시, 홈 입력값과 따로, 데이터 폴더', /'김천종합운동장'가 없어 넘겼습니다/.test(r.st2) && r.home === 7 && r.away && r.path.endsWith('/data/gimcheon/latest.png'), JSON.stringify(r));
   await p.context().close();
 
   // 실제 캡처 인식 (11/1 부천전)
@@ -143,6 +143,15 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     check('실제 캡처 5장 인식 (11/1 부천전)', !bad.length && r.opp === '부천FC1995', bad.join(', ') + ' / ' + r.opp);
     await p.context().close();
   } else console.log('SKIP  실제 캡처 인식 (좌석스크린샷/시험 없음)');
+  const PC = path.join(ROOT, '좌석스크린샷', '시험_김천');
+  if (fs.existsSync(PC)) {  // PC 가로 캡처 (원정 김천, 등급 목록): W 가 \/ 로 깨져도 읽는지
+    p = await open(b, { url: URL + '?s=gimcheon#edit' });
+    await p.setInputFiles('#file', fs.readdirSync(PC).map(f => path.join(PC, f)));
+    await p.evaluate(() => window.ocrDone);
+    r = await p.evaluate(() => ({ W12: state.rows.W12.remain, W13: state.rows.W13.remain, W11: state.rows.W11.remain, st: document.getElementById('status').innerText }));
+    check('PC 가로 캡처 인식 (김천 등급 목록)', r.W12 === 196 && r.W13 === 267 && r.W11 === 0, JSON.stringify(r));
+    await p.context().close();
+  }
 
   // 실제 발행 (시험용 브랜치)
   if (process.argv.includes('--publish')) {
