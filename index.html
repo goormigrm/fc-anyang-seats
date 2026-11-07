@@ -358,11 +358,12 @@ cells(['퍼스트석'], -310, -125, 30, 250);
 cells(['R10'], -460, 125, 180, 45);
 }
 // 스크린샷 좌석도에서 센 구역별 좌석 수 (센 남은 좌석이 화면의 잔여석과 모두 일치). 11/1 부천전, FS1은 10/24 전북전, 원정석은 평소 값(넓게 여는 날은 최대 1713석, 표에서 바꿈)
-// R6·R7·R12·R13·T1·T2는 myseatcheck.com 2025년 좌석도 (실제 예매가 열리면 대조). 모르는 구역(FS3~5·FS7, T3, 스탠드)은 비워 둠
+// R6·R7·T1·T2는 myseatcheck.com 2025년 좌석도 (실제 예매가 열리면 대조). R12·R13 은 같은 자료였는데 11/1 '좌석 위치보기' 캡처로 63 확인
+// FS4 는 11/1 '좌석 위치보기' 캡처(2줄 × 18). 모르는 구역(FS3·FS5·FS7, T3, 스탠드, 퍼스트석·스탠딩석 합계)은 비워 둠
 const KNOWN_MAX = AWAY ? STADIUMS[STADIUM].max || {} : {
   R1: 141, R2: 123, R3: 123, R4: 123, R5: 120, R6: 135, R7: 123, R8: 99, R9: 108, R10: 126, R11: 63, R12: 63, R13: 63, R14: 123,
   R15: 141, R16: 138, R17: 123, R18: 123, R19: 138, R20: 123, R21: 123, R22: 138, R23: 123, R24: 123, R25: 138, R26: 138,
-  FS1: 50, FS2: 26, FS6: 26,
+  FS1: 50, FS2: 26, FS4: 36, FS6: 26,
   T1: 117, T2: 60, T4: 62, P: 226, 원정석: 1235,
 };
 // 상대팀 = 2026 K리그1에서 안양을 뺀 11팀. key: 스크린샷 맨 위 "FC안양 vs 부천FC1995"에서 찾을 한글 지명 (영문은 OCR이 자주 깨뜨림)
@@ -490,7 +491,12 @@ const state = { opp: '', date: '', at: '', base: null, crowd: null, rows: {} }; 
 try { Object.assign(state, JSON.parse(localStorage.getItem(KEY))); } catch {}
 if (!state.rows || typeof state.rows !== 'object') state.rows = {};  // 손상된 저장값이면 새로
 if (state.base && typeof state.base.rows !== 'object') state.base = null;
-SECTIONS.forEach(s => { if (!state.rows[s.id] || typeof state.rows[s.id] !== 'object') state.rows[s.id] = { remain: null, max: null }; state.rows[s.id].max ??= KNOWN_MAX[s.id] ?? null; });
+SECTIONS.forEach(s => {
+  if (!state.rows[s.id] || typeof state.rows[s.id] !== 'object') state.rows[s.id] = { remain: null, max: null };
+  const r = state.rows[s.id];
+  if (r.learned && KNOWN_MAX[s.id]) { r.max = KNOWN_MAX[s.id]; delete r.learned; }  // 확인된 총석이 생기면 처음 본 잔여로 배운 추정값 대신
+  r.max ??= KNOWN_MAX[s.id] ?? null;
+});
 if (state.rows.원정석?.max === 1218) state.rows.원정석.max = 1235;  // 11/05 잠깐 쓰던 원정석 기본값
 // 예전 버전에서 글자로 넣은 상대팀·일시는 목록·달력 형식이 아니면 비움
 if (!Object.values(TEAMS).includes(state.opp)) state.opp = '';

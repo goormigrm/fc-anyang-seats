@@ -410,6 +410,16 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     await p.context().close();
   }
 
+  // 확인된 총석(FS4 36)은 그 브라우저가 처음 본 잔여로 배운 추정값보다 우선, 사람이 넣은 값은 그대로
+  {
+    const ctx = await b.newContext();
+    await ctx.addInitScript(() => { if (!localStorage.getItem('fc-anyang-seat-status')) localStorage.setItem('fc-anyang-seat-status', JSON.stringify({ rows: { FS4: { remain: 20, max: 20, learned: true }, FS1: { remain: 5, max: 48 }, FS5: { remain: 9, max: 9, learned: true } } })); });
+    const pg = await ctx.newPage(); await pg.goto(URL + '#edit');
+    r = await pg.evaluate(() => [state.rows.FS4.max, !!state.rows.FS4.learned, state.rows.FS1.max, state.rows.FS5.max, !!state.rows.FS5.learned].join());
+    await ctx.close();
+    check('확인된 총석 FS4 36 은 배운 추정값(20)보다 우선, 사람이 넣은 FS1 48 과 모르는 FS5 추정값은 그대로', r === '36,false,48,9,true', r);
+  }
+
   // 수집 상태 램프: 신호 없음 / 켜짐 / 티켓링크 열림 / 예매 화면 감지 / 숫자 받음 / 다른 구장 / 신호 끊김 / 뒤 탭
   p = await open(b, { url: URL + '?s=gimcheon#edit' });
   r = await p.evaluate(() => {
