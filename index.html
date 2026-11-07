@@ -501,7 +501,8 @@ function build(story) {
   const ours = SECTIONS.map(s => s.ours && state.rows[s.id]).filter(r => r && !r.off && r.remain != null && r.max);
   const oCap = ours.reduce((a, r) => a + r.max, 0), oBooked = ours.reduce((a, r) => a + r.max - Math.min(r.remain, r.max), 0), oPc = oCap ? (oBooked / oCap * 100).toFixed(1) : '';
   const sums = [
-    ['예매된 좌석', num(booked), ` / ${fmt(cap)}석`, (FULL ? '만석 기준 (선택 중 좌석 포함)' : '판매 구역 총석 기준') + missTxt, FULL ? '만석 기준' : '판매 구역 기준'],  // 증감은 추이 그래프에서만
+    ['예매된 좌석', num(booked), ` / ${fmt(cap)}석`, (FULL ? '만석 기준 (선택 중 좌석 포함)' : '원정석(S) 포함 판매 구역 전체' + (offN ? ` · 미판매 ${offN}개 구역 제외` : '')) + missTxt,
+      FULL ? '만석 기준' : '원정석 포함 전체'],  // 증감은 추이 그래프에서만
     ['예매율', rate(booked), '%', `남은 좌석 ${num(avail)}석` + (AWAY ? ` · 매진 ${soldN}개${offN ? `, 미판매 ${offN}개` : ''} 구역` : ''), `남은 ${num(avail)}석`],
     AWAY ? ['원정석(S) 예매', oCap ? fmt(oBooked) : '-', oCap ? ` / ${fmt(oCap)}석` : '', oCap ? `원정석 ${oPc}% 예매 · 남은 ${fmt(oCap - oBooked)}석` : '원정 쪽 총석을 모름', oCap ? `${oPc}% 예매` : '']
       : ['매진 구역', String(soldN), ' 개', `전체 ${SECTIONS.length}개 구역 중`, `${SECTIONS.length}개 구역 중`],

@@ -217,7 +217,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     state.base = { at: '2026-11-07T08:00', rows: { W12: 200 } }; render();
     const svg = document.getElementById('board').innerHTML, tr = document.getElementById('trend'), t = stats();
     note('발행했습니다.');
-    return { cap: t.cap, booked: t.booked, svg1: svg.includes('예매된 좌석') && svg.includes('>265<') && svg.includes(' / 762석'), rate: svg.includes('34.8<tspan'), s: svg.includes('원정석(S) 예매') && svg.includes(' / 451석') && svg.includes('원정석 33.3% 예매'),
+    return { cap: t.cap, booked: t.booked, svg1: svg.includes('예매된 좌석') && svg.includes('>265<') && svg.includes(' / 762석') && svg.includes('원정석(S) 포함 판매 구역 전체'), rate: svg.includes('34.8<tspan'), s: svg.includes('원정석(S) 예매') && svg.includes(' / 451석') && svg.includes('원정석 33.3% 예매'),
       zone: svg.includes('W12 36%'), diff: /% [+−]\d/.test(svg), since: svg.includes('+4'), legend: svg.includes('>예매율<') && svg.includes('0~24%'),
       trend: getComputedStyle(tr).display !== 'none' && tr.innerHTML.includes('예매된 좌석 추이') && tr.innerHTML.includes('34.8%'),
       head: document.querySelector('thead th:last-child').textContent, cell: document.querySelector('tr[data-id="W12"]').cells[4].textContent, pub: document.getElementById('pubNote').textContent,
