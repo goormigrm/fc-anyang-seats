@@ -132,19 +132,45 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   check('원정(김천): 안양 홈 글자는 무시, 홈 입력값과 따로, 데이터 폴더', /'김천종합운동장'가 없어 넘겼습니다/.test(r.st2) && r.home === 7 && r.away && r.path.endsWith('/data/gimcheon/latest.png'), JSON.stringify(r));
   await p.context().close();
 
-  // 보내기 스크립트 (GM 함수는 흉내, 티켓링크에는 접속하지 않음): 현황판에 설치 표시, 티켓링크 화면 상태와 글자가 현황판으로
+  // 보내기 스크립트 (GM 함수는 흉내, 티켓링크에는 접속하지 않음): 같은 브라우저의 GM 저장소를 두 화면 사이에서 손으로 이어 줌
+  // 현황판: 설치 표시, 입력 화면 신호(board), 받으면 ack / 티켓링크 쪽: 현황판 없음(빨강), 응답 대기, 받음(초록), 안 받음(주황), 늦게 연 현황판에 다시 보냄
   {
     const src = fs.readFileSync(path.join(ROOT, 'fc-anyang-send.user.js'), 'utf8');
+    const shim = store => `window.__l = {}; window.__set = {}; window.__store = ${JSON.stringify(store)}; window.GM_addValueChangeListener = (k, f) => (__l[k] = f); window.GM_setValue = (k, v) => (__set[k] = v); window.GM_getValue = k => __store[k]; window.unsafeWindow = window;
+      const o = Element.prototype.attachShadow; Element.prototype.attachShadow = function (i) { return o.call(this, { ...i, mode: 'open' }); };`;
+    const run = (pg, store, tl) => pg.evaluate(([shim, src, tl]) => { (0, eval)(shim); (0, eval)(src.replace("location.hostname.endsWith('ticketlink.co.kr')", tl)); }, [shim(store), src, tl]);
+    const badge = pg => pg.evaluate(() => { const h = [...document.documentElement.children].find(e => e.shadowRoot)?.shadowRoot.firstChild; return h ? h.style.background + ' ' + h.textContent : ''; });
+    const TK = '<div><h2>김천상무프로축구단 vs FC안양</h2><div>김천종합운동장</div><div>2026.11.07(토) 16:30</div><div>홍길동님</div><h3>등급 선택</h3><div style="display:flex"><span>W12구역</span><span>196 석</span></div></div>';
+    const tkOpen = async store => { const pg = await b.newPage(); await pg.setContent(TK); await run(pg, store, 'true'); await pg.waitForTimeout(2200); return pg; };
+
     p = await open(b, { url: URL + '?s=gimcheon#edit' });
-    const shim = `window.__l = {}; window.GM_addValueChangeListener = (k, f) => (window.__l[k] = f); window.GM_setValue = () => {}; window.unsafeWindow = window;`;
-    await p.evaluate(([shim, src]) => { (0, eval)(shim); (0, eval)(src.replace("location.hostname.endsWith('ticketlink.co.kr')", 'false')); }, [shim, src]);
-    const t1 = await p.locator('#lamp').innerText();
-    const tk = await b.newPage();  // 티켓링크 비슷한 화면 (경기장 이름과 날짜, 구역과 숫자가 다른 줄)
-    await tk.setContent('<div><h2>김천상무프로축구단 vs FC안양</h2><div>김천종합운동장</div><div>2026.11.07(토) 16:30</div><div>홍길동님</div><h3>등급 선택</h3><div style="display:flex"><span>W12구역</span><span>196 석</span></div></div>');
-    const sent = await tk.evaluate(([src]) => new Promise(ok => { const got = {}; window.GM_setValue = (k, v) => { got[k] = v; if (got.text) ok(got); }; window.unsafeWindow = window; (0, eval)(src.replace("location.hostname.endsWith('ticketlink.co.kr')", 'true')); setTimeout(() => ok(got), 4000); }), [src]);
+    await run(p, {}, 'false');
+    const t1 = await p.locator('#lamp').innerText(), beat = await p.evaluate(() => __set.board);
+    const tk = await tkOpen({ board: beat }), sent = await tk.evaluate(() => __set), b1 = await badge(tk);
+    r = await p.evaluate(sent => { __l.ping('ping', null, sent.ping, true); __l.text('text', null, sent.text, true); return { lamp: document.getElementById('lamp').className + ' ' + document.getElementById('lamp').innerText, W12: state.rows.W12.remain, ack: __set.ack }; }, sent);
+    await tk.evaluate(ack => { __l.ack('ack', null, ack, true); __l.ack('ack', null, { why: '받은 글자에 안양종합운동장 없음', at: Date.now() }, true); }, r.ack);  // 홈 현황판의 '안 받음'이 뒤에 와도 받음 유지
+    const b2 = await badge(tk);
+    check('보내기 스크립트: 현황판 켜짐 표시, 입력 화면 신호, 예매 화면 감지와 숫자, 개인 글자 뺌', /스크립트 켜짐 \(크롬\)/.test(t1) && beat?.at > 0 && /live/.test(r.lamp) && /숫자 받음/.test(r.lamp) && r.W12 === 196
+      && sent.ping?.state === 'seat' && sent.ping?.id && !sent.ping.need.length && sent.ping?.venue === '김천종합운동장' && !/홍길동/.test(sent.text?.s || ''), JSON.stringify({ t1, beat, r, s: sent.text?.s, ping: sent.ping }));
+    check('보내기 스크립트: 티켓링크 쪽에 응답 대기 -> 현황판이 받음(초록, 구역 수), 뒤에 온 안 받음은 무시', /응답 기다리는 중/.test(b1) && /^rgb\(21, 128, 61\).*현황판이 받음 .*구역 1개/.test(b2), JSON.stringify({ b1, b2, ack: r.ack }));
     await tk.close();
-    r = await p.evaluate(sent => { __l.ping?.('ping', null, sent.ping, true); __l.text?.('text', null, sent.text, true); return { lamp: document.getElementById('lamp').className + ' ' + document.getElementById('lamp').innerText, W12: state.rows.W12.remain }; }, sent);
-    check('보내기 스크립트: 램프에 켜짐 표시, 예매 화면 감지와 숫자가 넘어옴, 개인 글자 뺌', /스크립트 켜짐/.test(t1) && /live/.test(r.lamp) && /숫자 받음/.test(r.lamp) && r.W12 === 196 && sent.ping?.state === 'seat' && sent.ping?.id && !sent.ping.need.length && sent.ping?.venue === '김천종합운동장' && !/홍길동/.test(sent.text?.s || ''), JSON.stringify({ t1, r, s: sent.text?.s, ping: sent.ping }));
+
+    // 이 브라우저에 현황판 입력 화면이 없을 때 -> 빨강 안내, 나중에 열면 한 번 다시 보냄, 받지 않으면 이유
+    const tk2 = await tkOpen({}), b3 = await badge(tk2), at0 = await tk2.evaluate(() => __set.text?.at);
+    await tk2.evaluate(() => { __store.board = { at: Date.now() }; });
+    await tk2.waitForTimeout(9000);  // 5초마다 점검, 보낸 지 4초 넘으면 다시 보냄
+    const at1 = await tk2.evaluate(() => __set.text?.at);
+    await tk2.evaluate(() => __l.ack('ack', null, { why: '받은 글자에 구역 숫자 없음', at: Date.now() }, true));
+    const b4 = await badge(tk2);
+    check('보내기 스크립트: 현황판 없음은 빨강 안내(브라우저 이름), 나중에 연 현황판에 다시 보냄, 안 받음은 주황과 이유', /^rgb\(185, 28, 28\).*이 크롬에 현황판 입력 화면이 없어 못 넘김/.test(b3) && at1 > at0 && /^rgb\(194, 65, 12\).*현황판이 안 받음: 받은 글자에 구역 숫자 없음/.test(b4), JSON.stringify({ b3, at0, at1, b4 }));
+    await tk2.close();
+    await p.context().close();
+
+    // 보기 화면(입력 화면 아님)은 신호도 응답도 안 함
+    p = await open(b, { url: URL + '?s=gimcheon' });
+    await run(p, {}, 'false');
+    r = await p.evaluate(() => { __l.text('text', null, { s: '김천상무 vs FC안양\n김천종합운동장 | 2026.11.07(토) 16:30\n등급 선택\nW12구역\n196 석', at: Date.now() }, true); return { board: __set.board, ack: __set.ack }; });
+    check('보내기 스크립트: 보기 화면은 입력 화면 신호, 응답 없음', !r.board && !r.ack, JSON.stringify(r));
     await p.context().close();
   }
 

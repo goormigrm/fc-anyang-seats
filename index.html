@@ -1273,13 +1273,16 @@ function ingest(text) {
 window.fcIngest = s => {
   if (!editing) return;
   const r = ingest(s);
-  Object.assign(lamp, r?.ok ? { got: Date.now(), zones: r.n, rejected: '' } : { rejected: r?.why || '' });
+  Object.assign(lamp, r.ok ? { got: Date.now(), zones: r.n, rejected: '' } : { rejected: r.why });
   drawLamp();
+  return r;  // 보내기 스크립트가 티켓링크 쪽에 '받음/안 받음'을 알려 줌
 };
 // 수집 상태 램프: 보내기 스크립트 신호로 정함 (설치됨 → 티켓링크 열림 → 예매 화면 감지 → 숫자 받음)
 // 티켓링크 탭이 여럿이거나 예매 화면이 틀(iframe) 안이면 신호가 여러 곳에서 옴: 보낸 곳마다 따로 두고 가장 앞선 상태를 보여 줌
 const lamp = { installed: 0, pings: {}, got: 0, zones: 0, rejected: '' };
 const hms = t => new Date(t).toTimeString().slice(0, 8);
+// Tampermonkey 저장소는 브라우저마다 따로: 티켓링크를 다른 브라우저에서 열면 신호가 안 옴 (램프에 이 브라우저 이름을 보여 줌)
+const BROWSER = (ua => /Whale\//.test(ua) ? '웨일' : /Edg\//.test(ua) ? '엣지' : /Chrome\//.test(ua) ? '크롬' : /Firefox\//.test(ua) ? '파이어폭스' : '이 브라우저')(navigator.userAgent);
 function drawLamp() {
   const now = Date.now(), all = Object.values(lamp.pings), last = Math.max(0, ...all.map(p => p.at));
   const fresh = all.filter(p => now - p.at < (p.hidden ? 90e3 : 20e3));  // 뒤에 있는 탭은 신호가 늦어 오래 기다림
@@ -1289,8 +1292,9 @@ function drawLamp() {
     p?.state === 'seat' && p.venue && !venueOk(p) ? ['bad', `다른 구장 예매 화면 (${p.venue}) · 이 화면은 ${VENUE}`]
     : p?.state === 'seat' ? [now - lamp.got < 60e3 ? 'live' : 'seat', `예매 화면 감지됨 · ` + (lamp.got ? `숫자 받음 ${hms(lamp.got)} (구역 ${lamp.zones}개)` : '등급을 누르면 숫자가 들어옵니다')]
     : p ? ['open', '티켓링크 열림 · 등급/좌석 선택 화면이 아님' + (p.need?.length ? ` (화면에 없는 글자: ${p.need.join(', ')})` : '')]
-    : lamp.installed || last ? ['wait', `보내기 스크립트 켜짐 · 티켓링크 예매 화면을 기다리는 중${last ? ` (마지막 신호 ${hms(last)})` : ''}`]
-    : ['', '보내기 스크립트 신호 없음 · 같은 브라우저에 Tampermonkey 와 스크립트(7판)가 켜져 있는지 확인'];
+    : last ? ['wait', `보내기 스크립트 켜짐 (${BROWSER}) · 티켓링크 신호 끊김 (마지막 신호 ${hms(last)}). 티켓링크 탭을 닫았거나 다른 브라우저`]
+    : lamp.installed ? ['wait', `보내기 스크립트 켜짐 (${BROWSER}) · 이 ${BROWSER}에서 연 티켓링크가 없음. 티켓링크를 다른 브라우저에서 열었다면 현황판도 그 브라우저에서 여세요`]
+    : ['', `보내기 스크립트 신호 없음 · 이 ${BROWSER}에 Tampermonkey 와 스크립트(8판)가 켜져 있는지 확인`];
   $('lamp').className = 'edit ' + cls;
   $('lamp').lastChild.textContent = msg + (lamp.rejected ? ` · ${lamp.rejected}` : '');
 }
