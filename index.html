@@ -19,8 +19,10 @@
   #board, #stadium, #trend { display: block; width: 100%; height: auto; }
   #stadiumWrap { display: none; }
   #trend { margin-top: 16px; border-radius: 14px; background: #fff; box-shadow: 0 1px 4px #2a0f5714; }
-  .panel { display: grid; grid-template-columns: 1fr 1.2fr; grid-template-areas: "info seats" "ocr seats"; gap: 16px; margin-top: 16px; align-items: start; }
-  .info { grid-area: info; } .seats { grid-area: seats; } .ocr { grid-area: ocr; }
+  /* 입력 화면(PC 에서만 씀): 경기 정보, 스크린샷 인식, 구역별 잔여석, 발행, 기록, 비교 순서로 칸마다 가로 전체 */
+  .panel { display: grid; gap: 16px; margin-top: 16px; }
+  .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 32px; }
+  .seats table { table-layout: fixed; } .seats th:first-child { width: 22%; }
   .panel > * { min-width: 0; }  /* 날짜 입력칸 같은 긴 칸이 휴대폰 화면 밖으로 밀어내지 않게 */
   .box { background: #fff; border-radius: 14px; padding: 18px 20px; box-shadow: 0 1px 4px #2a0f5714; }
   h2 { font-size: 16px; margin: 22px 0 8px; color: var(--p8); } h2:first-child { margin-top: 0; }
@@ -49,6 +51,7 @@
   td:first-child { text-align: left; font-weight: 700; }
   td input[type=number] { width: 84px; height: 34px; box-sizing: border-box; padding: 0 8px; border: 1px solid var(--edge); border-radius: 6px; text-align: right; font-size: 15px; }
   td button { min-height: 32px; padding: 0 10px; font-size: 13px; white-space: nowrap; }
+  td button[aria-pressed=true] { background: #857f70; border-color: #857f70; color: #fff; }
   tr.hit td { background: #fff4c2 !important; }
   td.bad { color: #dc2626; font-weight: 700; }
   td input.guess { border-style: dashed; border-color: #d4a72c; background: #fffbea; color: #8a6100; }  /* 처음 본 잔여로 넣은 추정 최대 */
@@ -84,7 +87,7 @@
     #stadiumWrap.zoom { overflow: auto; }
     #stadiumWrap.zoom #stadium { width: 1000px; max-width: none; }
     #trend { margin-top: 12px; }
-    .panel { grid-template-columns: 1fr; grid-template-areas: "info" "seats" "ocr"; gap: 12px; margin-top: 12px; }
+    .panel { gap: 12px; margin-top: 12px; } .fields { grid-template-columns: 1fr; }
     .share { margin-top: 12px; }
     .box { padding: 16px; }
     .scroll { max-height: none; }
@@ -106,46 +109,54 @@
   </div>
   <div class="panel edit">
     <div class="box info">
-      <p class="hint"><span class="mode">입력 화면</span> Ctrl+Shift+E 로 끄고 켭니다</p>
-      <div class="row"><button id="viewMode">보기 화면으로</button><a class="btn" href="guide/" target="_blank">작업 가이드</a><a class="btn" href="guide/guide.pdf" download="FC안양_예매현황_집계가이드.pdf">가이드 PDF</a></div>
+      <div class="row"><span class="mode">입력 화면</span><span class="hint" style="margin:0">Ctrl+Shift+E 로 끄고 켭니다</span>
+        <button id="viewMode">보기 화면으로</button><a class="btn" href="guide/" target="_blank">작업 가이드</a><a class="btn" href="guide/guide.pdf" download="FC안양_예매현황_집계가이드.pdf">가이드 PDF</a></div>
       <h2>경기 정보</h2>
-      <label><span>상대팀</span><select id="opp"><option value="">선택</option></select></label>
-      <label><span>경기 일시</span><input type="date" id="day"><select id="time"><option value="">시간</option></select></label>
-      <label><span>집계 시각</span><input type="datetime-local" id="at"><button id="now">지금</button></label>
-      <label><span>공식 관중</span><input type="number" id="crowd" min="0" inputmode="numeric" placeholder="경기 뒤 전광판 숫자 (선택)"></label>
-      <h2>발행</h2>
-      <div class="row"><button id="publish" class="main">최신 집계 발행</button><label class="check"><input type="checkbox" id="autoPub">숫자가 들어오면 바로 발행 (경고 없을 때)</label></div>
-      <div class="row"><button id="unpub" class="danger">마지막 발행 지우기</button><button id="unpubAll" class="danger">발행 모두 지우기</button><button id="tokenSet">토큰 설정</button></div>
-      <p class="hint" id="tokenHint"></p>
-      <p class="hint">발행 = 지금 현황판을 누구나 보는 기본 화면(과 다른 사이트)에 올리기. 발행하기 전 숫자는 이 브라우저에만 있습니다. 처음 한 번 GitHub 토큰을 묻습니다. 시험으로 발행했으면 '마지막 발행 지우기'로 그 전 발행으로 되돌립니다.</p>
-      <h2>집계 기록</h2>
-      <div class="row"><button id="saveJson">이번 집계 저장</button><button id="loadBtn">저장한 집계 열기</button><input type="file" id="loadJson" accept=".json,application/json" hidden></div>
-      <p class="hint">숫자 전체를 파일(JSON)로 저장하고 다시 엽니다.</p>
-      <h2>직전 집계와 비교</h2>
-      <div class="row"><button id="baseNow">지금 숫자를 기준으로</button><button id="baseLoad">저장한 집계를 기준으로</button><button id="baseClear">비교 끄기</button><input type="file" id="baseFile" accept=".json,application/json" hidden></div>
-      <p class="hint">기준 이후 팔린 좌석이 구역마다 +N으로 나옵니다.</p>
-    </div>
-    <div class="box seats">
-      <h2>구역별 잔여석</h2>
-      <p class="hint" id="seatHint">빈칸 = 정보 없음, 0 = 매진. 원정석 최대는 평소 1235 (넓게 여는 날 최대 1713).</p>
-      <div class="row"><button id="clear">새 경기: 잔여 모두 지우기</button><button id="toMax">잔여를 최대로 복사</button><button id="restore" hidden>지난 경기 숫자 되살리기</button></div>
-      <div class="scroll"><table>
-        <thead><tr><th>구역</th><th>매진</th><th>잔여</th><th>최대</th><th>잔여율</th></tr></thead>
-        <tbody id="rows"></tbody>
-      </table></div>
+      <div class="fields">
+        <label><span>상대팀</span><select id="opp"><option value="">선택</option></select></label>
+        <label><span>경기 일시</span><input type="date" id="day"><select id="time"><option value="">시간</option></select></label>
+        <label><span>집계 시각</span><input type="datetime-local" id="at"><button id="now">지금</button></label>
+        <label><span>공식 관중</span><input type="number" id="crowd" min="0" inputmode="numeric" placeholder="경기 뒤 전광판 숫자 (선택)"></label>
+      </div>
     </div>
     <div class="box ocr">
       <h2>스크린샷 인식</h2>
-      <p class="hint">티켓링크 '등급/좌석 선택' 캡처 여러 장을 한 번에 고르거나, 끌어다 놓거나, 붙여넣으세요(Ctrl+V). PC 화면은 통째로 복사(Ctrl+A, Ctrl+C)해 붙여넣으면 인식 없이 그대로 들어갑니다.</p>
+      <p class="hint">티켓링크 '등급/좌석 선택' 캡처 여러 장을 한 번에 고르거나, 끌어다 놓거나, 붙여넣으세요(Ctrl+V). PC 화면은 통째로 복사(Ctrl+A, Ctrl+C)해 붙여넣으면 인식 없이 그대로 들어갑니다. 구역 좌석 그림만 잘라 넣으면 칸을 세어 남은 좌석과 총석을 넣습니다.</p>
       <div class="row"><label class="btn main" for="file">캡처 고르기 (여러 장)</label></div>
       <input type="file" id="file" accept="image/*" multiple hidden>
       <div id="status"></div>
       <textarea id="raw" placeholder="인식된 글자 (고친 뒤 아래 버튼으로 다시 채움. 예: R8구역 28석)"></textarea>
       <button id="reparse">이 글자로 다시 채우기</button>
     </div>
+    <div class="box seats">
+      <h2>구역별 잔여석</h2>
+      <p class="hint" id="seatHint">빈칸 = 정보 없음, 0 = 매진. 원정석 최대는 평소 1235 (넓게 여는 날 최대 1713).</p>
+      <div class="row"><button id="clear">새 경기: 잔여 모두 지우기</button><button id="toMax">잔여를 최대로 복사</button><button id="restore" hidden>지난 경기 숫자 되살리기</button></div>
+      <div class="scroll"><table>
+        <thead><tr><th>구역</th><th id="markHead">매진</th><th>잔여</th><th>최대</th><th>잔여율</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table></div>
+    </div>
+    <div class="box">
+      <h2>발행</h2>
+      <div class="row"><button id="publish" class="main">최신 집계 발행</button><label class="check"><input type="checkbox" id="autoPub">숫자가 들어오면 바로 발행 (경고 없을 때)</label></div>
+      <div class="row"><button id="unpub" class="danger">마지막 발행 지우기</button><button id="unpubAll" class="danger">발행 모두 지우기</button><button id="tokenSet">토큰 설정</button></div>
+      <p class="hint" id="tokenHint"></p>
+      <p class="hint">발행 = 지금 현황판을 누구나 보는 기본 화면(과 다른 사이트)에 올리기. 기본 주소는 홈, 원정 중 가장 최근에 발행한 현황판을 보여 줍니다. 발행하기 전 숫자는 이 브라우저에만 있습니다. 처음 한 번 GitHub 토큰을 묻습니다. 시험으로 발행했으면 '마지막 발행 지우기'로 그 전 발행으로 되돌립니다.</p>
+    </div>
+    <div class="box">
+      <h2>집계 기록</h2>
+      <div class="row"><button id="saveJson">이번 집계 저장</button><button id="loadBtn">저장한 집계 열기</button><input type="file" id="loadJson" accept=".json,application/json" hidden></div>
+      <p class="hint">숫자 전체를 파일(JSON)로 저장하고 다시 엽니다.</p>
+    </div>
+    <div class="box">
+      <h2>직전 집계와 비교</h2>
+      <div class="row"><button id="baseNow">지금 숫자를 기준으로</button><button id="baseLoad">저장한 집계를 기준으로</button><button id="baseClear">비교 끄기</button><input type="file" id="baseFile" accept=".json,application/json" hidden></div>
+      <p class="hint">기준 이후 팔린 좌석이 구역마다 +N으로 나옵니다.</p>
+    </div>
   </div>
   <svg id="trend" role="img" aria-label="예매된 좌석 추이" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 280" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif"></svg>
-  <p class="foot">FC안양 팬이 만든 비공식 현황판입니다. 티켓링크 화면의 잔여석을 사람이 확인해 올린 것이라 실제와 다를 수 있습니다. · <a href="./">안양 홈</a> · <a href="./?s=gimcheon">김천 원정</a> · <a href="season.html">경기별 기록</a></p>
+  <p class="foot">FC안양 팬이 만든 비공식 현황판입니다. 티켓링크 화면의 잔여석을 사람이 확인해 올린 것이라 실제와 다를 수 있습니다. · <a href="./?s=anyang">안양 홈</a> · <a href="./?s=gimcheon">김천 원정</a> · <a href="season.html">경기별 기록</a></p>
 </main>
 <script>
 // FULL: 만석 1만 1,542석 (2026-04-05 서울전 기사). 중립석 신설(8월) 뒤에도 원정석 쪽 좌석을 나눠 파는 것이라 그대로 씀
@@ -349,6 +360,7 @@ const tw = (s, fs) => [...s].reduce((w, c) => w + (c > 'ᄀ' ? fs : fs * 0.6), 0
 const fmt = n => n.toLocaleString('ko-KR');
 
 function look(s, r) {
+  if (r.off) return { fill: 'url(#hatch)', ink: '#857f70', sub: ['미판매'] };  // 원정 구장: 이번 경기에 팔지 않는 구역
   if (r.remain == null) return { fill: '#fff', ink: '#9aa4b1', sub: [], empty: true };
   if (r.remain === 0) return { fill: '#b4b1a7', ink: '#2f2f2f', sub: ['매진'] };
   const pal = s.away ? RED : AWAY && !s.ours ? BLUE : PURPLE, ink0 = s.away ? '#4a0e0e' : pal === BLUE ? '#1e3a5f' : '#2b1450';
@@ -368,9 +380,10 @@ const baseLabel = () => state.base ? state.base.at ? state.base.at.slice(5).repl
 const nameOf = id => SECTIONS.find(s => s.id === id).name || id;
 // 카드, 요약 글, 발행 JSON 이 같이 쓰는 합계
 function stats() {
-  const t = { avail: 0, soldSum: 0, soldOut: [], empty: [] };
+  const t = { avail: 0, soldSum: 0, soldOut: [], empty: [], off: [] };
   for (const s of SECTIONS) {
     const r = state.rows[s.id];
+    if (r.off) { t.off.push(s.id); continue; }  // 미판매는 정보 없음, 매진, 합계에서 뺌
     if (r.remain == null) t.empty.push(s.id);
     else t.avail += Math.min(r.remain, r.max ?? r.remain);
     if (r.remain === 0) t.soldOut.push(s.id);
@@ -447,7 +460,7 @@ function chart(x0, y0, w, h, k = 1, n = 8) {
 let exporting = false;  // PNG 로 만들 때는 외부 파일을 못 읽어서 앰블럼을 그림 데이터로 넣음
 function build(story) {
   const emb = exporting ? EMBLEM : 'emblem.png';
-  const { avail, soldSum, soldOut, empty } = stats(), soldN = soldOut.length, emptyN = empty.length;
+  const { avail, soldSum, soldOut, empty, off } = stats(), soldN = soldOut.length, emptyN = empty.length, offN = off.length;
   let noMax = false;
   const parts = [];
   for (const s of SECTIONS) {
@@ -471,7 +484,7 @@ function build(story) {
     }
   }
 
-  const none = emptyN === SECTIONS.length, num = x => none ? '-' : fmt(x);  // 아직 아무 숫자도 없으면 '100% 예매'로 보이지 않게
+  const none = emptyN + offN === SECTIONS.length, num = x => none ? '-' : fmt(x);  // 아직 아무 숫자도 없으면 '100% 예매'로 보이지 않게
   const pc = x => none ? '-' : (x / FULL * 100).toFixed(1) + '%', miss = emptyN && !none ? ` · 정보 없는 구역 ${emptyN}개 빠짐` : '';
   const baseAt = baseLabel();
   // [제목, 큰 숫자, 뒤 글자, 설명, 스토리용 짧은 설명]
@@ -480,7 +493,7 @@ function build(story) {
     ['예매 가능 좌석', num(avail), ' 석', baseAt ? `${baseAt} 이후 ${signed(soldSum)}석 예매${miss}` : `알려진 구역 잔여 합${miss}`, baseAt ? `${baseAt} 이후 ${signed(soldSum)}석` : '알려진 구역 합'],
     state.awayGrade != null ? ['원정석 잔여 (티켓링크 등급)', fmt(state.awayGrade), ' 석', `원정 쪽(S) 구역 합 ${num(oursAvail)}석 · 매진 ${oursOut}개`, `S 구역 합 ${num(oursAvail)}석`]
       : ['원정 쪽(S) 잔여', num(oursAvail), ' 석', `S 구역 ${ours.length}개 중 매진 ${oursOut}개`, `매진 ${oursOut}개`],
-    ['매진 구역', String(soldN), ' 개', `전체 ${SECTIONS.length}개 구역 중`, `${SECTIONS.length}개 구역 중`],
+    ['매진 구역', String(soldN), ' 개', `전체 ${SECTIONS.length}개 구역 중` + (offN ? ` · 미판매 ${offN}개` : ''), offN ? `미판매 ${offN}개` : `${SECTIONS.length}개 구역 중`],
   ] : [
     ['예매 가능 좌석', num(avail), ` / ${fmt(FULL)}석`, `만석 대비 ${pc(avail)} 남음${miss}`, `${pc(avail)} 남음`],
     ['예매된 좌석', num(FULL - avail), ` / ${fmt(FULL)}석`, baseAt ? `만석 대비 ${pc(FULL - avail)} 예매 · ${baseAt} 이후 ${signed(soldSum)}석`
@@ -498,6 +511,7 @@ function build(story) {
 
   const items = AWAY ? [[PURPLE[3], '101석 이상'], [PURPLE[2], '51~100'], [PURPLE[1], '21~50'], [PURPLE[0], '1~20'], [BLUE, `${STADIUMS[STADIUM].name} 쪽 (같은 구간, 파랑)`], ['#b4b1a7', '매진']]
     : [[PURPLE[3], '75% 이상'], [PURPLE[2], '50~74%'], [PURPLE[1], '25~49%'], [PURPLE[0], '1~24%'], [RED, '원정석 (같은 구간, 빨강)'], ['#b4b1a7', '매진']];
+  if (offN) items.push(['url(#hatch)', '미판매']);
   if (emptyN) items.push(['#fff', '정보 없음', 'stroke="#b9c2ce" stroke-dasharray="3 2"']);
   if (noMax) items.push(['#857d96', '총석 모름 (잔여만)']);
   const legend = (x0, y0, fs, maxX) => {  // 폭이 모자라면 다음 줄로
@@ -515,7 +529,9 @@ function build(story) {
   };
 
   const fx = CX - 220, fy = CY - 142;
-  const defs = `<defs><pattern id="grass" x="${fx}" width="40" height="40" patternUnits="userSpaceOnUse">`  // 잔디 세로 줄무늬
+  const defs = `<defs><pattern id="hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">`  // 미판매 빗금
+    + `<rect width="7" height="7" fill="#ece9df"/><rect width="2.5" height="7" fill="#d8d4c6"/></pattern>`
+    + `<pattern id="grass" x="${fx}" width="40" height="40" patternUnits="userSpaceOnUse">`  // 잔디 세로 줄무늬
     + `<rect width="20" height="40" fill="#4f8b3b"/><rect x="20" width="20" height="40" fill="#5c9a46"/></pattern></defs>`;
   const map = `<path d="${oval(RO + 12)}" fill="#e9ecf1"/><path d="${oval(RO)}" fill="#dde2e9"/><path d="${oval(RI)}" fill="#f3f5f8"/>`
     + `<g fill="none" stroke="#fff" stroke-opacity="0.9" stroke-width="2"><rect x="${fx}" y="${fy}" width="440" height="284" fill="url(#grass)"/>`
@@ -577,7 +593,7 @@ function render() {
   for (const tr of tbody.rows) {
     const r = state.rows[tr.dataset.id], c = tr.cells[4];
     const d = sold(tr.dataset.id);
-    c.textContent = (r.remain == null ? '' : r.remain === 0 ? '매진' : r.max ? Math.round(r.remain / r.max * 100) + '%' : '총석?')
+    c.textContent = (r.off ? '미판매' : r.remain == null ? '' : r.remain === 0 ? '매진' : r.max ? Math.round(r.remain / r.max * 100) + '%' : '총석?')
       + (d ? ` (${signed(d)})` : '');
     c.classList.toggle('bad', r.max != null && r.remain > r.max);
   }
@@ -590,7 +606,7 @@ const status = m => $('status').textContent = m;
 const note = m => $('note').textContent = m;
 const isCell = s => /^[A-Z]+\d/.test(s.id);
 [...SECTIONS].sort((a, b) => isCell(a) - isCell(b) || (isCell(a) ? a.id.localeCompare(b.id, 'en', { numeric: true }) : 0))
-  .forEach(s => tbody.insertAdjacentHTML('beforeend', `<tr data-id="${s.id}"><td>${s.name || s.id}</td><td><button>매진</button></td>`
+  .forEach(s => tbody.insertAdjacentHTML('beforeend', `<tr data-id="${s.id}"><td>${s.name || s.id}</td><td><button data-a="out">매진</button>${AWAY ? ' <button data-a="off">미판매</button>' : ''}</td>`
     + `<td><input type="number" min="0" inputmode="numeric" data-k="remain"></td><td><input type="number" min="0" inputmode="numeric" data-k="max"></td><td></td></tr>`));
 Object.values(TEAMS).forEach(n => $('opp').add(new Option(n)));
 for (let m = 600; m <= 1320; m += 30) $('time').add(new Option(`${String(m / 60 | 0).padStart(2, '0')}:${m % 60 ? '30' : '00'}`));  // 10:00~22:00, 30분 단위
@@ -599,6 +615,7 @@ function fillTable(hits) {
   for (const tr of tbody.rows) {
     const r = state.rows[tr.dataset.id], [remain, max] = tr.querySelectorAll('input');
     remain.value = r.remain ?? ''; max.value = r.max ?? '';
+    tr.querySelector('[data-a=off]')?.setAttribute('aria-pressed', !!r.off);
     max.classList.toggle('guess', !!r.learned); max.title = r.learned ? '처음 본 잔여로 넣은 추정값. 고치면 확정됩니다' : '';
     if (hits) tr.classList.toggle('hit', hits.includes(tr.dataset.id));
   }
@@ -615,7 +632,7 @@ function apply({ found, totals, filled = [], unknown = [], grades = [], opp, dat
   if (AWAY) unknown = [];
 
   const ids = Object.keys(found).filter(id => state.rows[id]);
-  ids.forEach(id => state.rows[id].remain = found[id]);
+  ids.forEach(id => Object.assign(state.rows[id], { remain: found[id], off: false }));
   // 최대 좌석 배우기: 모르던 구역은 처음 본 잔여로 (예매 오픈 직후면 정확), 잔여가 최대보다 조금(10% 안) 많으면 최대를 늘림
   // 잔여는 실제 좌석 수를 넘을 수 없어서. 크게 넘으면(원정석을 넓게 연 날, 잘못 읽은 숫자) 아래에서 경고
   // 배운 값(learned)은 실제보다 작을 수 있는 아래 한계라 더 큰 잔여가 오면 그대로 늘림
@@ -647,15 +664,17 @@ function apply({ found, totals, filled = [], unknown = [], grades = [], opp, dat
 tbody.addEventListener('input', e => {
   const tr = e.target.closest('tr'), r = state.rows[tr.dataset.id], k = e.target.dataset.k;
   r[k] = e.target.value === '' ? null : Math.min(FULL || 99999, Math.max(0, Math.round(+e.target.value)));
+  if (k === 'remain' && r.remain != null && r.off) { r.off = false; tr.querySelector('[data-a=off]').setAttribute('aria-pressed', false); }  // 숫자를 넣으면 판매 중
   if (k === 'max') { delete r.learned; e.target.classList.remove('guess'); }  // 손으로 고치면 확정
   tr.classList.remove('hit'); save(); render();
 });
-tbody.addEventListener('click', e => {  // 매진 버튼: 잔여 0
-  if (e.target.tagName !== 'BUTTON') return;
-  const tr = e.target.closest('tr');
-  state.rows[tr.dataset.id].remain = 0;
-  tr.querySelector('[data-k=remain]').value = 0;
-  tr.classList.remove('hit'); save(); render();
+tbody.addEventListener('click', e => {  // 매진: 잔여 0, 미판매(원정): 누를 때마다 켜고 끔, 켜면 잔여를 비움
+  const a = e.target.dataset?.a;
+  if (!a) return;
+  const tr = e.target.closest('tr'), r = state.rows[tr.dataset.id];
+  if (a === 'out') Object.assign(r, { remain: 0, off: false });
+  else Object.assign(r, r.off ? { off: false } : { off: true, remain: null });
+  fillTable(); tr.classList.remove('hit'); save(); render();
 });
 const changed = () => {
   state.opp = $('opp').value; state.at = $('at').value;
@@ -754,6 +773,7 @@ function summaryText() {
     return [`${matchTitle()}${state.date ? ' ' + fmtDate(state.date) : ''} 원정 예매 현황 (${state.at.slice(5).replace('-', '.').replace('T', ' ')} 기준)`,
       `남은 좌석 ${fmt(t.avail)}석, ` + (state.awayGrade != null ? `원정석 ${fmt(state.awayGrade)}석` : `원정 쪽(S) ${fmt(ours)}석`) + (b ? `, ${b} 이후 ${signed(t.soldSum)}석 예매` : ''),
       t.soldOut.length ? '매진: ' + t.soldOut.map(nameOf).sort((a, b) => a.localeCompare(b, 'en', { numeric: true })).join(', ') : '',
+      t.off.length ? '미판매: ' + t.off.map(nameOf).sort((a, b) => a.localeCompare(b, 'en', { numeric: true })).join(', ') : '',
       t.empty.length ? `(정보 없는 구역 ${t.empty.length}개 빠짐)` : ''].filter(Boolean).join('\n');
   }
   return [`FC안양 vs ${state.opp || '상대팀'}${state.date ? ' ' + fmtDate(state.date) : ''} 예매 현황 (${state.at.slice(5).replace('-', '.').replace('T', ' ')} 기준)`,
@@ -777,9 +797,9 @@ function record() {
     capacity: FULL || null, available: t.avail, booked: FULL ? FULL - t.avail : null,  // 원정 구장은 만석을 몰라 null
     ...(AWAY && { awayRemain: state.awayGrade ?? null }),
     sinceBase: state.base ? { at: kst(state.base.at), booked: t.soldSum } : null,
-    soldOut: t.soldOut, unknown: t.empty,
+    soldOut: t.soldOut, unknown: t.empty, ...(AWAY && { unsold: t.off }),
     sections: SECTIONS.map(s => ({ id: s.id, name: nameOf(s.id), grade: GRADES.find(g => g.ids.includes(s.id))?.name ?? null,  // 원정 구장은 등급표가 없음
-      remain: state.rows[s.id].remain, max: state.rows[s.id].max, ...(state.rows[s.id].learned && { maxGuess: true }), sold: state.base ? sold(s.id) : null })),
+      remain: state.rows[s.id].remain, max: state.rows[s.id].max, ...(state.rows[s.id].learned && { maxGuess: true }), ...(state.rows[s.id].off && { unsold: true }), sold: state.base ? sold(s.id) : null })),
     summary: summaryText(),
     images: { board: RAW + DATA + 'latest.png', story: RAW + DATA + 'latest-story.png' }, history: RAW + DATA + 'history.json',
   };
@@ -986,7 +1006,7 @@ async function readRecord(f) {
   if (d?.app !== 'fc-anyang-seats' || !d.rows || typeof d.rows !== 'object') throw new Error('이 프로그램의 기록 파일이 아닙니다.');
   const num = v => Number.isInteger(v) && v >= 0 ? v : null;
   return {
-    rows: Object.fromEntries(SECTIONS.map(s => { const r = d.rows[s.id] || {}; return [s.id, { remain: num(r.remain), max: num(r.max) }]; })),
+    rows: Object.fromEntries(SECTIONS.map(s => { const r = d.rows[s.id] || {}; return [s.id, { remain: num(r.remain), max: num(r.max), off: r.off === true }]; })),
     opp: Object.values(TEAMS).includes(d.opp) ? d.opp : '', crowd: num(d.crowd),
     date: /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/.test(d.date) ? d.date : '',
     at: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(d.at) ? d.at : '',
@@ -1093,13 +1113,32 @@ async function seatMap(bmp, eng, full) {
   const seat = o => o.n >= med * 0.45 && o.n / (o.w * o.h) > 0.8 && Math.max(o.w, o.h) <= side * 3.5 && Math.min(o.w, o.h) <= side * 1.6 && !(o.edge && o.n < med * 0.8) && inMap(o);
   const count = k => comps.filter(o => o.k === k && seat(o)).reduce((a, o) => a + Math.max(1, Math.round(o.n / med)), 0);
   const remain = count(2), total = remain + count(1);
+  if (!total) return null;
   await eng.setParameters({ tessedit_pageseg_mode: '11', tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789' });
   // 이름 글자는 작고 흐린 회색이라 키우고 흑백으로 (밝은 회색 칸은 지워지고 글자만 남음)
   const z = Math.min(3, 3000 / Math.max(W0, H0));
   const words = (await eng.recognize(cut(bmp, 0, 0, W0, H0, z, 200))).data.words.filter(w => state.rows[w.text.trim()]);
+  let id = words.sort((a, b) => (b.bbox.y1 - b.bbox.y0) - (a.bbox.y1 - a.bbox.y0))[0]?.text.trim();  // 가장 큰 글자가 구역 이름
+  if (!id) {
+    // 남은 칸(진한 색)이 많으면 통째로는 이름을 못 읽음: 칸 바로 위 회색 글자 줄만 잘라 크기와 방식을 바꿔 5번 읽고
+    // 같은 이름이 두 번 나오거나, 한 번 나오고 표의 그 구역 잔여가 센 남은 칸과 같으면 씀
+    const ink = (x, y) => { const i = (y * W0 + x) * 4, r = d[i], g = d[i + 1], b = d[i + 2]; return Math.max(r, g, b) - Math.min(r, g, b) < 16 && 0.299 * r + 0.587 * g + 0.114 * b < 200; };
+    const top = Math.min(...comps.filter(seat).map(o => o.cy - o.h / 2)), span = y => { let a = -1, b = -1; for (let x = 0; x < W0; x++) if (ink(x, y)) { if (a < 0) a = x; b = x; } return a < 0 ? null : [a, b]; };
+    let y1 = Math.floor(top) - 1;
+    while (y1 >= 0 && !span(y1)) y1--;
+    let y0 = y1, x0 = W0, x1 = 0;
+    while (y0 > 0 && span(y0 - 1)) y0--;
+    for (let y = y0; y >= 0 && y <= y1; y++) { const [a, b] = span(y); x0 = Math.min(x0, a); x1 = Math.max(x1, b); }
+    const h = y1 - y0 + 1, pad = Math.round(h * 0.6), votes = {};
+    if (y1 >= 0 && h >= 6) for (const [T, psm, thr] of [[48, '7', 200], [64, '7', 200], [40, '8', 200], [32, '7', 200], [48, '8', 170]]) {
+      await eng.setParameters({ tessedit_pageseg_mode: psm });
+      const t = (await eng.recognize(cut(bmp, x0 - pad, y0 - pad, x1 - x0 + 1 + pad * 2, h + pad * 2, T / h, thr))).data.text.trim();
+      if (state.rows[t]) votes[t] = (votes[t] || 0) + 1 + (state.rows[t].remain === remain ? 1 : 0);
+    }
+    id = Object.entries(votes).find(([, n]) => n >= 2)?.[0];
+  }
   await eng.setParameters({ tessedit_pageseg_mode: '7' });
-  const label = words.sort((a, b) => (b.bbox.y1 - b.bbox.y0) - (a.bbox.y1 - a.bbox.y0))[0];  // 가장 큰 글자가 구역 이름
-  return label && total ? { id: label.text.trim(), remain, total } : null;
+  return { id: id || null, remain, total };  // 이름을 끝내 못 읽으면 id 없이 (인식이 끝난 뒤 사람에게 물음)
 }
 
 // 이름 .... 숫자 석' 줄이 이어진 목록(PC 등급 목록, 잘라 낸 캡처): 한글 인식기는 E 를 6 으로, 구역을 7 로, 석을 4 로 읽어서
@@ -1199,7 +1238,8 @@ async function readShot(f, first, kor, eng, counted = []) {
   const withMap = async text => {
     if (/등급|선택|단계|구\s*역/.test(text)) return text;
     const m = await seatMap(bmp, eng, false);
-    if (m) { counted.push(m); text += `\n${m.id}구역 ${m.remain}석\n`; }
+    if (m) counted.push(m);
+    if (m?.id) text += `\n${m.id}구역 ${m.remain}석\n`;
     return text;
   };
   // 휴대폰, 태블릿 앱 화면 전체(세로로 길고 큰 캡처)가 아니면(PC 화면, 잘라 낸 캡처): 통째로 읽고 + 목록 줄을 따로 읽고 + 좌석 그림을 셈
@@ -1231,7 +1271,8 @@ async function ocrRun(files) {
   catch { return status('글자 인식 도구를 못 불러왔습니다. 인터넷을 확인하거나 표에 직접 넣으세요.'); }
   // 코어·메모리가 넉넉하면 두 갈래로 나눠 동시에 읽음 (갈래마다 한글·영문 인식기 한 쌍)
   const lanes = Math.min(files.length, (navigator.hardwareConcurrency ?? 2) >= 4 && (navigator.deviceMemory ?? 4) >= 4 ? 2 : 1);
-  const pairs = [], texts = [], bad = [], counted = [];
+  const pairs = [], texts = [], bad = [];
+  let counted = [];
   let next = 0, done = 0;
   try {
     status('글자 인식 준비 중… (처음엔 조금 걸림)');
@@ -1247,13 +1288,20 @@ async function ocrRun(files) {
         status(`${++done}/${files.length}장 인식했습니다…`);
       }
     }));
+    // 구역 이름을 못 읽은 좌석 그림: 센 숫자를 보여 주고 어느 구역인지 물음 (취소하면 넣지 않음)
+    for (const m of counted.filter(m => !m.id)) {
+      const id = (prompt(`좌석 그림을 셌습니다: 남은 ${m.remain}석 / 전체 ${m.total}석\n구역 이름을 못 읽었습니다. 어느 구역인가요? (예: W23, 취소하면 넣지 않음)`) || '').trim().toUpperCase();
+      if (state.rows[id]) { m.id = id; texts.push(`\n${id}구역 ${m.remain}석\n`); }
+    }
+    const skipped = counted.filter(m => !m.id);
+    counted = counted.filter(m => m.id);
     raw.value = texts.join('');  // 원래 순서대로 (같은 구역이 여러 장이면 나중 장이 우선)
     const p = parseText(raw.value);
     // 집계 시각 = 가장 늦게 찍은 캡처 (붙여넣기는 지금). 좌석 숫자를 못 찾았으면 경기 판단은 건너뜀 (지난 숫자를 지우지 않게)
     // 좌석 그림에서 센 전체 좌석 수는 실제로 센 값이라 최대 좌석으로 (모르던 구역, 더 큰 값일 때)
     const maxNotes = counted.filter(m => state.rows[m.id] && (state.rows[m.id].max == null || state.rows[m.id].learned || m.total > state.rows[m.id].max))
       .map(m => { Object.assign(state.rows[m.id], { max: m.total }); delete state.rows[m.id].learned; return m; });
-    apply(p, [...(bad.length ? [`읽지 못한 캡처: ${bad.join(', ')}`] : []),
+    apply(p, [...(bad.length ? [`읽지 못한 캡처: ${bad.join(', ')}`] : []), ...skipped.map(m => `구역 이름을 몰라 넣지 않은 좌석 그림: 남은 ${m.remain} / 전체 ${m.total}`),
       ...(counted.length ? [`좌석 그림으로 셈: ${counted.map(m => `${m.id} 남은 ${m.remain} / 전체 ${m.total}`).join(', ')}` + (maxNotes.length ? ' (전체를 최대 좌석으로)' : '')] : []), ...(hasSeats(p) ? newCapture(p, localISO(Math.max(...files.map(f => f.lastModified || Date.now())))) : [])]);
   } catch (e) { status('인식 실패: ' + e.message); }
   await Promise.all(pairs.flat().map(w => w.terminate()));
@@ -1323,14 +1371,18 @@ addEventListener('drop', e => {
   if (imgs.length) window.ocrDone = ocr(imgs);
 });
 $('link').onclick = async () => {
-  const url = location.origin + location.pathname;
+  const url = location.origin + location.pathname + (AWAY ? '?s=' + STADIUM : '');  // 원정 화면은 그 구장, 홈은 기본 주소(가장 최근 집계)
   try { if (navigator.share) return await navigator.share({ url, title: document.title }); } catch (e) { if (e.name === 'AbortError') return; }
   try { await navigator.clipboard.writeText(url); note('링크를 복사했습니다.'); } catch { note(url); }
 };
 
 // 발행 데이터 받기: GitHub API 로 받아 캐시 지연 없이 (로그인 없이 IP당 시간 60번), 막히면 raw (최대 5분 늦음)
-const fetchData = name => fetch(`${API}contents/${DATA}${name}?ref=data`, { headers: { Accept: 'application/vnd.github.raw+json' }, cache: 'no-store' })
-  .then(r => r.ok ? r : Promise.reject(r.status)).catch(() => fetch(RAW + DATA + name + '?t=' + Date.now(), { cache: 'no-cache' }));
+const fetchData = (name, dir = DATA) => fetch(`${API}contents/${dir}${name}?ref=data`, { headers: { Accept: 'application/vnd.github.raw+json' }, cache: 'no-store' })
+  .then(r => r.ok ? r : Promise.reject(r.status)).catch(() => fetch(RAW + dir + name + '?t=' + Date.now(), { cache: 'no-cache' }));
+// 기본 주소(?s 없이 연 보기 화면)는 홈, 원정 중 가장 최근에 발행한 구장을 보여 줌 (같거나 못 읽으면 홈)
+const newest = () => Promise.all(['anyang', ...Object.keys(STADIUMS)].map(id => fetchData('latest.json', id === 'anyang' ? '' : id + '/')
+  .then(r => r.ok ? r.json() : null).then(d => [id, +new Date(d?.updatedAt) || 0]).catch(() => [id, 0])))
+  .then(list => list.reduce((a, b) => b[1] > a[1] ? b : a)[0]);
 const ago = s => { const m = Math.round((Date.now() - new Date(s)) / 60000); return m < 1 ? '방금' : m < 60 ? m + '분 전' : m < 1440 ? (m / 60 | 0) + '시간 전' : (m / 1440 | 0) + '일 전'; };
 const showAgo = () => state.at && note(`마지막 집계 ${ago(state.at)} (${state.at.slice(5).replace('-', '.').replace('T', ' ')})`
   + (phase() === '지난 경기' ? ' · 지난 경기 기록입니다. 다음 경기 예매가 열리면 바뀝니다.' : phase() ? ' · ' + phase() : ''));
@@ -1345,7 +1397,7 @@ async function loadPublished() {
     if (!r.ok) throw new Error(r.status);
     const d = await r.json(), num = v => Number.isInteger(v) && v >= 0 ? v : null, local = v => typeof v === 'string' ? v.slice(0, 16) : '';
     const secs = Object.fromEntries((d.sections || []).map(x => [x.id, x]));
-    SECTIONS.forEach(s => { const x = secs[s.id] || {}; Object.assign(state.rows[s.id], { remain: num(x.remain), max: num(x.max) ?? KNOWN_MAX[s.id] ?? null }); });
+    SECTIONS.forEach(s => { const x = secs[s.id] || {}; Object.assign(state.rows[s.id], { remain: num(x.remain), max: num(x.max) ?? KNOWN_MAX[s.id] ?? null, off: x.unsold === true }); });
     Object.assign(state, {
       opp: Object.values(TEAMS).includes(d.match?.opponent) ? d.match.opponent : '', date: local(d.match?.kickoff), at: local(d.updatedAt), crowd: num(d.match?.attendance), awayGrade: num(d.awayRemain),
       base: d.sinceBase ? { at: local(d.sinceBase.at), rows: Object.fromEntries(SECTIONS.map(s => {
@@ -1364,8 +1416,9 @@ try { if (!embed) { editing ||= localStorage.getItem(EDIT) === '1'; if (editing)
 document.body.classList.toggle('editing', editing);
 document.body.classList.toggle('embed', embed); document.body.classList.toggle('away', AWAY);
 if (AWAY) {
+  $('markHead').textContent = '매진 / 미판매';
   document.title = `FC안양 원정 예매현황 (${STADIUMS[STADIUM].name})`; $('opp').disabled = true;
-  $('seatHint').textContent = `빈칸 = 정보 없음, 0 = 매진. ${STADIUMS[STADIUM].name} 구역별 최대 좌석은 아직 몰라 남은 좌석 수로 칠합니다 (최대를 넣으면 잔여율로).`;
+  $('seatHint').textContent = `빈칸 = 정보 없음, 0 = 매진, 미판매 = 이번 경기에 팔지 않는 구역(빗금). ${STADIUMS[STADIUM].name} 구역별 최대 좌석은 아직 몰라 남은 좌석 수로 칠합니다 (최대를 넣으면 잔여율로).`;
 } document.body.classList.toggle('embed-trend', params.get('embed') === 'trend');
 const toggleEdit = () => { try { localStorage.setItem(EDIT, editing ? '0' : '1'); } catch {} location.replace(location.pathname + location.search); };
 addEventListener('keydown', e => { if (!embed && e.ctrlKey && e.shiftKey && e.code === 'KeyE') { e.preventDefault(); toggleEdit(); } });
@@ -1374,7 +1427,9 @@ portrait.addEventListener('change', render);
 if (editing) { syncInputs(); fillTable(); render(); loadHistory(); tokenInfo(); drawLamp(); setInterval(drawLamp, 2000); }
 else {
   blank();
-  render(); loadPublished().then(loadHistory); setInterval(() => loadPublished().then(loadHistory), 300e3); setInterval(showAgo, 60e3);
+  const view = () => { render(); loadPublished().then(loadHistory); setInterval(() => loadPublished().then(loadHistory), 300e3); setInterval(showAgo, 60e3); };
+  if (params.has('s') || embed) view();  // 구장을 고른 주소(안양 홈은 ?s=anyang), 다른 사이트용 화면은 그대로
+  else Promise.race([newest(), new Promise(ok => setTimeout(ok, 4000, 'anyang'))]).then(id => id === 'anyang' ? view() : location.replace(location.pathname + '?s=' + id));
 }
 </script>
 </body>

@@ -176,6 +176,50 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     await p.context().close();
   }
 
+  // 입력 화면(PC): 경기 정보, 스크린샷 인식, 구역별 잔여석, 발행, 집계 기록, 직전 집계와 비교 순서로 칸마다 가로 전체
+  p = await open(b);
+  r = await p.evaluate(() => {
+    const boxes = [...document.querySelectorAll('.panel > .box')], pw = document.querySelector('.panel').getBoundingClientRect().width;
+    return { order: boxes.map(x => x.querySelector('h2').textContent).join(','), full: boxes.every(x => Math.abs(x.getBoundingClientRect().width - pw) < 1),
+      stacked: boxes.every((x, i) => !i || x.getBoundingClientRect().top >= boxes[i - 1].getBoundingClientRect().bottom), off: document.querySelectorAll('[data-a=off]').length };
+  });
+  check('입력 화면: 6칸 순서, 칸마다 가로 전체, 홈은 미판매 버튼 없음', r.order === '경기 정보,스크린샷 인식,구역별 잔여석,발행,집계 기록,직전 집계와 비교' && r.full && r.stacked && r.off === 0, JSON.stringify(r));
+  await p.context().close();
+
+  // 원정 미판매: 누르면 빗금 + 잔여 비움, 다시 누르면 끔, 숫자가 들어오면 판매 중, 카드, 요약 글, 발행 JSON
+  p = await open(b, { url: URL + '?s=gimcheon#edit' });
+  r = await p.evaluate(() => {
+    const btn = id => document.querySelector(`tr[data-id="${id}"] [data-a=off]`), svg = () => document.getElementById('board').innerHTML;
+    fcIngest('김천상무 vs FC안양\n김천종합운동장 | 2026.11.07(토) 16:30\n등급 선택\nS11구역\n50 석\nE31구역\n7 석');
+    btn('S11').click(); btn('E31').click();
+    const rec = record(), a = { head: document.getElementById('markHead').textContent, off: state.rows.S11.off, remain: state.rows.S11.remain, pressed: btn('S11').getAttribute('aria-pressed'),
+      rate: document.querySelector('tr[data-id="S11"]').cells[4].textContent, hatch: svg().includes('url(#hatch)'), card: svg().includes('미판매 2개'), legend: />미판매</.test(svg()),
+      sum: summaryText(), unsold: rec.unsold.join(), sec: rec.sections.find(x => x.id === 'S11').unsold, empty: rec.unknown.includes('S11') };
+    btn('E31').click(); a.e31 = state.rows.E31.off;
+    fcIngest('김천상무 vs FC안양\n김천종합운동장 | 2026.11.07(토) 16:30\n등급 선택\nS11구역\n48 석');
+    Object.assign(a, { after: state.rows.S11.off, v: state.rows.S11.remain, pressed2: btn('S11').getAttribute('aria-pressed') });
+    return a;
+  });
+  check('원정 미판매: 빗금, 잔여 비움, 카드, 범례, 요약 글, 발행 JSON, 다시 누르면 끔, 숫자가 오면 판매 중', r.head === '매진 / 미판매' && r.off === true && r.remain === null && r.pressed === 'true' && r.rate === '미판매'
+    && r.hatch && r.card && r.legend && /미판매: E31, S11/.test(r.sum) && r.unsold === 'E31,S11' && r.sec === true && !r.empty && r.e31 === false && r.after === false && r.v === 48 && r.pressed2 === 'false', JSON.stringify(r));
+  await p.context().close();
+
+  // 기본 주소(?s 없음) 보기 화면: 홈, 원정 중 가장 최근 발행으로. ?s=anyang 은 홈 그대로
+  {
+    const G = { updatedAt: '2026-11-07T09:16:00+09:00', match: { opponent: '김천상무', kickoff: '2026-11-07T16:30:00+09:00' }, sections: [{ id: 'W12', remain: 196 }, { id: 'S11', remain: null, unsold: true }] };
+    const Hm = { updatedAt: '2026-11-05T12:00:00+09:00', match: { opponent: '제주SK', kickoff: '2026-11-28T14:00:00+09:00' }, sections: [{ id: 'R10', remain: 26 }] };
+    const land = async (url, g, h) => {
+      const pg = await open(b, { url, data: { 'gimcheon/latest.json': g, 'latest.json': h } });
+      await pg.waitForTimeout(1500);
+      const v = await pg.evaluate(() => ({ url: location.search, away: document.body.classList.contains('away'), W12: state.rows.W12?.remain, R10: state.rows.R10?.remain, S11: state.rows.S11?.off, svg: document.getElementById('board').innerHTML.includes('미판매') }));
+      await pg.context().close();
+      return v;
+    };
+    const a = await land(URL, G, Hm), h = await land(URL, { ...G, updatedAt: '2026-11-01T10:00:00+09:00' }, Hm), c = await land(URL + '?s=anyang', G, Hm);
+    check('기본 주소: 가장 최근 발행(김천)으로 가고 미판매도 받음, 홈이 최근이면 홈, ?s=anyang 은 홈', a.url === '?s=gimcheon' && a.away && a.W12 === 196 && a.S11 === true && a.svg
+      && h.url === '' && h.R10 === 26 && c.url === '?s=anyang' && !c.away && c.R10 === 26, JSON.stringify({ a, h, c }));
+  }
+
   // 수집 상태 램프: 신호 없음 / 켜짐 / 티켓링크 열림 / 예매 화면 감지 / 숫자 받음 / 다른 구장 / 신호 끊김 / 뒤 탭
   p = await open(b, { url: URL + '?s=gimcheon#edit' });
   r = await p.evaluate(() => {
@@ -238,6 +282,36 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     r = await p.evaluate(id => ({ remain: state.rows[id].remain, max: state.rows[id].max, st: document.getElementById('status').innerText.split('\n')[0] }), label);
     check(`좌석 그림 세기: ${label} 남은 ${avail} / 전체 ${avail + sold} (칸 ${size}px${outline ? ', 빨간 테두리' : ''})`, r.remain === avail && r.max === avail + sold, JSON.stringify(r));
     await p.context().close();
+  }
+  // 남은 칸이 많은 좌석 그림(실제 W23 처럼): 작은 회색 구역 이름, 양쪽 줄 번호, 칸 사이 GATE 상자, 화면 배율 100~150%
+  // 통째로는 이름을 못 읽는 경우가 있어 칸 바로 위 이름 자리만 잘라 읽음. 이름이 없으면 사람에게 물음
+  {
+    const W23 = ['ggggggggggggggggggggggggggggggggggg..nnnn.................................nnnn.nnnn', 'ggggggggggggggggggggggggggggggggggg..nnnnnnn..nnnn...........nnnnngnnnn.nnnnnnn',
+      'ggggggggggggggggggggggggggggggggggg..nnnnnnn..nnnnnnnnnnnnnnnnnnnnnnnnn.nnnnnnn', 'gggggggggggggggggggggggggggggggggggg.nnnnnnn..nnnnnnnnnnnnnnnnnnnnnnnnnn.nnnnnnn',
+      'ggggggggggggggggggggggggggggggggggg..nnnnngg.ggnnnnnnnnnnnnnnnnnnnnnnnnn.nnnnnnn'];
+    const cells = W23.join('').replace(/\./g, ''), want = [cells.split('n').length - 1, cells.length];  // 155 / 336
+    const make = (label, lc, lf) => {
+      const cell = c => `<i style="display:inline-block;width:8px;height:8px;margin:1px 1.4px;${c === '.' ? '' : 'background:' + (c === 'n' ? '#12284a' : '#efefef')}"></i>`;
+      const num = (i, al) => `<b style="display:inline-block;width:22px;color:#aaa;font:8px sans-serif;text-align:${al}">${i + 1}</b>`;
+      const rows = W23.map((r, i) => `<div style="white-space:nowrap;height:10px;line-height:10px">${num(i, 'left')}${[...r].map(cell).join('')}${num(i, 'right')}</div>`).join('');
+      return `<div style="padding:40px 20px 30px;display:inline-block"><div style="text-align:center;color:${lc};font:700 ${lf}px sans-serif;margin:0 0 8px;height:${lf + 3}px">${label}</div>`
+        + `<div style="position:relative">${rows}<span style="position:absolute;left:583px;top:0;width:95px;height:18px;background:#e8e8e8;color:#fff;font:700 12px sans-serif;text-align:center;line-height:18px">GATE19</span></div></div>`;
+    };
+    for (const [dsf, lc, lf, label] of [[1, '#999', 12, 'W23'], [1.25, '#888', 13, 'W23'], [1.25, '#9a9a9a', 12, 'W23'], [1.5, '#888', 13, 'W23'], [1.25, '#888', 13, '']]) {
+      const mk = await b.newPage({ viewport: { width: 1000, height: 200 }, deviceScaleFactor: dsf }), f = path.join(tmp, `w23_${dsf}_${lf}_${label}.png`);
+      await mk.setContent(`<body style="margin:0;background:#fff">${make(label, lc, lf)}</body>`);
+      await mk.locator('body > div').screenshot({ path: f });
+      await mk.close();
+      p = await open(b, { url: URL + '?s=gimcheon#edit' });
+      let asked = '';
+      p.on('dialog', d => { asked = d.message(); d.accept('w23'); });
+      await p.setInputFiles('#file', f);
+      await p.evaluate(() => window.ocrDone);
+      r = await p.evaluate(() => ({ remain: state.rows.W23.remain, max: state.rows.W23.max, st: document.getElementById('status').innerText.split('\n').slice(0, 2).join(' / ') }));
+      const ok = r.remain === want[0] && r.max === want[1] && (label ? !asked : asked.includes(`남은 ${want[0]}석 / 전체 ${want[1]}석`));
+      check(`좌석 그림 (남은 칸 많음, 배율 ${dsf * 100}%, 이름 ${label ? lc + ' ' + lf + 'px' : '없음 -> 물어봄'}): W23 남은 ${want[0]} / 전체 ${want[1]}`, ok, JSON.stringify({ r, asked }));
+      await p.context().close();
+    }
   }
   const list = (rows, fs) => rows.map(([n, v], i) => `<div style="display:flex;justify-content:space-between;padding:${fs * 0.4}px 16px ${fs * 0.4}px ${i ? 52 : 16}px;font-size:${fs}px;color:${v ? '#222' : '#a9adb5'}">`
     + `<span>${i ? '' : '<b style="display:inline-block;width:' + fs * 0.8 + 'px;height:' + fs * 0.8 + 'px;background:#123;margin-right:8px"></b>'}${n}</span><span style="color:${v ? '#ff2a2a' : '#a9adb5'};font-weight:${v ? 700 : 400}">${v} 석</span></div>`).join('');
