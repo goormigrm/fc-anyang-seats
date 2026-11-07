@@ -340,6 +340,23 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   check('승강 대비 상대팀: 서울이랜드, 수원FC, 수원삼성, 대구FC, FC서울 구분, 서울이랜드는 그대로', r === '서울이랜드|수원FC|수원삼성|대구FC|FC서울|서울이랜드 vs FC안양', r);
   await p.context().close();
 
+  // 미판매는 사람이 정한 대로: 현황판 탭이 둘이어도(먼저 열어 둔 탭, 탭 맞춤을 놓친 오래된 탭이 0석을 받아도) 매진으로 덮어쓰지 않음 (11/07 사용자 보고)
+  {
+    const ctx = await b.newContext(), U = URL + '?s=gimcheon#edit', TXT = '김천상무 vs FC안양\n김천종합운동장 | 2026.11.07(토) 16:30\n등급 선택\nW11구역\n0 석\nW21구역\n0 석\nW12구역\n193 석';
+    const A = await ctx.newPage(); await A.goto(U);
+    const B = await ctx.newPage(); await B.goto(U);
+    await B.evaluate(() => ['W11', 'W21'].forEach(id => document.querySelector(`tr[data-id="${id}"] [data-a=off]`).click()));
+    const synced = await A.evaluate(() => state.rows.W11.off);
+    await A.evaluate(t => { state.rows.W11.off = false; state.rows.W21.off = false; fcIngest(t); }, TXT);  // 맞춤을 놓친 오래된 탭처럼
+    await B.reload();
+    r = await B.evaluate(() => ({ W11: state.rows.W11, W21: state.rows.W21, W12: state.rows.W12.remain, list: localStorage.getItem('fc-anyang-unsold-gimcheon') }));
+    await B.evaluate(() => document.querySelector('tr[data-id="W21"] [data-a=off]').click());  // 사람이 끄면 그다음 숫자를 받음
+    await A.evaluate(t => fcIngest(t), TXT);
+    const after = await A.evaluate(() => [state.rows.W11.off, state.rows.W21.off, state.rows.W21.remain].join());
+    await ctx.close();
+    check('미판매는 탭이 둘이어도, 오래된 탭이 0석을 받아도 그대로, 사람이 끄면 숫자를 받음', synced === true && r.W11.off === true && r.W11.remain === null && r.W21.off === true && r.W12 === 193 && r.list === '["W11","W21"]' && after === 'true,false,0', JSON.stringify({ synced, r, after }));
+  }
+
   // 기본 주소(?s 없음) 보기 화면: 홈, 원정 중 가장 최근 발행으로. ?s=anyang 은 홈 그대로
   {
     const G = { updatedAt: '2026-11-07T09:16:00+09:00', match: { opponent: '김천상무', kickoff: '2026-11-07T16:30:00+09:00' }, sections: [{ id: 'W12', remain: 196 }, { id: 'S11', remain: null, unsold: true }] };

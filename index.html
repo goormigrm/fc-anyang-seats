@@ -496,6 +496,16 @@ if (!Object.values(TEAMS).includes(state.opp)) state.opp = '';
 if (AWAY) state.opp = HOST;  // 원정 경기는 상대(홈 팀)가 정해져 있음
 if (!/^\d{4}-\d{2}-\d{2}/.test(state.date)) state.date = '';
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} };
+// 사람이 누른 미판매는 따로 저장: 미판매·매진 버튼, 잔여 직접 입력으로만 바뀜. 현황판 탭이 여럿이거나 오래 열린 탭이 숫자를 받아 저장해도
+// 지워지지 않게 숫자를 받을 때마다 이 목록을 새로 읽어 지킴 (11/07: 먼저 열어 둔 탭이 0석을 매진으로 저장해 미판매가 사라진 일)
+const OFFKEY = 'fc-anyang-unsold' + (AWAY ? '-' + STADIUM : '');
+const saveOff = () => { try { localStorage.setItem(OFFKEY, JSON.stringify(SECTIONS.filter(s => state.rows[s.id].off).map(s => s.id))); } catch {} };
+const syncOff = () => {
+  let v = null;
+  try { v = JSON.parse(localStorage.getItem(OFFKEY)); } catch {}
+  if (!Array.isArray(v)) return saveOff();  // 처음: 지금 표시를 목록으로
+  SECTIONS.forEach(s => { state.rows[s.id].off = v.includes(s.id); });
+};
 const localISO = (t = Date.now()) => new Date(t - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);  // "2026-11-27T12:00"
 state.at ||= localISO();
 
@@ -831,6 +841,7 @@ function apply({ found, totals, filled = [], unknown = [], grades = [], missZone
   if (AWAY) unknown = [];
 
   // 사람이 미판매로 둔 구역은 그대로 (티켓링크에는 0석, 매진처럼 보임). 잔여가 보이면 판매를 시작했을 수 있어 알리기만 (끄는 것은 사람이)
+  if (editing) syncOff();
   const all = Object.keys(found).filter(id => state.rows[id]), kept = all.filter(id => state.rows[id].off), ids = all.filter(id => !state.rows[id].off);
   ids.forEach(id => state.rows[id].remain = found[id]);
   // 최대 좌석 배우기: 모르던 구역은 처음 본 잔여로 (예매 오픈 직후면 정확), 잔여가 최대보다 조금(10% 안) 많으면 최대를 늘림
@@ -872,7 +883,7 @@ function apply({ found, totals, filled = [], unknown = [], grades = [], missZone
 tbody.addEventListener('input', e => {
   const tr = e.target.closest('tr'), r = state.rows[tr.dataset.id], k = e.target.dataset.k;
   r[k] = e.target.value === '' ? null : Math.min(FULL || 99999, Math.max(0, Math.round(+e.target.value)));
-  if (k === 'remain' && r.remain != null && r.off) { r.off = false; tr.querySelector('[data-a=off]').setAttribute('aria-pressed', false); }  // 숫자를 넣으면 판매 중
+  if (k === 'remain' && r.remain != null && r.off) { r.off = false; tr.querySelector('[data-a=off]').setAttribute('aria-pressed', false); saveOff(); }  // 숫자를 넣으면 판매 중
   if (k === 'max') { delete r.learned; e.target.classList.remove('guess'); }  // 손으로 고치면 확정
   tr.classList.remove('hit'); save(); render();
 });
@@ -882,7 +893,7 @@ tbody.addEventListener('click', e => {  // 매진: 잔여 0, 미판매(원정): 
   const tr = e.target.closest('tr'), r = state.rows[tr.dataset.id];
   if (a === 'out') Object.assign(r, { remain: 0, off: false });
   else Object.assign(r, r.off ? { off: false } : { off: true, remain: null });
-  fillTable(); tr.classList.remove('hit'); save(); render();
+  saveOff(); fillTable(); tr.classList.remove('hit'); save(); render();
 });
 const changed = () => {
   state.opp = $('opp').value; state.at = $('at').value;
@@ -912,7 +923,7 @@ $('restore').onclick = () => {
   SECTIONS.forEach(s => d.rows[s.id] && Object.assign(state.rows[s.id], d.rows[s.id]));
   Object.assign(state, { opp: d.opp || '', date: d.date || '', at: d.at || state.at, base: d.base || null, crowd: d.crowd ?? null });
   try { localStorage.removeItem(BACKUP); } catch {}
-  $('restore').hidden = true; syncInputs(); fillTable([]); save(); render(); status('지난 경기 숫자를 되살렸습니다.');
+  $('restore').hidden = true; saveOff(); syncInputs(); fillTable([]); save(); render(); status('지난 경기 숫자를 되살렸습니다.');
 };
 try { $('restore').hidden = !localStorage.getItem(BACKUP); } catch {}
 // 새로 찍은 캡처 묶음: 다른 경기면 새 경기로 비우고, 같은 경기면 직전 숫자를 비교 기준으로 (버튼을 누를 필요 없게)
@@ -1240,7 +1251,7 @@ pickFile($('loadJson'), (f, d) => {
     && !confirm(`지금 숫자를 "${f.name}" 내용으로 바꿀까요?\n(지금 숫자가 필요하면 취소하고 먼저 '이번 집계 저장')`)) return;
   SECTIONS.forEach(s => Object.assign(state.rows[s.id], d.rows[s.id], { max: d.rows[s.id].max ?? KNOWN_MAX[s.id] ?? null }));
   Object.assign(state, { opp: d.opp, date: d.date, at: d.at || state.at, base: null, crowd: d.crowd });
-  syncInputs(); fillTable([]); save(); render();
+  saveOff(); syncInputs(); fillTable([]); save(); render();
   note(`"${f.name}" 열었습니다.`);
 });
 $('baseNow').onclick = () => { state.base = snap(); save(); render(); note('지금 숫자를 기준으로 정했습니다.'); };
@@ -1685,7 +1696,14 @@ const toggleEdit = () => { try { localStorage.setItem(EDIT, editing ? '0' : '1')
 addEventListener('keydown', e => { if (!embed && e.ctrlKey && e.shiftKey && e.code === 'KeyE') { e.preventDefault(); toggleEdit(); } });
 $('viewMode').onclick = toggleEdit;
 portrait.addEventListener('change', render);
-if (editing) { syncInputs(); fillTable(); render(); loadHistory(); tokenInfo(); drawLamp(); setInterval(drawLamp, 2000); }
+if (editing) {
+  syncOff(); syncInputs(); fillTable(); render(); loadHistory(); tokenInfo(); drawLamp(); setInterval(drawLamp, 2000);
+  // 같은 브라우저의 다른 현황판 탭이 저장하면 이 탭도 바로 맞춤 (오래된 값으로 덮어쓰지 않게)
+  addEventListener('storage', e => {
+    if (e.key === KEY && e.newValue) try { Object.assign(state, JSON.parse(e.newValue)); } catch {}
+    if (e.key === KEY || e.key === OFFKEY) { syncOff(); syncInputs(); fillTable(); render(); }
+  });
+}
 else {
   blank();
   const view = () => { render(); loadPublished().then(loadHistory); setInterval(() => { loadPublished().then(loadHistory); if (FOLLOW) follow(); }, 300e3); setInterval(showAgo, 60e3); };
