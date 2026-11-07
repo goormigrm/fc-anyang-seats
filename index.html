@@ -594,7 +594,7 @@ function render() {
     const r = state.rows[tr.dataset.id], c = tr.cells[4];
     const d = sold(tr.dataset.id);
     c.textContent = (r.off ? '미판매' : r.remain == null ? '' : r.remain === 0 ? '매진' : r.max ? Math.round(r.remain / r.max * 100) + '%' : '총석?')
-      + (d ? ` (${signed(d)})` : '');
+      + (d > 0 ? ` (${fmt(d)} 팔림)` : d < 0 ? ` (${fmt(-d)} 늘어남)` : '');  // 비교 기준 이후
     c.classList.toggle('bad', r.max != null && r.remain > r.max);
   }
 }
@@ -656,6 +656,7 @@ function apply({ found, totals, filled = [], unknown = [], grades = [], opp, dat
     + (over.some(s => s.away) ? ' (원정석을 넓게 연 날이면 최대를 1713으로)' : ''));
   syncInputs(); fillTable(ids); save(); render();
   status((ids.length ? `${ids.length}개 구역을 채웠습니다. 노란 줄의 숫자를 확인하세요.`
+    : pre.some(n => /^좌석 그림으로 셈|^⚠ .* 좌석 그림의/.test(n)) ? '좌석 그림을 셌습니다 (잔여는 이미 있는 값 그대로).'
     : '구역 숫자를 못 찾았습니다. 글자를 고쳐 다시 채우거나 표에 직접 넣으세요.')
     + (notes.length ? '\n' + [...new Set(notes)].join('\n') : ''));
   if (ids.length) autoPublish(notes.some(n => n.startsWith('⚠')));
@@ -1238,8 +1239,7 @@ async function readShot(f, first, kor, eng, counted = []) {
   const withMap = async text => {
     if (/등급|선택|단계|구\s*역/.test(text)) return text;
     const m = await seatMap(bmp, eng, false);
-    if (m) counted.push(m);
-    if (m?.id) text += `\n${m.id}구역 ${m.remain}석\n`;
+    if (m) counted.push(m);  // 숫자는 인식이 다 끝난 뒤 목록 글자와 맞춰 보고 넣음
     return text;
   };
   // 휴대폰, 태블릿 앱 화면 전체(세로로 길고 큰 캡처)가 아니면(PC 화면, 잘라 낸 캡처): 통째로 읽고 + 목록 줄을 따로 읽고 + 좌석 그림을 셈
@@ -1291,17 +1291,23 @@ async function ocrRun(files) {
     // 구역 이름을 못 읽은 좌석 그림: 센 숫자를 보여 주고 어느 구역인지 물음 (취소하면 넣지 않음)
     for (const m of counted.filter(m => !m.id)) {
       const id = (prompt(`좌석 그림을 셌습니다: 남은 ${m.remain}석 / 전체 ${m.total}석\n구역 이름을 못 읽었습니다. 어느 구역인가요? (예: W23, 취소하면 넣지 않음)`) || '').trim().toUpperCase();
-      if (state.rows[id]) { m.id = id; texts.push(`\n${id}구역 ${m.remain}석\n`); }
+      if (state.rows[id]) m.id = id;
     }
-    const skipped = counted.filter(m => !m.id);
-    counted = counted.filter(m => m.id);
+    // 좌석 그림으로 센 남은 칸이 이미 아는 잔여(이번 캡처의 목록 글자, 없으면 표)와 다르면 옆 구역 칸이 섞였거나 잘못 센 것: 남은 수도 총석도 넣지 않음
+    // 맞으면 총석을 최대 좌석으로 넣고, 잔여를 아직 모르는 구역이면 센 남은 칸을 잔여로
+    let p = parseText(texts.join(''));
+    const known = m => p.found[m.id] ?? state.rows[m.id].remain;
+    const skipped = counted.filter(m => !m.id), wrong = counted.filter(m => m.id && known(m) != null && Math.abs(known(m) - m.remain) > Math.max(2, known(m) * 0.03));
+    counted = counted.filter(m => m.id && !wrong.includes(m));
+    texts.push(...counted.filter(m => known(m) == null).map(m => `\n${m.id}구역 ${m.remain}석\n`));
     raw.value = texts.join('');  // 원래 순서대로 (같은 구역이 여러 장이면 나중 장이 우선)
-    const p = parseText(raw.value);
+    p = parseText(raw.value);
     // 집계 시각 = 가장 늦게 찍은 캡처 (붙여넣기는 지금). 좌석 숫자를 못 찾았으면 경기 판단은 건너뜀 (지난 숫자를 지우지 않게)
     // 좌석 그림에서 센 전체 좌석 수는 실제로 센 값이라 최대 좌석으로 (모르던 구역, 더 큰 값일 때)
     const maxNotes = counted.filter(m => state.rows[m.id] && (state.rows[m.id].max == null || state.rows[m.id].learned || m.total > state.rows[m.id].max))
       .map(m => { Object.assign(state.rows[m.id], { max: m.total }); delete state.rows[m.id].learned; return m; });
     apply(p, [...(bad.length ? [`읽지 못한 캡처: ${bad.join(', ')}`] : []), ...skipped.map(m => `구역 이름을 몰라 넣지 않은 좌석 그림: 남은 ${m.remain} / 전체 ${m.total}`),
+      ...wrong.map(m => `⚠ ${m.id} 좌석 그림의 남은 칸 ${m.remain}석이 잔여 ${known(m)}석과 달라 넣지 않았습니다 (센 전체 ${m.total}석). 옆 구역 칸이 같이 찍혔으면 그 구역만 잘라 다시 넣으세요.`),
       ...(counted.length ? [`좌석 그림으로 셈: ${counted.map(m => `${m.id} 남은 ${m.remain} / 전체 ${m.total}`).join(', ')}` + (maxNotes.length ? ' (전체를 최대 좌석으로)' : '')] : []), ...(hasSeats(p) ? newCapture(p, localISO(Math.max(...files.map(f => f.lastModified || Date.now())))) : [])]);
   } catch (e) { status('인식 실패: ' + e.message); }
   await Promise.all(pairs.flat().map(w => w.terminate()));

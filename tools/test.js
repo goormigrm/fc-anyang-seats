@@ -312,6 +312,16 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       check(`좌석 그림 (남은 칸 많음, 배율 ${dsf * 100}%, 이름 ${label ? lc + ' ' + lf + 'px' : '없음 -> 물어봄'}): W23 남은 ${want[0]} / 전체 ${want[1]}`, ok, JSON.stringify({ r, asked }));
       await p.context().close();
     }
+    // 이미 아는 잔여(티켓링크 글자)와 맞춰 봄: 다르면(옆 구역이 섞임) 넣지 않고 경고, 맞으면 총석만 넣고 잔여는 그대로
+    for (const [list, okMax] of [[143, false], [154, true]]) {
+      p = await open(b, { url: URL + '?s=gimcheon#edit' });
+      await p.evaluate(v => fcIngest(`김천상무 vs FC안양\n김천종합운동장 | 2026.11.07(토) 16:30\n등급 선택\nW23구역\n${v} 석`), list);
+      await p.setInputFiles('#file', path.join(tmp, 'w23_1_12_W23.png'));
+      await p.evaluate(() => window.ocrDone);
+      r = await p.evaluate(() => ({ remain: state.rows.W23.remain, max: state.rows.W23.max, st: document.getElementById('status').innerText, rate: document.querySelector('tr[data-id="W23"]').cells[4].textContent }));
+      check(`좌석 그림 남은 ${want[0]} vs 티켓링크 잔여 ${list}: ${okMax ? '맞음 -> 총석만 넣음' : '다름 -> 넣지 않고 경고'}`, r.remain === list && (okMax ? r.max === want[1] && /좌석 그림을 셌습니다/.test(r.st) : r.max == null && /⚠ W23 좌석 그림의 남은 칸 155석이 잔여 143석과 달라/.test(r.st)), JSON.stringify(r));
+      await p.context().close();
+    }
   }
   const list = (rows, fs) => rows.map(([n, v], i) => `<div style="display:flex;justify-content:space-between;padding:${fs * 0.4}px 16px ${fs * 0.4}px ${i ? 52 : 16}px;font-size:${fs}px;color:${v ? '#222' : '#a9adb5'}">`
     + `<span>${i ? '' : '<b style="display:inline-block;width:' + fs * 0.8 + 'px;height:' + fs * 0.8 + 'px;background:#123;margin-right:8px"></b>'}${n}</span><span style="color:${v ? '#ff2a2a' : '#a9adb5'};font-weight:${v ? 700 : 400}">${v} 석</span></div>`).join('');
