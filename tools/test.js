@@ -196,12 +196,18 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       rate: document.querySelector('tr[data-id="S11"]').cells[4].textContent, hatch: svg().includes('url(#hatch)'), card: svg().includes('미판매 2개'), legend: />미판매</.test(svg()),
       sum: summaryText(), unsold: rec.unsold.join(), sec: rec.sections.find(x => x.id === 'S11').unsold, empty: rec.unknown.includes('S11') };
     btn('E31').click(); a.e31 = state.rows.E31.off;
+    // 사람이 정한 미판매 우선: 티켓링크 0석(매진처럼 보임)이 와도 그대로, 잔여가 보이면 알리기만, 표에 직접 숫자를 넣으면 꺼짐
+    fcIngest('김천상무 vs FC안양\n김천종합운동장 | 2026.11.07(토) 16:30\n등급 선택\nS11구역\n0 석\nW12구역\n190 석');
+    Object.assign(a, { zero: state.rows.S11.off && state.rows.S11.remain === null && state.rows.W12.remain === 190, st0: document.getElementById('status').innerText });
     fcIngest('김천상무 vs FC안양\n김천종합운동장 | 2026.11.07(토) 16:30\n등급 선택\nS11구역\n48 석');
-    Object.assign(a, { after: state.rows.S11.off, v: state.rows.S11.remain, pressed2: btn('S11').getAttribute('aria-pressed') });
+    Object.assign(a, { after: state.rows.S11.off, v: state.rows.S11.remain, st1: document.getElementById('status').innerText });
+    const inp = document.querySelector('tr[data-id="S11"] [data-k=remain]'); inp.value = '48'; inp.dispatchEvent(new Event('input', { bubbles: true }));
+    Object.assign(a, { typed: state.rows.S11.off === false && state.rows.S11.remain === 48, pressed2: btn('S11').getAttribute('aria-pressed') });
     return a;
   });
-  check('원정 미판매: 빗금, 잔여 비움, 카드, 범례, 요약 글, 발행 JSON, 다시 누르면 끔, 숫자가 오면 판매 중', r.head === '매진 / 미판매' && r.off === true && r.remain === null && r.pressed === 'true' && r.rate === '미판매'
-    && r.hatch && r.card && r.legend && /미판매: E31, S11/.test(r.sum) && r.unsold === 'E31,S11' && r.sec === true && !r.empty && r.e31 === false && r.after === false && r.v === 48 && r.pressed2 === 'false', JSON.stringify(r));
+  check('원정 미판매: 빗금, 잔여 비움, 카드, 범례, 요약 글, 발행 JSON, 다시 누르면 끔, 자동 입력(0석, 잔여)보다 사람이 우선, 표에 숫자를 넣으면 끔', r.head === '매진 / 미판매' && r.off === true && r.remain === null && r.pressed === 'true' && r.rate === '미판매'
+    && r.hatch && r.card && r.legend && /미판매: E31, S11/.test(r.sum) && r.unsold === 'E31,S11' && r.sec === true && !r.empty && r.e31 === false && r.zero && /미판매로 둔 구역은 그대로 둠: S11/.test(r.st0) && r.after === true && r.v === null
+    && /받은 구역이 모두 미판매로 둔 구역이라 그대로/.test(r.st1) && /미판매로 둔 S11에 잔여 48석이 보입니다/.test(r.st1) && r.typed && r.pressed2 === 'false', JSON.stringify(r));
   await p.context().close();
 
   // 예매 현황 = 얼마나, 몇 % 예매: 카드(예매된 좌석, 예매율, 원정석), 구역 예매율, 구역별 증감 없음, 원정도 추이, 발행 결과는 발행 칸에도
@@ -324,6 +330,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       p = await open(b, { url: URL + '?s=gimcheon#edit' });
       let asked = '';
       p.on('dialog', d => { asked = d.message(); d.accept('w23'); });
+      await p.evaluate(() => { state.rows.W23.max = null; });  // 총석을 모를 때
       await p.setInputFiles('#file', f);
       await p.evaluate(() => window.ocrDone);
       r = await p.evaluate(() => ({ remain: state.rows.W23.remain, max: state.rows.W23.max, st: document.getElementById('status').innerText.split('\n').slice(0, 2).join(' / ') }));
@@ -338,7 +345,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       await p.setInputFiles('#file', path.join(tmp, 'w23_1_12_W23.png'));
       await p.evaluate(() => window.ocrDone);
       r = await p.evaluate(() => ({ remain: state.rows.W23.remain, max: state.rows.W23.max, st: document.getElementById('status').innerText, rate: document.querySelector('tr[data-id="W23"]').cells[4].textContent }));
-      check(`좌석 그림 남은 ${want[0]} vs 티켓링크 잔여 ${list}: ${okMax ? '맞음 -> 센 총석으로 (넣어 둔 302 대신)' : '다름 -> 넣지 않고 경고 (302 그대로)'}`, r.remain === list && (okMax ? r.max === want[1] && /좌석 그림을 셌습니다/.test(r.st) : r.max === 302 && /⚠ W23 좌석 그림의 남은 칸 155석이 잔여 143석과 달라/.test(r.st)), JSON.stringify(r));
+      check(`좌석 그림 남은 ${want[0]} vs 티켓링크 잔여 ${list}: ${okMax ? '맞음 -> 넣어 둔 총석 302 그대로, 다르다고 알림' : '다름 -> 넣지 않고 경고 (302 그대로)'}`, r.remain === list && (okMax ? r.max === 302 && /W23 좌석 그림 전체 336석이 표의 최대 302석과 다릅니다/.test(r.st) : r.max === 302 && /⚠ W23 좌석 그림의 남은 칸 155석이 잔여 143석과 달라/.test(r.st)), JSON.stringify(r));
       await p.context().close();
     }
   }
@@ -392,11 +399,12 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     r = await p.evaluate(() => ({ W12: state.rows.W12.remain, W13: state.rows.W13.remain, W11: state.rows.W11.remain, W11max: state.rows.W11.max,
       E: ['E11', 'E12', 'E13', 'E14', 'E15', 'E21', 'E22', 'E23', 'E24'].map(id => state.rows[id].remain).join(), st: document.getElementById('status').innerText }));
     check('김천 캡처: PC 등급 목록(W), 잘라 낸 목록(E, E 를 6 으로 읽어도), 좌석 그림(W11 칸 세기)',
-      r.W12 === 196 && r.W13 === 267 && r.W11 === 0 && r.W11max === 242 && r.E === '0,278,275,279,0,0,0,415,0', JSON.stringify(r));
+      r.W12 === 196 && r.W13 === 267 && r.W11 === 0 && r.W11max === 240 && /W11 좌석 그림 전체 242석이 표의 최대 240석과 다릅니다/.test(r.st) && r.E === '0,278,275,279,0,0,0,415,0', JSON.stringify(r));
     await p.context().close();
     // 같은 W11 을 다른 크기로 캡처한 것 하나씩: 줄 번호 숫자, 잘린 옆 칸을 빼고 줄별 40, 44, 49, 53, 56 = 242
     for (const f of fs.readdirSync(PC).filter(f => f.startsWith('좌석그림_W11'))) {
       p = await open(b, { url: URL + '?s=gimcheon#edit' });
+      await p.evaluate(() => { state.rows.W11.max = null; });  // 총석을 모를 때 센 값이 들어가는지
       await p.setInputFiles('#file', path.join(PC, f));
       await p.evaluate(() => window.ocrDone);
       r = await p.evaluate(() => ({ remain: state.rows.W11.remain, max: state.rows.W11.max }));
