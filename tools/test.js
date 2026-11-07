@@ -80,10 +80,18 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   check('토큰 만료 30일 전 알림', /만료가 1?\d일 남았습니다/.test(r.n) && /만료 \d{4}-/.test(r.h), JSON.stringify(r));
   await p.context().close();
 
-  // 다른 사이트용 화면 (?embed)
-  p = await open(b, { url: URL + '?embed' });
-  r = await p.evaluate(() => ['.share', '.panel', '#trend', '.foot'].map(q => getComputedStyle(document.querySelector(q)).display).join() + '|' + document.body.classList.contains('editing'));
-  check('다른 사이트용 화면: 현황판만', r === 'none,none,none,none|false', r);
+  // 다른 사이트용 화면 (?embed): 다른 페이지 안(iframe)에서는 현황판만, 링크로 바로 열면 보통 보기 화면
+  const WRAP = path.join(require('os').tmpdir(), 'fc-embed-wrap.html');
+  const wrap = src => { fs.writeFileSync(WRAP, `<body style="margin:0"><iframe src="${src}" style="width:390px;aspect-ratio:1280/1062;border:0"></iframe></body>`); return pathToFileURL(WRAP).href; };
+  const inner = async pg => { await pg.waitForTimeout(1500); return pg.mainFrame().childFrames()[0]; };
+  p = await open(b, { url: wrap(URL + '?embed') });
+  r = await (await inner(p)).evaluate(() => ['.share', '.panel', '#trend', '.foot'].map(q => getComputedStyle(document.querySelector(q)).display).join() + '|' + document.body.classList.contains('editing'));
+  check('다른 사이트용 화면(iframe 안): 현황판만', r === 'none,none,none,none|false', r);
+  await p.context().close();
+  p = await open(b, { url: URL + '?embed', device: 'iPhone 13' });
+  await p.waitForTimeout(1000);
+  r = await p.evaluate(() => [document.body.classList.contains('embed'), getComputedStyle(document.querySelector('.share')).display, getComputedStyle(document.getElementById('trend')).display, document.getElementById('board').getAttribute('viewBox'), getComputedStyle(document.getElementById('stadiumWrap')).display].join('|'));
+  check('?embed 를 링크로 바로 열면(휴대폰 새 창) 보통 보기 화면: 세로판, 공유, 추이', r === 'false|block|block|0 140 1080 600|block', r);
   await p.context().close();
 
   // 경기별 기록 화면
@@ -244,17 +252,19 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       && h.url === '' && h.R10 === 26 && c.url === '?s=anyang' && !c.away && c.R10 === 26, JSON.stringify({ a, h, c }));
 
     // 퍼간 화면(?embed): 최근 구장으로, 열어 둔 사이 홈이 새로 발행되면 홈으로 (embed 유지), 좁은 iframe 도 가로판, 퍼가기 코드
-    const data = { 'gimcheon/latest.json': G, 'latest.json': Hm }, pg = await open(b, { url: URL + '?embed', data, device: 'iPhone 13' });
-    await pg.waitForURL(/s=gimcheon/); await pg.waitForTimeout(800);
-    const e1 = await pg.evaluate(() => [location.search, document.body.classList.contains('embed'), document.getElementById('board').getAttribute('viewBox'), getComputedStyle(document.getElementById('stadiumWrap')).display, embedCode()].join(' | '));
+    const data = { 'gimcheon/latest.json': G, 'latest.json': Hm }, pg = await open(b, { url: wrap(URL + '?embed'), data });
+    let fr = await inner(pg);
+    await fr.waitForURL(/s=gimcheon/); await pg.waitForTimeout(800);
+    const e1 = await fr.evaluate(() => [location.search, document.body.classList.contains('embed'), document.getElementById('board').getAttribute('viewBox'), getComputedStyle(document.getElementById('stadiumWrap')).display, embedCode()].join(' | '));
     data['latest.json'] = { ...Hm, updatedAt: '2026-11-07T12:00:00+09:00' };
-    await pg.evaluate(() => follow());
-    await pg.waitForURL(u => !u.search.includes('s=')); await pg.waitForTimeout(800);
-    const e2 = await pg.evaluate(() => [location.search, document.body.classList.contains('embed'), document.title, state.rows.R10.remain].join(' | '));
+    await fr.evaluate(() => follow());
+    await fr.waitForURL(u => !u.search.includes('s=')); await pg.waitForTimeout(800);
+    fr = pg.mainFrame().childFrames()[0];
+    const e2 = await fr.evaluate(() => [location.search, document.body.classList.contains('embed'), document.title, state.rows.R10.remain].join(' | '));
     await pg.context().close();
     const pc = await open(b, { url: URL + '?s=gimcheon', data }), e3 = await pc.evaluate(() => embedCode());
     await pc.context().close();
-    check('퍼간 화면: 최근 구장(김천)으로, 홈이 새로 발행되면 홈으로 따라감, 좁아도 가로판, 퍼가기 코드는 어느 화면에서나 따라가는 ?embed',
+    check('퍼간 화면(iframe 390px): 최근 구장(김천)으로, 홈이 새로 발행되면 홈으로 따라감, 좁아도 가로판, 퍼가기 코드는 어느 화면에서나 따라가는 ?embed',
       /^\?embed=&s=gimcheon&auto= \| true \| 0 0 1280 1062 \| none \| <iframe src="[^"]*index\.html\?embed" title="FC안양 예매 현황" style="width:100%;aspect-ratio:1280\/1062/.test(e1)
       && e2 === '?embed= | true | FC안양 예매현황 | 26' && /index\.html\?embed"/.test(e3), JSON.stringify({ e1, e2, e3 }));
   }

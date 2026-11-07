@@ -799,7 +799,7 @@ function summaryText() {
 const embedCode = () => `<iframe src="${location.origin + location.pathname}?embed" title="FC안양 예매 현황" style="width:100%;aspect-ratio:1280/1062;border:0" loading="lazy"></iframe>`;
 $('embedCode').onclick = async () => {
   const code = embedCode();
-  try { await navigator.clipboard.writeText(code); note('퍼가기 코드(iframe)를 복사했습니다. 다른 사이트 HTML 에 붙여 넣으면 홈, 원정 중 가장 최근 경기 현황판이 보이고 5분마다 새 발행을 받아 옵니다.'); }
+  try { await navigator.clipboard.writeText(code); note(`퍼가기 코드(iframe)를 복사했습니다. 다른 사이트 HTML 에 붙여 넣으면 홈, 원정 중 가장 최근 경기 현황판이 보이고 5분마다 새 발행을 받아 옵니다. 링크로 걸 때는 ${location.origin + location.pathname} (휴대폰 화면에 맞음).`); }
   catch { note(code); }
 };
 $('copy').onclick = async () => {
@@ -1442,7 +1442,8 @@ async function loadPublished() {
 // 입력 화면은 개발자 모드에서만: Ctrl+Shift+E, 또는 주소 끝 #edit (이 기기에 기억). 보기 화면은 누구나
 const EDIT = 'fc-anyang-edit';
 // ?embed: 다른 사이트 iframe 용 (현황판만, 입력 화면 안 열림), ?embed=trend 면 추이도
-const params = new URLSearchParams(location.search), embed = params.has('embed');
+// ?embed 는 다른 페이지 안(iframe)에서만 현황판만 보임. 링크로 바로 열면(휴대폰 새 창 등) 보통 보기 화면 (세로판, 공유, 추이)
+const params = new URLSearchParams(location.search), embed = params.has('embed') && window.self !== window.top;
 let editing = !embed && location.hash === '#edit';
 try { if (!embed) { editing ||= localStorage.getItem(EDIT) === '1'; if (editing) localStorage.setItem(EDIT, '1'); } } catch {}
 document.body.classList.toggle('editing', editing);
