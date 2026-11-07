@@ -75,7 +75,7 @@
   #lamp.bad i { background: #dc2626; box-shadow: 0 0 0 4px #dc262633; }
   @keyframes lamp { 0%, 100% { box-shadow: 0 0 0 3px #16a34a55; } 50% { box-shadow: 0 0 0 9px #16a34a11; } }
   .embed main { max-width: none; padding: 0; } .embed #boardWrap { border-radius: 0; box-shadow: none; }
-  .embed .share, .embed .panel, .embed .mobile-only, .embed .foot, .embed:not(.embed-trend) #trend { display: none; }
+  .embed .share, .embed .panel, .embed .mobile-only, .embed .foot, .embed:not(.embed-trend) #trend, .embed #stadiumWrap { display: none !important; }
   label.check { margin: 0; gap: 6px; color: #374151; font-size: 14px; font-weight: 600; }
   label.check input { width: 18px; height: 18px; accent-color: var(--p7); }
   /* 휴대폰: 보라 띠와 카드 -> 경기장 -> 공유 -> (입력 화면) -> 예매 추이 */
@@ -103,7 +103,7 @@
     <div id="stadiumWrap"><svg id="stadium" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 740 1080 960" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif"></svg></div></div>
   <p class="hint mobile-only">경기장을 누르면 크게, 다시 누르면 원래대로</p>
   <div class="box share">
-    <div class="row"><button id="png" class="main">현황판 저장</button><button id="story" class="main">스토리 이미지 저장</button><button id="share" class="main" hidden>스토리로 공유</button><button id="trendImg">추이 이미지</button><button id="link">링크 공유</button><button id="copy">요약 글 복사</button></div>
+    <div class="row"><button id="png" class="main">현황판 저장</button><button id="story" class="main">스토리 이미지 저장</button><button id="share" class="main" hidden>스토리로 공유</button><button id="trendImg">추이 이미지</button><button id="link">링크 공유</button><button id="copy">요약 글 복사</button><button id="embedCode">퍼가기 코드</button></div>
     <div id="note"></div>
   </div>
   <div class="panel edit">
@@ -588,7 +588,7 @@ function build(story) {
 const portrait = matchMedia('(max-width: 860px)'), show = (el, vb, svg) => { el.setAttribute('viewBox', vb); el.innerHTML = svg; };
 function render() {
   board.setAttribute('aria-label', summaryText());  // 화면 읽기 프로그램용 요약
-  if (portrait.matches) {
+  if (portrait.matches && !embed) {  // 다른 사이트에 퍼간 화면(iframe)은 폭과 상관없이 가로판
     const st = build(true);
     show(board, '0 140 1080 600', `<g id="mstory">${st}</g>`); show(stadium, '0 740 1080 960', '<use href="#mstory"/>');
     show(trend, '0 0 1040 480', chart(1, 1, 1038, 478, 1.8, 4));
@@ -795,6 +795,13 @@ function summaryText() {
     state.crowd != null ? `공식 관중 ${fmt(state.crowd)}명 (예매 ${fmt(FULL - t.avail)}석 대비 ${signed(state.crowd - (FULL - t.avail))})` : '',
     t.empty.length ? `(정보 없는 구역 ${t.empty.length}개 빠짐)` : ''].filter(Boolean).join('\n');
 }
+// 다른 사이트에 붙여 넣는 iframe 코드: 현황판만, 5분마다 새 발행. 고른 원정 화면이 아니면 홈, 원정 중 가장 최근 경기를 따라감
+const embedCode = () => `<iframe src="${location.origin + location.pathname}?${AWAY && !FOLLOW ? `s=${STADIUM}&` : ''}embed" title="FC안양 예매 현황" style="width:100%;aspect-ratio:1280/1062;border:0" loading="lazy"></iframe>`;
+$('embedCode').onclick = async () => {
+  const code = embedCode(), what = AWAY && !FOLLOW ? `${STADIUMS[STADIUM].name} 원정 현황판` : '홈, 원정 중 가장 최근 경기 현황판';
+  try { await navigator.clipboard.writeText(code); note(`퍼가기 코드(iframe)를 복사했습니다. 다른 사이트 HTML 에 붙여 넣으면 ${what}이 보이고 5분마다 새 발행을 받아 옵니다.`); }
+  catch { note(code); }
+};
 $('copy').onclick = async () => {
   const s = summaryText();
   try { await navigator.clipboard.writeText(s); note('요약 글을 복사했습니다.'); } catch { note(s); }
@@ -1392,7 +1399,7 @@ addEventListener('drop', e => {
   if (imgs.length) window.ocrDone = ocr(imgs);
 });
 $('link').onclick = async () => {
-  const url = location.origin + location.pathname + (AWAY ? '?s=' + STADIUM : '');  // 원정 화면은 그 구장, 홈은 기본 주소(가장 최근 집계)
+  const url = location.origin + location.pathname + (AWAY && !FOLLOW ? '?s=' + STADIUM : '');  // 고른 원정 화면은 그 구장, 나머지는 기본 주소(가장 최근 집계)
   try { if (navigator.share) return await navigator.share({ url, title: document.title }); } catch (e) { if (e.name === 'AbortError') return; }
   try { await navigator.clipboard.writeText(url); note('링크를 복사했습니다.'); } catch { note(url); }
 };
@@ -1401,6 +1408,10 @@ $('link').onclick = async () => {
 const fetchData = (name, dir = DATA) => fetch(`${API}contents/${dir}${name}?ref=data`, { headers: { Accept: 'application/vnd.github.raw+json' }, cache: 'no-store' })
   .then(r => r.ok ? r : Promise.reject(r.status)).catch(() => fetch(RAW + dir + name + '?t=' + Date.now(), { cache: 'no-cache' }));
 // 기본 주소(?s 없이 연 보기 화면)는 홈, 원정 중 가장 최근에 발행한 구장을 보여 줌 (같거나 못 읽으면 홈)
+// FOLLOW: 기본 주소, 퍼간 화면(?embed)처럼 구장을 고르지 않고 연 화면. 최근 구장으로 옮겨 가면 주소에 auto 를 남겨 5분마다 다시 확인
+const FOLLOW = (q => !q.has('s') || q.has('auto'))(new URLSearchParams(location.search));
+const go = id => { const q = new URLSearchParams(location.search); if (id === 'anyang') { q.delete('s'); q.delete('auto'); } else { q.set('s', id); q.set('auto', ''); } location.replace(location.pathname + (q.size ? '?' + q : '')); };
+const follow = () => newest().then(id => id !== STADIUM && go(id));
 const newest = () => Promise.all(['anyang', ...Object.keys(STADIUMS)].map(id => fetchData('latest.json', id === 'anyang' ? '' : id + '/')
   .then(r => r.ok ? r.json() : null).then(d => [id, +new Date(d?.updatedAt) || 0]).catch(() => [id, 0])))
   .then(list => list.reduce((a, b) => b[1] > a[1] ? b : a)[0]);
@@ -1448,9 +1459,9 @@ portrait.addEventListener('change', render);
 if (editing) { syncInputs(); fillTable(); render(); loadHistory(); tokenInfo(); drawLamp(); setInterval(drawLamp, 2000); }
 else {
   blank();
-  const view = () => { render(); loadPublished().then(loadHistory); setInterval(() => loadPublished().then(loadHistory), 300e3); setInterval(showAgo, 60e3); };
-  if (params.has('s') || embed) view();  // 구장을 고른 주소(안양 홈은 ?s=anyang), 다른 사이트용 화면은 그대로
-  else Promise.race([newest(), new Promise(ok => setTimeout(ok, 4000, 'anyang'))]).then(id => id === 'anyang' ? view() : location.replace(location.pathname + '?s=' + id));
+  const view = () => { render(); loadPublished().then(loadHistory); setInterval(() => { loadPublished().then(loadHistory); if (FOLLOW) follow(); }, 300e3); setInterval(showAgo, 60e3); };
+  if (!FOLLOW) view();  // 구장을 고른 주소(안양 홈은 ?s=anyang)는 그 구장만
+  else Promise.race([newest(), new Promise(ok => setTimeout(ok, 4000, STADIUM))]).then(id => id === STADIUM ? view() : go(id));
 }
 </script>
 </body>

@@ -240,8 +240,23 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       return v;
     };
     const a = await land(URL, G, Hm), h = await land(URL, { ...G, updatedAt: '2026-11-01T10:00:00+09:00' }, Hm), c = await land(URL + '?s=anyang', G, Hm);
-    check('기본 주소: 가장 최근 발행(김천)으로 가고 미판매도 받음, 홈이 최근이면 홈, ?s=anyang 은 홈', a.url === '?s=gimcheon' && a.away && a.W12 === 196 && a.S11 === true && a.svg
+    check('기본 주소: 가장 최근 발행(김천)으로 가고 미판매도 받음, 홈이 최근이면 홈, ?s=anyang 은 홈', a.url === '?s=gimcheon&auto=' && a.away && a.W12 === 196 && a.S11 === true && a.svg
       && h.url === '' && h.R10 === 26 && c.url === '?s=anyang' && !c.away && c.R10 === 26, JSON.stringify({ a, h, c }));
+
+    // 퍼간 화면(?embed): 최근 구장으로, 열어 둔 사이 홈이 새로 발행되면 홈으로 (embed 유지), 좁은 iframe 도 가로판, 퍼가기 코드
+    const data = { 'gimcheon/latest.json': G, 'latest.json': Hm }, pg = await open(b, { url: URL + '?embed', data, device: 'iPhone 13' });
+    await pg.waitForURL(/s=gimcheon/); await pg.waitForTimeout(800);
+    const e1 = await pg.evaluate(() => [location.search, document.body.classList.contains('embed'), document.getElementById('board').getAttribute('viewBox'), getComputedStyle(document.getElementById('stadiumWrap')).display, embedCode()].join(' | '));
+    data['latest.json'] = { ...Hm, updatedAt: '2026-11-07T12:00:00+09:00' };
+    await pg.evaluate(() => follow());
+    await pg.waitForURL(u => !u.search.includes('s=')); await pg.waitForTimeout(800);
+    const e2 = await pg.evaluate(() => [location.search, document.body.classList.contains('embed'), document.title, state.rows.R10.remain].join(' | '));
+    await pg.context().close();
+    const pc = await open(b, { url: URL + '?s=gimcheon', data }), e3 = await pc.evaluate(() => embedCode());
+    await pc.context().close();
+    check('퍼간 화면: 최근 구장(김천)으로, 홈이 새로 발행되면 홈으로 따라감, 좁아도 가로판, 퍼가기 코드(따라가는 주소, 고른 구장 주소)',
+      /^\?embed=&s=gimcheon&auto= \| true \| 0 0 1280 1062 \| none \| <iframe src="[^"]*index\.html\?embed" title="FC안양 예매 현황" style="width:100%;aspect-ratio:1280\/1062/.test(e1)
+      && e2 === '?embed= | true | FC안양 예매현황 | 26' && /index\.html\?s=gimcheon&embed"/.test(e3), JSON.stringify({ e1, e2, e3 }));
   }
 
   // 수집 상태 램프: 신호 없음 / 켜짐 / 티켓링크 열림 / 예매 화면 감지 / 숫자 받음 / 다른 구장 / 신호 끊김 / 뒤 탭
