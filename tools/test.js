@@ -277,13 +277,14 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     note('발행했습니다.');
     return { cap: t.cap, booked: t.booked, svg1: svg.includes('예매된 좌석') && svg.includes('>265<') && svg.includes(' / 762석') && svg.includes('원정석 포함 판매 구역 전체'), rate: svg.includes('34.8<tspan'), s: svg.includes('원정석 예매') && svg.includes(' / 451석') && svg.includes('원정석 33.3% 예매'),
       zone: svg.includes('W12 36%'), diff: /% [+−]\d/.test(svg), since: svg.includes('+4'), legend: svg.includes('>예매율<') && svg.includes('0~24%'),
-      trend: getComputedStyle(tr).display !== 'none' && tr.innerHTML.includes('예매된 좌석 추이') && tr.innerHTML.includes('34.8%'),
+      trend: getComputedStyle(tr).display !== 'none' && tr.innerHTML.includes('홈석 예매 추이') && tr.innerHTML.includes('원정석 예매 추이') && tr.innerHTML.includes('>115<') && tr.innerHTML.includes('37.0%') && tr.innerHTML.includes('>150<') && tr.innerHTML.includes('33.3%'),
+      away: (r => [r.awayBooked, r.awayCapacity].join())(record()),
       head: document.querySelector('thead th:last-child').textContent, cell: document.querySelector('tr[data-id="W12"]').cells[4].textContent, pub: document.getElementById('pubNote').textContent,
       sum: summaryText(), rec: (r => [r.capacity, r.booked])(record()) };
   });
-  check('예매 현황: 예매된 좌석, 예매율, 원정석 예매 카드, 구역 예매율, 증감 표시 없음(구역, 카드), 원정 추이, 표 예매율, 요약 글, 발행 JSON, 발행 칸 알림',
+  check('예매 현황: 예매된 좌석, 예매율, 원정석 예매 카드, 구역 예매율, 증감 표시 없음(구역, 카드), 추이는 홈석(115, 37.0%)/원정석(150, 33.3%) 두 그래프, 표 예매율, 요약 글, 발행 JSON, 발행 칸 알림',
     r.cap === 762 && r.booked === 265 && r.svg1 && r.rate && r.s && r.zone && !r.diff && !r.since && r.legend && r.trend && r.head === '예매율' && r.cell === '36%' && r.pub === '발행했습니다.'
-    && /예매 265석 \/ 762석 \(34\.8%\), 원정석 예매 150석 \/ 451석 \(33\.3%\)/.test(r.sum) && r.rec.join() === '762,265', JSON.stringify(r));
+    && /예매 265석 \/ 762석 \(34\.8%\), 원정석 예매 150석 \/ 451석 \(33\.3%\)/.test(r.sum) && r.rec.join() === '762,265' && r.away === '150,451', JSON.stringify(r));
   await p.context().close();
 
   // 원정 구장 (좌석도로 그림): 칸 수, 원정석 칸, 그림 오류 없음, 티켓링크 표기가 달라도 구역 이름 맞추기
@@ -388,6 +389,25 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     check('퍼간 화면(iframe 390px): 최근 구장(김천)으로, 홈이 새로 발행되면 홈으로 따라감, 좁아도 가로판, 퍼가기 코드는 어느 화면에서나 따라가는 ?embed',
       /^\?embed=&s=gimcheon&auto= \| true \| 0 0 1280 1062 \| none \| <iframe src="[^"]*index\.html\?embed" title="FC안양 예매 현황" style="width:100%;aspect-ratio:1280\/1062/.test(e1)
       && e2 === '?embed= | true | FC안양 예매현황 | 26' && /index\.html\?embed"/.test(e3), JSON.stringify({ e1, e2, e3 }));
+  }
+
+  // 보내기 스크립트 업데이트 버튼: 신호 없음 -> 설치/업데이트(보라), 옛 판 -> 업데이트(11판 -> 최신), 최신 -> 판 번호만. 최신 판 번호는 스크립트 @version 과 같아야 함
+  {
+    const ver = +fs.readFileSync(path.join(ROOT, 'fc-anyang-send.user.js'), 'utf8').match(/@version\s+(\d+)/)[1];
+    const sv = +fs.readFileSync(path.join(ROOT, 'fc-anyang-send.user.js'), 'utf8').match(/state: 'installed', version: (\d+)/)[1];
+    p = await open(b, { url: URL + '?s=gimcheon#edit' });
+    r = await p.evaluate(v => {
+      const B = () => (document.getElementById('scriptBtn').classList.contains('main') ? '*' : '') + document.getElementById('scriptBtn').textContent + ' @' + document.getElementById('scriptBtn').getAttribute('href'), out = { latest: SCRIPT_VERSION };
+      drawLamp(); out.none = B();
+      fcPing({ state: 'installed', version: v - 1, at: Date.now() }); out.old = B(); out.lamp = document.getElementById('lamp').innerText;
+      fcPing({ state: 'installed', at: Date.now() }); out.older = B();
+      fcPing({ state: 'installed', version: v, at: Date.now() }); out.ok = B();
+      return out;
+    }, ver);
+    check(`스크립트 업데이트 버튼(최신 ${ver}판, 스크립트 @version 과 같음): 신호 없음, 옛 판, 최신`, r.latest === ver && sv === ver && r.none === '*보내기 스크립트 설치/업데이트 @fc-anyang-send.user.js'
+      && r.old === `*보내기 스크립트 업데이트 (${ver - 1}판 → ${ver}판) @fc-anyang-send.user.js` && /새 판\(\d+판\) 있음/.test(r.lamp) && r.older === `*보내기 스크립트 업데이트 (옛 판 → ${ver}판) @fc-anyang-send.user.js`
+      && r.ok === `보내기 스크립트 ${ver}판 (최신) @fc-anyang-send.user.js`, JSON.stringify({ ...r, ver, sv }));
+    await p.context().close();
   }
 
   // 수집 상태 램프: 신호 없음 / 켜짐 / 티켓링크 열림 / 예매 화면 감지 / 숫자 받음 / 다른 구장 / 신호 끊김 / 뒤 탭

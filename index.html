@@ -115,7 +115,8 @@
   <div class="panel edit">
     <div class="box info">
       <div class="row"><span class="mode">입력 화면</span><span class="hint" style="margin:0">Ctrl+Shift+E 로 끄고 켭니다</span>
-        <button id="viewMode">보기 화면으로</button><a class="btn" href="guide/" target="_blank">작업 가이드</a><a class="btn" href="guide/guide.pdf" download="FC안양_예매현황_집계가이드.pdf">가이드 PDF</a></div>
+        <button id="viewMode">보기 화면으로</button><a class="btn" href="guide/" target="_blank">작업 가이드</a><a class="btn" href="guide/guide.pdf" download="FC안양_예매현황_집계가이드.pdf">가이드 PDF</a>
+        <a class="btn" id="scriptBtn" href="fc-anyang-send.user.js" target="_blank" rel="noopener">보내기 스크립트 설치/업데이트</a></div>
       <h2>경기 정보</h2>
       <div class="fields">
         <label><span>상대팀</span><select id="opp"><option value="">선택</option></select></label>
@@ -600,6 +601,9 @@ function stats() {
   // 예매된 좌석: 홈은 만석 - 남은 좌석, 원정은 잔여와 총석을 다 아는 판매 구역만으로 (만석을 몰라서)
   if (!FULL) t.cap = capKnown;
   t.booked = FULL ? FULL - t.avail : capKnown - availKnown;
+  // 원정석 쪽 (홈 경기는 원정석 칸, 원정 경기는 안양 응원 쪽 보라 칸): 잔여와 총석을 다 아는 칸만. 홈석 = 전체 - 원정석
+  const side = SECTIONS.map(s => (AWAY ? s.ours : s.away) && state.rows[s.id]).filter(r => r && !r.off && r.remain != null && r.max);
+  t.awayCap = side.reduce((a, r) => a + r.max, 0); t.awayBooked = side.reduce((a, r) => a + r.max - Math.min(r.remain, r.max), 0);
   return t;
 }
 // "2026-11-01T16:30" → "2026.11.01(일) 16:30"
@@ -618,25 +622,29 @@ const nice = r => { const e = 10 ** Math.floor(Math.log10(r)), f = r / e; return
 function trendPoints() {
   const me = (state.opp || '') + state.date.slice(0, 10), t = stats();
   const pts = history.filter(p => (p.opponent || '') + String(p.kickoff || '').slice(0, 10) === me && typeof p.at === 'string' && Number.isInteger(p.booked))
-    .map(p => ({ at: p.at.slice(0, 16), booked: p.booked, cap: p.cap || FULL }));
-  if (t.empty.length < SECTIONS.length && t.cap && state.at && !pts.some(p => p.at === state.at)) {
-    const now = new Date(state.at);  // 발행할 때처럼 10분 안의 점은 지금 숫자로 바꿔 보여 줌
-    return [...pts.filter(p => Math.abs(new Date(p.at) - now) >= 600e3), { at: state.at, booked: t.booked, cap: t.cap }].sort((a, b) => a.at < b.at ? -1 : 1);
+    .map(p => ({ at: p.at.slice(0, 16), booked: p.booked, cap: p.cap || FULL, ab: p.awayBooked, ac: p.awayCap }));
+  if (t.empty.length < SECTIONS.length && t.cap && state.at) {
+    const now = new Date(state.at);  // 발행할 때처럼 10분 안의 점은 지금 숫자로 바꿔 보여 줌 (같은 시각 기록도: 지금 숫자에는 원정석 숫자가 있어서)
+    return [...pts.filter(p => Math.abs(new Date(p.at) - now) >= 600e3), { at: state.at, booked: t.booked, cap: t.cap, ab: t.awayBooked, ac: t.awayCap }].sort((a, b) => a.at < b.at ? -1 : 1);
   }
   return pts.sort((a, b) => a.at < b.at ? -1 : 1);
 }
-// k: 글자와 여백 배율 (휴대폰 세로판은 크게), n: 보여 줄 최근 집계 수
-function chart(x0, y0, w, h, k = 1, n = 8) {
-  const pts = trendPoints().slice(-n), last = pts.at(-1), ink = '#3e1a78', z = v => v * k, two = k > 1;  // two: 설명을 다음 줄로
+// k: 글자와 여백 배율 (휴대폰 세로판은 크게), n: 보여 줄 최근 집계 수, side: 'home' 홈석, 'away' 원정석 (원정석 숫자를 모르는 점은 빠짐), 없으면 전체
+function chart(x0, y0, w, h, k = 1, n = 8, side) {
+  const pts = trendPoints().map(p => side === 'away' ? p.ac && { at: p.at, booked: p.ab, cap: p.ac } : side === 'home' ? p.ac && { at: p.at, booked: p.booked - p.ab, cap: p.cap - p.ac } : p).filter(Boolean).slice(-n);
+  const last = pts.at(-1), ink = side === 'away' ? (AWAY ? '#6a40ad' : '#a82020') : '#3e1a78', z = v => v * k, two = k > 1 || w < 800;  // two: 설명을 다음 줄로
   const prev = [...pts].reverse().find(p => new Date(last?.at) - new Date(p.at) >= 3600e3);  // 예상은 1시간 넘게 떨어진 점과 비교 (몇 분 차이로 늘리면 크게 틀림)
+  const title = side === 'away' ? '원정석 예매 추이' : side === 'home' ? '홈석 예매 추이' : '예매된 좌석 추이';
   const out = [`<rect x="${x0}" y="${y0}" width="${w}" height="${h}" rx="${z(12)}" fill="#fff" stroke="#eceff3"/>`,
-    text(x0 + z(20), y0 + z(30), '예매된 좌석 추이', z(15), '#111827', 700, 'start'),
-    text(two ? x0 + z(20) : x0 + 150, two ? y0 + z(50) : y0 + 30, '집계할 때마다 기록 · 점선 = 마지막 증가 속도가 경기 시작까지 이어질 때 예상', z(two ? 10 : 11), '#9ca3af', 400, 'start')];
-  if (!pts.length) return out.join('') + text(x0 + w / 2, y0 + h / 2 + z(10), '발행할 때마다 예매된 좌석이 여기 쌓여 증감을 보여 줍니다.', z(13), '#9ca3af');
+    text(x0 + z(20), y0 + z(30), title, z(15), '#111827', 700, 'start'),
+    text(two ? x0 + z(20) : x0 + 150, two ? y0 + z(50) : y0 + 30, w < 800 * k ? '집계할 때마다 기록 · 점선 = 경기 시작까지 예상' : '집계할 때마다 기록 · 점선 = 마지막 증가 속도가 경기 시작까지 이어질 때 예상', z(two ? 10 : 11), '#9ca3af', 400, 'start')];
+  // 공식 관중은 홈석, 원정석으로 나눌 수 없어 홈석 그래프 위에 글자로 (전체 예매 대비)
+  if (side === 'home' && state.crowd != null) { const all = trendPoints().at(-1); out.push(text(x0 + w - z(20), y0 + z(30), `공식 관중 ${fmt(state.crowd)}명` + (all ? ` (전체 예매 ${fmt(all.booked)}석 대비 ${signed(state.crowd - all.booked)})` : ''), z(11), '#b7791f', 700, 'end')); }
+  if (!pts.length) return out.join('') + text(x0 + w / 2, y0 + h / 2 + z(10), side === 'away' ? '원정석 숫자가 들어오면 여기 쌓여 증감을 보여 줍니다.' : '발행할 때마다 예매된 좌석이 여기 쌓여 증감을 보여 줍니다.', z(13), '#9ca3af');
   // 예상: 마지막 두 점의 증가 속도로 경기 시작 시각까지
   let fc = null;
-  if (state.crowd != null && state.date.length > 10) fc = { at: state.date > last.at ? state.date : last.at, booked: state.crowd, cap: last.cap, crowd: true };  // 경기 뒤 공식 관중
-  else if (prev && state.date.length > 10 && state.date > last.at) {
+  if (!side && state.crowd != null && state.date.length > 10) fc = { at: state.date > last.at ? state.date : last.at, booked: state.crowd, cap: last.cap, crowd: true };  // 경기 뒤 공식 관중
+  else if (state.crowd == null && prev && state.date.length > 10 && state.date > last.at) {
     const rate = (last.booked - prev.booked) / (new Date(last.at) - new Date(prev.at));
     if (isFinite(rate)) fc = { at: state.date, cap: last.cap, booked: Math.max(0, Math.min(last.cap, Math.round(last.booked + rate * (new Date(state.date) - new Date(last.at))))) };
   }
@@ -795,10 +803,10 @@ function render() {
   if (portrait.matches && !embed) {  // 다른 사이트에 퍼간 화면(iframe)은 폭과 상관없이 가로판
     const st = build(true);
     show(board, '0 140 1080 600', `<g id="mstory">${st}</g>`); show(stadium, '0 740 1080 960', '<use href="#mstory"/>');
-    show(trend, '0 0 1040 480', chart(1, 1, 1038, 478, 1.8, 4));
+    show(trend, '0 0 1040 960', chart(1, 1, 1038, 478, 1.8, 4, 'home') + chart(1, 481, 1038, 478, 1.8, 4, 'away'));  // 휴대폰은 폭이 좁아 위아래로
   } else {
     show(board, `0 0 ${W} ${H}`, build(false));
-    show(trend, '0 0 1240 280', chart(1, 1, 1238, 278));
+    show(trend, '0 0 1240 280', chart(1, 1, 614, 278, 1, 6, 'home') + chart(625, 1, 614, 278, 1, 6, 'away'));  // 홈석 왼쪽, 원정석 오른쪽
   }
   for (const tr of tbody.rows) {
     const r = state.rows[tr.dataset.id], c = tr.cells[4];
@@ -953,12 +961,12 @@ function trendStory() {
   const pts = trendPoints(), last = pts.at(-1), prev = pts.at(-2), d = last && prev ? last.booked - prev.booked : null;
   return `<rect width="1080" height="1920" fill="#fff"/><rect width="1080" height="700" fill="#3e1a78"/>`
     + `<image href="${exporting ? EMBLEM : 'emblem.png'}" x="490" y="200" width="100" height="101"/>`
-    + text(540, 385, `FC안양 vs ${state.opp || '상대팀'}`, 58, '#fff', 700)
+    + text(540, 385, matchTitle(), 58, '#fff', 700)
     + text(540, 440, [state.date && fmtDate(state.date), '예매 추이'].filter(Boolean).join(' · '), 28, '#e4dcf5')
-    + (last ? text(540, 560, `예매 ${fmt(last.booked)}석 (${(last.booked / FULL * 100).toFixed(1)}%)`, 60, '#fff', 700) : '')
+    + (last ? text(540, 560, `예매 ${fmt(last.booked)}석 (${(last.booked / last.cap * 100).toFixed(1)}%)`, 60, '#fff', 700) : '')
     + (d != null ? text(540, 630, `직전 집계보다 ${signed(d)}석 · ${span(new Date(last.at) - new Date(prev.at))} 동안`, 32, '#fde68a', 700) : '')
-    + chart(30, 760, 1020, 820, 2, 5)
-    + text(540, 1640, 'FC안양 팬이 만든 비공식 현황 · 티켓링크 잔여석 기준', 20, '#9ca3af');
+    + chart(30, 740, 1020, 430, 1.5, 5, 'home') + chart(30, 1190, 1020, 430, 1.5, 5, 'away')
+    + text(540, 1660, `FC안양 팬이 만든 비공식 현황 · ${SELLER} 잔여석 기준`, 20, '#9ca3af');
 }
 async function pngBlob(story) {
   if (typeof EMBLEM !== 'string') await loadScript('emblem.js');
@@ -1023,6 +1031,7 @@ function record() {
     app: 'fc-anyang-seats', version: 1, updatedAt: kst(state.at),
     match: { opponent: state.opp || null, kickoff: kst(state.date), venue: VENUE, home: HOST, away: AWAY ? 'FC안양' : state.opp || null, competition: 'K리그1', attendance: state.crowd ?? null },
     capacity: t.cap || null, available: t.avail, booked: t.cap ? t.booked : null,  // 원정 구장은 판매 구역 총석 합 (총석을 모르면 null)
+    awayCapacity: t.awayCap || null, awayBooked: t.awayCap ? t.awayBooked : null,  // 원정석 쪽 (홈 경기 원정석, 원정 경기 안양 응원 쪽). 홈석 = 전체 - 원정석
     ...(AWAY && { awayRemain: state.awayGrade ?? null }),
     sinceBase: state.base ? { at: kst(state.base.at), booked: t.soldSum } : null,
     soldOut: t.soldOut, unknown: t.empty, ...(AWAY && { unsold: t.off }),
@@ -1090,7 +1099,7 @@ function publish(token, branch = 'data') {
     const gh = ghApi(token), rec = record(), ref = await getRef(gh, branch);
     const tree = ref ? blobs(await gh(`git/trees/${ref.object.sha}?recursive=1`, null, 'GET')) : [], others = tree.filter(f => !mine(f));
     const files = tree.filter(mine), find = path => files.find(f => rel(f) === path);
-    const pt = { at: rec.updatedAt, opponent: rec.match.opponent, kickoff: rec.match.kickoff, booked: rec.booked, cap: rec.capacity, unknown: rec.unknown.length };
+    const pt = { at: rec.updatedAt, opponent: rec.match.opponent, kickoff: rec.match.kickoff, booked: rec.booked, cap: rec.capacity, awayBooked: rec.awayBooked, awayCap: rec.awayCapacity, unknown: rec.unknown.length };
     const old = (await readJson(gh, find('history.json'))) || [], was = await readJson(gh, find('latest.json'));
     // 같은 경기의 10분 안 발행은 같은 집계로 보고 마지막 점 하나로 (등급을 천천히 눌러 자동 발행이 여러 번 돼도 점이 쌓이지 않게)
     const near = p => sameMatch(p, pt) && Math.abs(new Date(p.at) - new Date(pt.at)) < 600e3;
@@ -1589,7 +1598,9 @@ window.fcIngest = s => {
 };
 // 수집 상태 램프: 보내기 스크립트 신호로 정함 (설치됨 → 티켓링크 열림 → 예매 화면 감지 → 숫자 받음)
 // 티켓링크 탭이 여럿이거나 예매 화면이 틀(iframe) 안이면 신호가 여러 곳에서 옴: 보낸 곳마다 따로 두고 가장 앞선 상태를 보여 줌
-const lamp = { installed: 0, pings: {}, got: 0, zones: 0, rejected: '' };
+const lamp = { installed: 0, version: 0, pings: {}, got: 0, zones: 0, rejected: '' };
+// 보내기 스크립트 최신 판 (fc-anyang-send.user.js 의 @version 과 같게. 자동 시험이 맞춰 봄). 설치된 판이 낮으면 입력 화면 맨 위 버튼을 눈에 띄게
+const SCRIPT_VERSION = 12;
 const hms = t => new Date(t).toTimeString().slice(0, 8);
 // Tampermonkey 저장소는 브라우저마다 따로: 티켓링크를 다른 브라우저에서 열면 신호가 안 옴 (램프에 이 브라우저 이름을 보여 줌)
 const BROWSER = (ua => /Whale\//.test(ua) ? '웨일' : /Edg\//.test(ua) ? '엣지' : /Chrome\//.test(ua) ? '크롬' : /Firefox\//.test(ua) ? '파이어폭스' : '이 브라우저')(navigator.userAgent);
@@ -1604,11 +1615,17 @@ function drawLamp() {
     : p ? ['open', `${p.site || '티켓링크'} 열림 · 등급/좌석 선택 화면이 아님` + (p.need?.length ? ` (화면에 없는 글자: ${p.need.join(', ')})` : '')]
     : last ? ['wait', `보내기 스크립트 켜짐 (${BROWSER}) · 예매 사이트 신호 끊김 (마지막 신호 ${hms(last)}). 예매 탭을 닫았거나 다른 브라우저`]
     : lamp.installed ? ['wait', `보내기 스크립트 켜짐 (${BROWSER}) · 이 ${BROWSER}에서 연 예매 사이트(${SELLER})가 없음. 다른 브라우저에서 열었다면 현황판도 그 브라우저에서 여세요`]
-    : ['', `보내기 스크립트 신호 없음 · 이 ${BROWSER}에 Tampermonkey 와 스크립트(12판)가 켜져 있는지 확인`];
+    : ['', `보내기 스크립트 신호 없음 · 이 ${BROWSER}에 Tampermonkey 와 스크립트(${SCRIPT_VERSION}판)가 켜져 있는지 확인`];
+  const old = lamp.installed && (lamp.version || 0) < SCRIPT_VERSION;  // 6판까지는 판 번호를 안 보내 0
   $('lamp').className = 'edit ' + cls;
-  $('lamp').lastChild.textContent = msg + (lamp.rejected ? ` · ${lamp.rejected}` : '') + (p?.shape ? `\n좌석 그림: ${p.shape}` : '');  // 좌석 그림 구조: 구역 총석 자동 세기 검토용
+  $('lamp').lastChild.textContent = msg + (lamp.rejected ? ` · ${lamp.rejected}` : '') + (old ? ` · 새 판(${SCRIPT_VERSION}판) 있음: 위 '보내기 스크립트 업데이트'를 한 번 누르세요` : '')
+    + (p?.shape ? `\n좌석 그림: ${p.shape}` : '');  // 좌석 그림 구조: 구역 총석 자동 세기 검토용
+  // 스크립트 버튼: 최신이면 판 번호만, 낮거나 신호가 없으면 보라색으로 (누르면 Tampermonkey 가 업데이트 화면을 띄움, 거기서 한 번 더 확인)
+  const btn = $('scriptBtn');
+  btn.classList.toggle('main', !lamp.installed || old);
+  btn.textContent = !lamp.installed ? '보내기 스크립트 설치/업데이트' : old ? `보내기 스크립트 업데이트 (${lamp.version ? lamp.version + '판' : '옛 판'} → ${SCRIPT_VERSION}판)` : `보내기 스크립트 ${lamp.version}판 (최신)`;
 }
-window.fcPing = v => { if (v.state === 'installed') lamp.installed = v.at; else lamp.pings[v.id || '-'] = v; drawLamp(); };
+window.fcPing = v => { if (v.state === 'installed') Object.assign(lamp, { installed: v.at, version: +v.version || 0 }); else lamp.pings[v.id || '-'] = v; drawLamp(); };
 addEventListener('paste', e => {
   if (!editing) return;
   const imgs = [...e.clipboardData.files].filter(f => f.type.startsWith('image/')), s = e.clipboardData.getData('text');
