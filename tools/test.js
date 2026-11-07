@@ -285,6 +285,19 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   check('예매 현황: 예매된 좌석, 예매율, 원정석 예매 카드, 구역 예매율, 증감 표시 없음(구역, 카드), 추이는 홈석(115, 37.0%)/원정석(150, 33.3%) 두 그래프, 표 예매율, 요약 글, 발행 JSON, 발행 칸 알림',
     r.cap === 762 && r.booked === 265 && r.svg1 && r.rate && r.s && r.zone && !r.diff && !r.since && r.legend && r.trend && r.head === '예매율' && r.cell === '36%' && r.pub === '발행했습니다.'
     && /예매 265석 \/ 762석 \(34\.8%\), 원정석 예매 150석 \/ 451석 \(33\.3%\)/.test(r.sum) && r.rec.join() === '762,265' && r.away === '150,451', JSON.stringify(r));
+  // 공식 관중을 전체, 원정으로 나눠 넣기 (월·화 발표): 홈석 그래프는 홈 관중(전체 - 원정), 원정석 그래프는 원정 관중, 머리글, 요약 글, 발행 JSON, 새로 열어도 남음
+  const crowdOf = () => p.evaluate(() => {
+    const tr = document.getElementById('trend').innerHTML, rec = record();
+    return { tr: /홈 관중 260명 \(홈석 예매 115석 대비 \+145\)/.test(tr) && /원정 관중 140명 \(원정석 예매 150석 대비 [−-]10\)/.test(tr) && !tr.includes('전체 예매'),
+      head: document.getElementById('board').innerHTML.includes('공식 관중 400명 (원정 140명)'), sum: /공식 관중 400명 \(원정 140명, 원정석 예매 150석 대비 [−-]10\)/.test(summaryText()),
+      rec: [rec.match.attendance, rec.match.awayAttendance].join(), input: [document.getElementById('crowd').value, document.getElementById('crowdAway').value].join() };
+  });
+  await p.evaluate(() => [['crowd', '400'], ['crowdAway', '140']].forEach(([id, v]) => { const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event('input')); }));
+  r = await crowdOf();
+  await p.reload(); await p.waitForFunction(() => typeof record === 'function');
+  const r2 = await crowdOf();
+  check('공식 관중 전체/원정 나눠 넣기: 홈 관중 260(홈석 115 대비 +145), 원정 관중 140(원정석 150 대비 −10), 머리글, 요약 글, 발행 JSON, 새로 열어도 남음',
+    r.tr && r.head && r.sum && r.rec === '400,140' && r.input === '400,140' && JSON.stringify(r2) === JSON.stringify(r), JSON.stringify([r, r2]));
   await p.context().close();
 
   // 원정 구장 (좌석도로 그림): 칸 수, 원정석 칸, 그림 오류 없음, 티켓링크 표기가 달라도 구역 이름 맞추기

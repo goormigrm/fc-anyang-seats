@@ -61,9 +61,9 @@ const num = v => Number.isInteger(v) && v >= 0 ? v : null;
   msg.textContent = games.some(g => g.d.unknown?.length) ? '정보 없는 구역이 있던 집계는 예매 수가 조금 많게 나옵니다.' : '';
 
   document.getElementById('rows').innerHTML = games.map(({ now, d }) => {
-    const b = num(d.booked), cap = num(d.capacity), crowd = num(d.match?.attendance);
+    const b = num(d.booked), cap = num(d.capacity), crowd = num(d.match?.attendance), away = num(d.match?.awayAttendance);
     return `<tr class="${now ? 'now' : ''}"><td>${esc(day(d.match?.kickoff || ''))} ${esc(String(d.match?.kickoff || '').slice(11, 16))}${now ? ' (지금)' : ''}</td><td>${esc(nick(d.match?.opponent || '-'))}</td>`
-      + `<td>${b == null ? '-' : `${fmt(b)}석 (${cap ? (b / cap * 100).toFixed(1) : '-'}%)`}</td><td>${crowd == null ? '-' : fmt(crowd) + '명'}</td>`
+      + `<td>${b == null ? '-' : `${fmt(b)}석 (${cap ? (b / cap * 100).toFixed(1) : '-'}%)`}</td><td>${crowd == null ? '-' : fmt(crowd) + '명' + (away == null ? '' : ` (원정 ${fmt(away)})`)}</td>`
       + `<td>${crowd == null || b == null ? '-' : (crowd - b > 0 ? '+' : '') + fmt(crowd - b)}</td><td>${Array.isArray(d.soldOut) ? d.soldOut.length + '개' : '-'}</td>`
       + `<td>${esc(day(d.updatedAt || ''))} ${esc(String(d.updatedAt || '').slice(11, 16))}</td></tr>`;
   }).join('');
