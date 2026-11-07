@@ -38,7 +38,7 @@
 </main>
 <script>
 // 사이트 화면에서는 FC서울을 '북패'로 (index.html 과 같음)
-const nick = s => String(s).replace(/FC서울|서울(?!월드컵)/g, '북패');
+const nick = s => String(s).replace(/FC서울|서울(?!월드컵|이랜드)/g, '북패');
 // 발행 데이터(data 브랜치)의 games/*.json (경기가 바뀔 때 보관한 지난 경기)과 latest.json (지금 경기)을 모아 보여 줌
 const API = 'https://api.github.com/repos/goormigrm/fc-anyang-seats/', RAW = 'https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/';
 const fmt = n => n.toLocaleString('ko-KR'), esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));

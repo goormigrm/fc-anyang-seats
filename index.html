@@ -267,6 +267,51 @@ const STADIUMS = {
       arc(['원정석'], 5.6, 7.4, T1, true);
       SECTIONS.forEach(x => { const n = { 피크닉테이블석: '피크닉', 하이네켄테이블석: '하이네켄', 라탄테라스존: '라탄' }[x.id]; if (n) x.name = n; });
     } },
+  // 이 아래는 놀티켓(구 인터파크)에서 파는 구장. seller: 현황판에 적는 예매처
+  // 수원월드컵경기장 (수원삼성 좌석도): E 안쪽 E1~E9, 바깥 E10~E19, N 안쪽 N1~N6(아래→위), 바깥 N7~N13, S 안쪽 S6~S1(위→아래), 바깥 S13~S7,
+  // W 안쪽 W1~W9(가운데 W5 프리미엄석), 바깥 W10~W12, 2층 테이블석(N), 프리미엄 패밀리박스, 2층 테이블석(S), W14~W16. 원정석 = S
+  suwon: { venue: '수원월드컵경기장', host: '수원삼성', name: '수원삼성', seller: '놀티켓', geo: { kx: 0.85, c0: 60, r: [12, 168], s: 1.3 },
+    layout: () => {
+      const T1 = [14, 80], T2 = [86, 168];
+      arc(Rs(1, 9, 'E'), -0.15, 1.15, T1); arc(Rs(10, 19, 'E'), -0.2, 1.2, T2);
+      arc(Rs(1, 6, 'N'), 5.85, 7.15, T1); arc(Rs(7, 13, 'N'), 5.7, 7.3, T2);
+      arc(['S6', 'S5', 'S4', 'S3', 'S2', 'S1'], 1.85, 3.15, T1, true); arc(['S13', 'S12', 'S11', 'S10', 'S9', 'S8', 'S7'], 1.7, 3.3, T2, true);
+      arc(['W9', 'W8', 'W7', 'W6', 'W5', 'W4', 'W3', 'W2', 'W1'], 3.85, 5.15, T1);
+      arc(['W16', 'W15', 'W14', '2층테이블석S', '프리미엄패밀리박스', '2층테이블석N', 'W12', 'W11', 'W10'], 3.8, 5.2, T2);
+      SECTIONS.forEach(x => { const n = { '2층테이블석S': '2층T(S)', '2층테이블석N': '2층T(N)', 프리미엄패밀리박스: '패밀리박스' }[x.id]; if (n) x.name = n; });
+    } },
+  // 수원종합운동장 (수원FC 좌석도, 트랙 있는 타원): E1~E7(양 끝 E1, E7 은 모서리), 트랙 안 N1~N5, S1~S13 원정석, W1~W13(가운데 VIP석, W6·W8·W9 프리미엄)
+  suwonfc: { venue: '수원종합운동장', host: '수원FC', name: '수원FC', seller: '놀티켓',
+    layout: () => {
+      arc(Rs(1, 7, 'E'), -0.25, 1.25, [285, 372]); arc(Rs(1, 13, 'S'), 1.27, 1.95, [285, 372], true);
+      arc(['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'VIP석', 'W8', 'W9', 'W10', 'W11', 'W12', 'W13'], 1.97, 3.35, [285, 345]);
+      DECOR.push(['', 3.35, 3.75, 285, 372]);
+      cells(['N5', 'N4', 'N3', 'N2', 'N1'], -300, -140, 50, 56, true);
+    } },
+  // 부천종합운동장 (부천 좌석도, 트랙 있는 타원): 트랙 안 E 다이나믹석 GE가~GE자(위 왼쪽 다이나믹 테이블석), N 1995석(스탠딩) GS가~GS마,
+  // S 안쪽 SA~SF(원정석)·SG, SH(중립석), 바깥 SJ, SK(원정석)·SN, SO(중립석), W 안쪽 W다·W나·W가 … VIP … WC(프리미엄 테이블)·WD~WF, 바깥 W바·W마 … WH~WM
+  bucheon: { venue: '부천종합운동장', host: '부천FC1995', name: '부천', seller: '놀티켓', noLetters: true,
+    layout: () => {
+      const T1 = [285, 325], T2 = [330, 372], ours = ['SA', 'SB', 'SC', 'SD', 'SE', 'SF', 'SJ', 'SK'];
+      cells(['GE가', 'GE나', 'GE다', 'GE라', 'GE마', 'GE바', 'GE사', 'GE아', 'GE자'], -230, -232, 460 / 9, 72);
+      cells(['다이나믹테이블석'], -230 + 460 / 9, -262, 460 / 9, 28);
+      cells(['GS마', 'GS라', 'GS다', 'GS나', 'GS가'], -300, -125, 45, 50, true);
+      arc(['SA', 'SB', 'SC', 'SD', 'SE', 'SF', 'SG', 'SH'], 1.2, 1.8, T1, ours); arc(['SJ', 'SK', null, null, 'SN', 'SO'], 1.18, 1.82, T2, ours);
+      arc(['W다', 'W나', 'W가'], 1.86, 2.14, T1); DECOR.push(['VIP', 2.38, 2.62, ...T1]); arc(['WC', 'WD', 'WE', 'WF'], 2.62, 2.98, T1);
+      arc(['W바', 'W마'], 1.88, 2.12, T2); arc(['WH', 'WI', 'WJ', 'WK', 'WL', 'WM'], 2.52, 3.02, T2);
+      SECTIONS.forEach(x => { if (x.id === '다이나믹테이블석') x.name = '다이나믹T'; });
+    } },
+  // 강릉종합운동장 (강원 좌석도, 트랙 있는 타원): E 아래 E1~E9, 위 E10~E15·테이블석, 트랙 안 N1~N5(응원석), S 원정석 S2~S4, 중립응원석 S6~S10,
+  // 모서리 자유석 A(오른쪽 위), B(왼쪽 위), C(왼쪽 아래), W8~W1(가운데 P 프리미엄 테이블석), 그 뒤 스카이 라운지. 춘천 홈경기는 다른 구장
+  gangwon: { venue: '강릉종합운동장', host: '강원FC', name: '강원', seller: '놀티켓', noLetters: true,
+    layout: () => {
+      cells(Rs(1, 9, 'E'), -189, -188, 377 / 9, 36); cells([...Rs(10, 15, 'E')], -170, -223, 42, 33); cells(['테이블석'], -170 + 252, -223, 84, 33);
+      cells(['N5', 'N4', 'N3', 'N2', 'N1'], -293, -94, 60, 38, true);
+      arc(['S2', 'S3', 'S4'], 1.18, 1.46, [290, 335], true); arc(Rs(6, 10, 'S'), 1.56, 1.92, [290, 335]);
+      arc(['자유석A'], 0.92, 1.12, [300, 360]); arc(['자유석B'], 3.86, 4.04, [300, 360]); arc(['자유석C'], 3.06, 3.24, [300, 360]);
+      cells(['W8', 'W7', 'W6', 'W5', '프리미엄테이블석', 'W4', 'W3', 'W2', 'W1'], -225, 225, 50, 58); cells(['스카이라운지'], -225, 285, 450, 28);
+      SECTIONS.forEach(x => { const n = { 프리미엄테이블석: 'P', 스카이라운지: '스카이 라운지', 자유석A: '자유석 A', 자유석B: '자유석 B', 자유석C: '자유석 C' }[x.id]; if (n) x.name = n; });
+    } },
 };
 const STADIUM = STADIUMS[new URLSearchParams(location.search).get('s')] ? new URLSearchParams(location.search).get('s') : 'anyang', AWAY = STADIUM !== 'anyang';
 const VENUE = AWAY ? STADIUMS[STADIUM].venue : '안양종합운동장', HOST = AWAY ? STADIUMS[STADIUM].host : 'FC안양', DATA = AWAY ? STADIUM + '/' : '';
@@ -320,9 +365,11 @@ const KNOWN_MAX = AWAY ? STADIUMS[STADIUM].max || {} : {
   T1: 117, T2: 60, T4: 62, P: 226, 원정석: 1235,
 };
 // 상대팀 = 2026 K리그1에서 안양을 뺀 11팀. key: 스크린샷 맨 위 "FC안양 vs 부천FC1995"에서 찾을 한글 지명 (영문은 OCR이 자주 깨뜨림)
+// 승강에 따라 올 수 있는 팀(수원삼성, 수원FC, 서울이랜드, 대구)도 미리. 이름이 겹치는 것은 긴 이름을 먼저 찾음 (수원삼성 → 수원FC, 서울이랜드 → FC서울)
 const TEAMS = {
-  강원: '강원FC', 광주: '광주FC', 김천: '김천상무', 대전: '대전하나시티즌', 부천: '부천FC1995', 서울: 'FC서울',
+  강원: '강원FC', 광주: '광주FC', 김천: '김천상무', 대전: '대전하나시티즌', 부천: '부천FC1995', 서울이랜드: '서울이랜드', 서울: 'FC서울',
   울산: '울산HD', 인천: '인천유나이티드', 전북: '전북현대', 제주: '제주SK', 포항: '포항스틸러스',
+  수원삼성: '수원삼성', 수원: '수원FC', 대구: '대구FC',
 };
 
 // 티켓링크 왼쪽 '등급 목록' → 구역. 위에서부터 먼저 맞는 규칙을 씀 (원정 구장은 등급 이름을 몰라 비워 둠: 등급 줄은 '현황판에 없는 등급'으로 알림)
@@ -441,7 +488,7 @@ const localISO = (t = Date.now()) => new Date(t - new Date().getTimezoneOffset()
 state.at ||= localISO();
 
 // ---------- 그리기 ----------
-const GEO = AWAY && STADIUMS[STADIUM].geo, PERIOD = GEO ? 8 : 4;
+const GEO = AWAY && STADIUMS[STADIUM].geo, PERIOD = GEO ? 8 : 4, SELLER = AWAY && STADIUMS[STADIUM].seller || '티켓링크';
 const P = (u, r) => {
   if (GEO) {  // 축구 전용 구장: 경기장(440×284)에서 r 만큼 바깥, 가로는 kx 배 (옆 스탠드 글자 자리), 모서리 반지름 c0 + r
     r *= GEO.s || 1;
@@ -613,11 +660,12 @@ function build(story) {
     if (s.rect) {
       const [x, y, w, h] = s.rect;
       parts.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${v.fill}" ${stroke}/>`);
-      if (w < 40) parts.push(`<text transform="translate(${x + w / 2},${y + h / 2}) rotate(-90)" y="5" font-size="13" font-weight="700" fill="${v.ink}" text-anchor="middle">`
-        + esc([...lines, dl].join(' ').trim().replace('잔여 ', '잔여')) + '</text>');  // 좁고 긴 칸(스탠딩석, 퍼스트석)은 세로 글자
-      else if (h < 40) parts.push(text(x + w / 2, y + h / 2 + 4, [...lines, dl].join(' ').trim().replace('잔여 ', '잔여'), 12, v.ink, 700));  // 낮은 칸은 한 줄
+      const one = [...lines, dl].join(' ').trim().replace('잔여 ', '잔여'), fit = (len, max) => +Math.max(7, Math.min(max, (len - 4) / Math.max(1, tw(one, 1)))).toFixed(1);  // 칸에 맞게 줄임
+      if (w < 40) parts.push(`<text transform="translate(${x + w / 2},${y + h / 2}) rotate(-90)" y="5" font-size="${fit(h, 13)}" font-weight="700" fill="${v.ink}" text-anchor="middle">`
+        + esc(one) + '</text>');  // 좁고 긴 칸(스탠딩석, 퍼스트석)은 세로 글자
+      else if (h < 40) parts.push(text(x + w / 2, y + h / 2 + 4, one, fit(w, 12), v.ink, 700));  // 낮은 칸은 한 줄
       else if (w < 60 && v.sub[0]?.includes('/')) parts.push(label(x + w / 2, y + h / 2, [lines[0], ...v.sub[0].replace('/', ' /').split(' '), dl].filter(Boolean), v.ink, hi));
-      else parts.push(label(x + w / 2, y + h / 2, [...(w < 60 ? lines.map(l => l.replace('잔여 ', '')) : lines), dl].filter(Boolean), v.ink, hi));
+      else { const ls = [...(w < 60 ? lines.map(l => l.replace('잔여 ', '')) : lines), dl].filter(Boolean); parts.push(label(x + w / 2, y + h / 2, ls, v.ink, hi, Math.min(1, (w - 4) / Math.max(...ls.map((l, i) => tw(l, i ? 13 : 15)))))); }
     } else {
       s.ring.forEach(([a, b, ri, ro]) => parts.push(`<path d="${ring(a, b, ri, ro)}" fill="${v.fill}" ${stroke}/>`));
       const [a, b, ri = RI, ro = RO] = s.ring[0];
@@ -679,7 +727,7 @@ function build(story) {
     + `<rect x="${fx}" y="${CY - 35}" width="22" height="70"/><rect x="${fx + 418}" y="${CY - 35}" width="22" height="70"/></g>`
     + `<image href="${emb}" x="${CX - 78}" y="${CY - 79}" width="156" height="157"/>`
     + DECOR.map(([n, a, b, ri, ro]) => `<path d="${ring(a, b, ri, ro)}" fill="#c9ced6" stroke="#fff" stroke-width="3"/>` + arcText(a, b, ri, ro, n, '#4b5563')).join('')
-    + (GEO ? '' : `<g fill="#cfd6df" font-size="30" font-weight="700" text-anchor="middle"><text x="${CX}" y="${CY - 152}">${AWAY ? 'E' : 'W'}</text>`  // 위, 아래, 왼쪽, 오른쪽
+    + (GEO || STADIUMS[STADIUM]?.noLetters ? '' : `<g fill="#cfd6df" font-size="30" font-weight="700" text-anchor="middle"><text x="${CX}" y="${CY - 152}">${AWAY ? 'E' : 'W'}</text>`  // 위, 아래, 왼쪽, 오른쪽
     + `<text x="${CX}" y="${CY + 178}">${AWAY ? 'W' : 'E'}</text><text x="${AWAY ? CX - 400 : CX - 262}" y="${CY + 11}">${AWAY ? 'N' : 'S'}</text><text x="${CX + 300}" y="${CY + 11}">${AWAY ? 'S' : 'N'}</text></g>`)
     + parts.join('');
   const title = matchTitle(), when = state.date ? fmtDate(state.date) : '';
@@ -691,7 +739,7 @@ function build(story) {
     + text(140, 60, title + ' 예매 현황', 28, '#fff', 700, 'start')
     + text(140, 92, [when, VENUE, AWAY ? 'K리그1 · 원정' : 'K리그1'].filter(Boolean).join(' · '), 14, '#e4dcf5', 400, 'start')
     + text(1250, 56, at, 13, '#fff', 600, 'end')
-    + text(1250, 80, '티켓링크 등급/좌석 선택 화면 잔여석 기준', 12, '#c3b1e6', 400, 'end')
+    + text(1250, 80, `${SELLER} 등급/좌석 선택 화면 잔여석 기준`, 12, '#c3b1e6', 400, 'end')
     + text(1250, 104, [state.crowd != null && `공식 관중 ${fmt(state.crowd)}명`, phase()].filter(Boolean).join(' · '), 14, '#fde68a', 700, 'end')
     + sums.map((c, i) => card(30 + i * 410, ...c)).join('')
     + `<rect x="20" y="222" width="1240" height="828" rx="12" fill="#f7f8fa" stroke="#eceff3"/>`
@@ -712,13 +760,13 @@ function build(story) {
     + `<g transform="translate(${40 + 12 * S},${780 - 3 * S}) scale(${S})">${map}</g>`
     + legend(40, 1490, 22, 1040)
     + text(540, 1640, foot, 20, '#9ca3af')
-    + text(540, 1672, '티켓링크 잔여석 기준', 18, '#b0b5bf');
+    + text(540, 1672, `${SELLER} 잔여석 기준`, 18, '#b0b5bf');
   return defs + st;
 }
 
 // 휴대폰: 스토리 모양을 위(보라 띠, 카드)와 경기장(범례 포함)으로 잘라 따로 보여 줌. 저장 PNG 는 그대로
 // 사이트 화면에서만 FC서울을 '북패'로 (저장, 공유하는 이미지와 요약 글은 원래 이름: pngBlob 은 build 를 따로 부름). 경기장 이름은 그대로
-const nick = s => String(s).replace(/FC서울|서울(?!월드컵)/g, '북패');
+const nick = s => String(s).replace(/FC서울|서울(?!월드컵|이랜드)/g, '북패');
 const portrait = matchMedia('(max-width: 860px)'), show = (el, vb, svg) => { el.setAttribute('viewBox', vb); el.innerHTML = nick(svg); };
 function render() {
   board.setAttribute('aria-label', nick(summaryText()));  // 화면 읽기 프로그램용 요약
@@ -1502,10 +1550,10 @@ function drawLamp() {
   const [cls, msg] =
     p?.state === 'seat' && p.venue && !venueOk(p) ? ['bad', `다른 구장 예매 화면 (${p.venue}) · 이 화면은 ${VENUE}`]
     : p?.state === 'seat' ? [now - lamp.got < 60e3 ? 'live' : 'seat', `예매 화면 감지됨 · ` + (lamp.got ? `숫자 받음 ${hms(lamp.got)} (구역 ${lamp.zones}개)` : '등급을 누르면 숫자가 들어옵니다')]
-    : p ? ['open', '티켓링크 열림 · 등급/좌석 선택 화면이 아님' + (p.need?.length ? ` (화면에 없는 글자: ${p.need.join(', ')})` : '')]
-    : last ? ['wait', `보내기 스크립트 켜짐 (${BROWSER}) · 티켓링크 신호 끊김 (마지막 신호 ${hms(last)}). 티켓링크 탭을 닫았거나 다른 브라우저`]
-    : lamp.installed ? ['wait', `보내기 스크립트 켜짐 (${BROWSER}) · 이 ${BROWSER}에서 연 티켓링크가 없음. 티켓링크를 다른 브라우저에서 열었다면 현황판도 그 브라우저에서 여세요`]
-    : ['', `보내기 스크립트 신호 없음 · 이 ${BROWSER}에 Tampermonkey 와 스크립트(9판)가 켜져 있는지 확인`];
+    : p ? ['open', `${p.site || '티켓링크'} 열림 · 등급/좌석 선택 화면이 아님` + (p.need?.length ? ` (화면에 없는 글자: ${p.need.join(', ')})` : '')]
+    : last ? ['wait', `보내기 스크립트 켜짐 (${BROWSER}) · 예매 사이트 신호 끊김 (마지막 신호 ${hms(last)}). 예매 탭을 닫았거나 다른 브라우저`]
+    : lamp.installed ? ['wait', `보내기 스크립트 켜짐 (${BROWSER}) · 이 ${BROWSER}에서 연 예매 사이트(${SELLER})가 없음. 다른 브라우저에서 열었다면 현황판도 그 브라우저에서 여세요`]
+    : ['', `보내기 스크립트 신호 없음 · 이 ${BROWSER}에 Tampermonkey 와 스크립트(10판)가 켜져 있는지 확인`];
   $('lamp').className = 'edit ' + cls;
   $('lamp').lastChild.textContent = msg + (lamp.rejected ? ` · ${lamp.rejected}` : '') + (p?.shape ? `\n좌석 그림: ${p.shape}` : '');  // 좌석 그림 구조: 구역 총석 자동 세기 검토용
 }

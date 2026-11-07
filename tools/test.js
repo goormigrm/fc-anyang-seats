@@ -146,7 +146,8 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     const src = fs.readFileSync(path.join(ROOT, 'fc-anyang-send.user.js'), 'utf8');
     const shim = store => `window.__l = {}; window.__set = {}; window.__store = ${JSON.stringify(store)}; window.GM_addValueChangeListener = (k, f) => (__l[k] = f); window.GM_setValue = (k, v) => (__set[k] = v); window.GM_getValue = k => __store[k]; window.unsafeWindow = window;
       const o = Element.prototype.attachShadow; Element.prototype.attachShadow = function (i) { return o.call(this, { ...i, mode: 'open' }); };`;
-    const run = (pg, store, tl) => pg.evaluate(([shim, src, tl]) => { (0, eval)(shim); (0, eval)(src.replace("location.hostname.endsWith('ticketlink.co.kr')", tl)); }, [shim(store), src, tl]);
+    // tl: 'true' 면 티켓링크 쪽, 'false' 면 현황판 쪽, 그 밖은 그 주소 (놀티켓 등)
+    const run = (pg, store, tl) => pg.evaluate(([shim, src, host]) => { (0, eval)(shim); (0, eval)(src.replace(/location\.hostname/g, JSON.stringify(host))); }, [shim(store), src, tl === 'true' ? 'www.ticketlink.co.kr' : tl === 'false' ? 'goormigrm.github.io' : tl]);
     const badge = pg => pg.evaluate(() => { const h = [...document.documentElement.children].find(e => e.shadowRoot)?.shadowRoot.firstChild; return h ? h.style.background + ' ' + h.textContent : ''; });
     const TK = '<div><h2>김천상무프로축구단 vs FC안양</h2><div>김천종합운동장</div><div>2026.11.07(토) 16:30</div><div>홍길동님</div><h3>등급 선택</h3><div style="display:flex"><span>W12구역</span><span>196 석</span></div><canvas width="400" height="300"></canvas>'
       + '<div>' + '<i class="seat" title="W12구역 1열 1번" style="display:inline-block;width:10px;height:10px;margin:2px;background:#0d2b45"></i>'.repeat(30) + '</div></div>';
@@ -175,6 +176,20 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     check('보내기 스크립트: 현황판 없음은 빨강 안내(브라우저 이름), 나중에 연 현황판에 다시 보냄, 안 받음은 주황과 이유', /^rgb\(185, 28, 28\).*이 크롬에 현황판 입력 화면이 없어 못 넘김/.test(b3) && at1 > at0 && /^rgb\(194, 65, 12\).*현황판이 안 받음: 받은 글자에 구역 숫자 없음/.test(b4), JSON.stringify({ b3, at0, at1, b4 }));
     await tk2.close();
     await p.context().close();
+
+    // 놀티켓(인터파크) 화면: '좌석등급' 표기도 예매 화면으로 감지, 보낸 곳 표시. FC안양 경기 화면이 아니면 표시 안 함
+    {
+      const nk = await b.newPage();
+      await nk.setContent(TK.replace('<h3>등급 선택</h3>', '<h3>좌석등급</h3>'));
+      await run(nk, {}, 'tickets.interpark.com'); await nk.waitForTimeout(2200);
+      const ping = await nk.evaluate(() => __set.ping), b5 = await badge(nk);
+      const other = await b.newPage();
+      await other.setContent('<div>호텔 예약 1박 120,000원</div>');
+      await run(other, {}, 'nol.yanolja.com'); await other.waitForTimeout(2200);
+      const b6 = await badge(other), ping6 = await other.evaluate(() => __set.ping);
+      check('보내기 스크립트 10판: 놀티켓 좌석 화면 감지(좌석등급), 보낸 곳 놀티켓, 다른 야놀자 화면은 표시 안 함', ping?.state === 'seat' && ping?.site === '놀티켓' && /이 크롬에 현황판 입력 화면이 없어/.test(b5) && !b6 && ping6?.state === 'idle', JSON.stringify({ ping, b5, b6, ping6 }));
+      await nk.close(); await other.close();
+    }
 
     // 보기 화면(입력 화면 아님)은 신호도 응답도 안 함
     p = await open(b, { url: URL + '?s=gimcheon' });
@@ -236,7 +251,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     && /예매 265석 \/ 762석 \(34\.8%\), 원정석 예매 150석 \/ 451석 \(33\.3%\)/.test(r.sum) && r.rec.join() === '762,265', JSON.stringify(r));
   await p.context().close();
 
-  // 원정 구장 다섯 곳 (좌석도로 그림): 칸 수, 원정석 칸, 그림 오류 없음, 티켓링크 표기가 달라도 구역 이름 맞추기
+  // 원정 구장 (좌석도로 그림): 칸 수, 원정석 칸, 그림 오류 없음, 티켓링크 표기가 달라도 구역 이름 맞추기
   {
     const H2 = (host, venue) => `${host} vs FC안양\n${venue} | 2026.11.29(일) 14:00\n등급 선택\n`;
     const cases = [
@@ -245,6 +260,10 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       ['seoul', 69, 3, H2('FC서울', '서울월드컵경기장') + 'E-A구역\n80 석\nSC구역\n40 석', { EA: 80, SC: 40 }, ''],
       ['ulsan', 106, 11, H2('울산HD', '울산문수축구경기장') + 'N1구역\n120 석\nE13구역\n50 석\n프리미엄 테이블석\n10 석', { N1: 120, E13: 50, 프리미엄테이블석: 10 }, ''],
       ['incheon', 50, 1, H2('인천유나이티드', '인천축구전용경기장') + '원정석\n500 석\nE3구역\n90 석\nV1구역\n10 석', { 원정석: 500, E3: 90, V1: 10 }, ''],
+      ['suwon', 63, 13, H2('수원삼성', '수원월드컵경기장') + 'S3구역\n20 석\nE5구역\n40 석', { S3: 20, E5: 40 }, ''],
+      ['suwonfc', 38, 13, H2('수원FC', '수원종합운동장') + 'S7구역\n30 석\nVIP석\n5 석', { S7: 30, VIP석: 5 }, ''],
+      ['bucheon', 42, 8, H2('부천FC1995', '부천종합운동장') + 'SA구역\n50 석\nGE가구역\n12 석', { SA: 50, GE가: 12 }, ''],
+      ['gangwon', 42, 3, H2('강원FC', '강릉종합운동장') + 'S2구역\n15 석\n자유석A구역\n100 석\n테이블석\n4 석', { S2: 15, 자유석A: 100, 테이블석: 4 }, ''],
     ];
     for (const [id, n, ours, txt, want, miss] of cases) {
       p = await open(b, { url: URL + `?s=${id}#edit` });
@@ -265,7 +284,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   p = await open(b, { url: URL + '?s=gimcheon', data: { 'gimcheon/latest.json': { updatedAt: '2026-11-07T14:06:00+09:00', match: { opponent: '김천상무' }, sections: [] } } });
   await p.waitForTimeout(1200);
   r = await p.evaluate(() => [...document.querySelectorAll('#stadiums a')].map(a => a.textContent + (a.getAttribute('aria-current') ? '*' : '')).join('|'));
-  check('구장 버튼: 안양 홈, 김천(지금, 11.07), 전북, 포항, 북패(서울), 울산, 인천, 경기별 기록', r === '안양 홈|김천11.07*|전북|포항|북패|울산|인천|경기별 기록', r);
+  check('구장 버튼: 안양 홈, 김천(지금, 11.07), 전북, 포항, 북패(서울), 울산, 인천, 수원삼성, 수원FC, 부천, 강원, 경기별 기록', r === '안양 홈|김천11.07*|전북|포항|북패|울산|인천|수원삼성|수원FC|부천|강원|경기별 기록', r);
   await p.context().close();
 
   // 사이트 화면에서만 FC서울 = '북패' (저장, 공유 이미지와 요약 글은 '서울', 경기장 이름은 그대로)
@@ -281,6 +300,9 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   p = await open(b);
   r = await p.evaluate(() => { const o = [...document.getElementById('opp').options].find(o => o.value === 'FC서울'); return o && o.text; });
   check("홈 상대팀 목록도 화면에는 '북패' (값은 FC서울)", r === '북패', r);
+  // 승강으로 올 수 있는 팀: 이름이 겹쳐도 맞게 (서울이랜드 ≠ FC서울, 수원삼성 ≠ 수원FC), 서울이랜드는 '북패'로 안 바뀜
+  r = await p.evaluate(() => ['FC안양 vs 서울이랜드FC', 'FC안양 vs 수원FC', 'FC안양 vs 수원삼성블루윙즈', 'FC안양 vs 대구FC', 'FC안양 vs FC서울'].map(h => parseText(h + '\n').opp).join('|') + '|' + nick('서울이랜드 vs FC안양'));
+  check('승강 대비 상대팀: 서울이랜드, 수원FC, 수원삼성, 대구FC, FC서울 구분, 서울이랜드는 그대로', r === '서울이랜드|수원FC|수원삼성|대구FC|FC서울|서울이랜드 vs FC안양', r);
   await p.context().close();
 
   // 기본 주소(?s 없음) 보기 화면: 홈, 원정 중 가장 최근 발행으로. ?s=anyang 은 홈 그대로
