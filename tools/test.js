@@ -104,7 +104,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   p = await open(b, { url: URL, data: { 'latest.json': pub, 'history.json': [] } });
   await p.waitForFunction(() => document.getElementById('board').innerHTML.includes('제주SK'));
   r = await p.evaluate(() => ({ panel: getComputedStyle(document.querySelector('.panel')).display, svg: document.getElementById('board').innerHTML, note: document.getElementById('note').innerText }));
-  check('보기 화면: 발행본 그림, 입력 칸 숨김, 경과 시간', r.panel === 'none' && r.svg.includes('980/1235') && r.svg.includes('+20') && /마지막 집계/.test(r.note), r.note);
+  check('보기 화면: 발행본 그림(구역은 예매율), 입력 칸 숨김, 경과 시간', r.panel === 'none' && r.svg.includes('>20%<') && !r.svg.includes('980/1235') && /마지막 집계/.test(r.note), r.note);
   await p.context().close();
 
   p = await open(b, { url: URL });
@@ -125,7 +125,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     fcIngest('김천상무 vs FC안양\n김천종합운동장 | 2026.11.07(토) 16:30\n등급 선택\n원정석\n650 석\nS11구역\n50 석\nE21구역\n120 석\nN1구역\n0 석');
     const st = document.getElementById('status').innerText, svg = document.getElementById('board').innerHTML;
     fcIngest('FC안양 vs 제주SK\n안양종합운동장 | 2026.11.28(토) 14:00\n등급 선택\n일반 지정석(2층)\n900 석');
-    return { st, st2: document.getElementById('status').innerText, svg: svg.includes('김천상무 vs FC안양') && svg.includes('원정석 잔여') && svg.includes('650'), opp: state.opp, S11: state.rows.S11.remain, n: SECTIONS.length,
+    return { st, st2: document.getElementById('status').innerText, svg: svg.includes('김천상무 vs FC안양') && svg.includes('원정석(S) 예매') && svg.includes('예매율'), opp: state.opp, S11: state.rows.S11.remain, n: SECTIONS.length,
       home: JSON.parse(localStorage.getItem('fc-anyang-seat-status')).rows.R10.remain, away: !!localStorage.getItem('fc-anyang-seat-status-gimcheon'), path: record().images.board };
   });
   check('원정(김천): 구역 47개, 원정석 등급 카드, 상대 고정', r.n === 47 && r.S11 === 50 && r.opp === '김천상무' && r.svg && /등급: 원정석 650석/.test(r.st), JSON.stringify(r));
@@ -204,6 +204,24 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     && r.hatch && r.card && r.legend && /미판매: E31, S11/.test(r.sum) && r.unsold === 'E31,S11' && r.sec === true && !r.empty && r.e31 === false && r.after === false && r.v === 48 && r.pressed2 === 'false', JSON.stringify(r));
   await p.context().close();
 
+  // 예매 현황 = 얼마나, 몇 % 예매: 카드(예매된 좌석, 예매율, 원정석), 구역 예매율, 구역별 증감 없음, 원정도 추이, 발행 결과는 발행 칸에도
+  p = await open(b, { url: URL + '?s=gimcheon#edit' });
+  r = await p.evaluate(() => {
+    fcIngest('김천상무 vs FC안양\n김천종합운동장 | 2026.11.07(토) 09:00\n등급 선택\nW12구역\n196 석\nS11구역\n156 석\nS12구역\n145 석');
+    state.base = { at: '2026-11-07T08:00', rows: { W12: 200 } }; render();
+    const svg = document.getElementById('board').innerHTML, tr = document.getElementById('trend'), t = stats();
+    note('발행했습니다.');
+    return { cap: t.cap, booked: t.booked, svg1: svg.includes('예매된 좌석') && svg.includes('>265<') && svg.includes(' / 762석'), rate: svg.includes('34.8<tspan'), s: svg.includes('원정석(S) 예매') && svg.includes(' / 451석') && svg.includes('원정석 33.3% 예매'),
+      zone: svg.includes('W12 36%'), diff: /% [+−]\d/.test(svg), since: svg.includes('+4'), legend: svg.includes('>예매율<') && svg.includes('0~24%'),
+      trend: getComputedStyle(tr).display !== 'none' && tr.innerHTML.includes('예매된 좌석 추이') && tr.innerHTML.includes('34.8%'),
+      head: document.querySelector('thead th:last-child').textContent, cell: document.querySelector('tr[data-id="W12"]').cells[4].textContent, pub: document.getElementById('pubNote').textContent,
+      sum: summaryText(), rec: (r => [r.capacity, r.booked])(record()) };
+  });
+  check('예매 현황: 예매된 좌석, 예매율, 원정석(S) 예매 카드, 구역 예매율, 증감 표시 없음(구역, 카드), 원정 추이, 표 예매율, 요약 글, 발행 JSON, 발행 칸 알림',
+    r.cap === 762 && r.booked === 265 && r.svg1 && r.rate && r.s && r.zone && !r.diff && !r.since && r.legend && r.trend && r.head === '예매율' && r.cell === '36%' && r.pub === '발행했습니다.'
+    && /예매 265석 \/ 762석 \(34\.8%\), 원정석\(S\) 예매 150석 \/ 451석 \(33\.3%\)/.test(r.sum) && r.rec.join() === '762,265', JSON.stringify(r));
+  await p.context().close();
+
   // 기본 주소(?s 없음) 보기 화면: 홈, 원정 중 가장 최근 발행으로. ?s=anyang 은 홈 그대로
   {
     const G = { updatedAt: '2026-11-07T09:16:00+09:00', match: { opponent: '김천상무', kickoff: '2026-11-07T16:30:00+09:00' }, sections: [{ id: 'W12', remain: 196 }, { id: 'S11', remain: null, unsold: true }] };
@@ -277,6 +295,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   for (const [label, avail, sold, color, size, outline, q] of grids) {
     const f = await shot('grid_' + label, grid(label, avail, sold, color, size, outline), 30 * 2 + 20 * size * 1.5 + size * 1.4 + 40, 120 + Math.ceil((avail + sold) / 20) * size * 1.5);
     p = await open(b, { url: URL + q + '#edit' });
+    await p.evaluate(() => Object.values(state.rows).forEach(r => r.max = null));  // 총석을 모르는 구장처럼
     await p.setInputFiles('#file', f);
     await p.evaluate(() => window.ocrDone);
     r = await p.evaluate(id => ({ remain: state.rows[id].remain, max: state.rows[id].max, st: document.getElementById('status').innerText.split('\n')[0] }), label);
@@ -319,7 +338,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       await p.setInputFiles('#file', path.join(tmp, 'w23_1_12_W23.png'));
       await p.evaluate(() => window.ocrDone);
       r = await p.evaluate(() => ({ remain: state.rows.W23.remain, max: state.rows.W23.max, st: document.getElementById('status').innerText, rate: document.querySelector('tr[data-id="W23"]').cells[4].textContent }));
-      check(`좌석 그림 남은 ${want[0]} vs 티켓링크 잔여 ${list}: ${okMax ? '맞음 -> 총석만 넣음' : '다름 -> 넣지 않고 경고'}`, r.remain === list && (okMax ? r.max === want[1] && /좌석 그림을 셌습니다/.test(r.st) : r.max == null && /⚠ W23 좌석 그림의 남은 칸 155석이 잔여 143석과 달라/.test(r.st)), JSON.stringify(r));
+      check(`좌석 그림 남은 ${want[0]} vs 티켓링크 잔여 ${list}: ${okMax ? '맞음 -> 센 총석으로 (넣어 둔 302 대신)' : '다름 -> 넣지 않고 경고 (302 그대로)'}`, r.remain === list && (okMax ? r.max === want[1] && /좌석 그림을 셌습니다/.test(r.st) : r.max === 302 && /⚠ W23 좌석 그림의 남은 칸 155석이 잔여 143석과 달라/.test(r.st)), JSON.stringify(r));
       await p.context().close();
     }
   }
@@ -348,7 +367,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     await p.setInputFiles('#file', f);
     await p.evaluate(() => window.ocrDone);
     r = await p.evaluate(() => ({ W12: state.rows.W12.remain, W13: state.rows.W13.remain, max: state.rows.W12.max, st: document.getElementById('status').innerText }));
-    check('PC 화면 전체 캡처: 목록 숫자를 쓰고 좌석 그림은 세지 않음', r.W12 === 196 && r.W13 === 267 && r.max == null && !/좌석 그림으로 셈/.test(r.st), JSON.stringify(r));
+    check('PC 화면 전체 캡처: 목록 숫자를 쓰고 좌석 그림은 세지 않음', r.W12 === 196 && r.W13 === 267 && r.max === 311 && !/좌석 그림으로 셈/.test(r.st), JSON.stringify(r));
     await p.context().close();
   }
   await maker.close();
