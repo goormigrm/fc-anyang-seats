@@ -194,14 +194,15 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     // 놀티켓 실제 형식(11/07 사용자 화면): '좌석 선택', '관람 구역을 선택해 주세요', 구역 이름 줄 다음에 숫자만(석 없음), 괄호 붙은 이름, 경기장 이름 없음, '2:00 PM'
     {
       const NOL = '<div style="display:flex"><b>좌석 선택</b><span>8:41</span></div><div>수원삼성 vs FC안양 (11.29)</div><div>2026.11.29(토) 2:00 PM</div><div>홍길동님</div><h3>관람 구역을 선택해 주세요</h3>'
-        + '<div style="display:flex"><span>프리미엄 패밀리박스(4인)(GATE:PREMIUM)</span><span>0</span></div><div style="display:flex"><span>S1구역(GATE:4B)</span><span>12</span></div><div style="display:flex"><span>E5</span><span>40</span></div>';
+        + '<div style="display:flex"><span>프리미엄 패밀리박스(4인)(GATE:PREMIUM)</span><span>0</span></div><div style="display:flex"><span>S1구역(GATE:4B)</span><span>12</span></div><div style="display:flex"><span>E5</span><span>40</span></div>'
+        + '<div style="display:flex"><span>2층 E석(E15~19)(GATE:3A,3B)</span><span>1,191</span></div>';
       const nk = await b.newPage();
       await nk.setContent(NOL);
       await run(nk, {}, 'tickets.interpark.com'); await nk.waitForTimeout(2200);
       const sent = await nk.evaluate(() => __set);
       await nk.close();
-      check('보내기 스크립트 11판: 놀티켓 형식 감지(관람 구역, 숫자만 줄), 구역 이름과 숫자, 경기 줄은 보내고 로그인 이름, 남은 시간은 뺌',
-        sent.ping?.state === 'seat' && !sent.ping.need.length && /프리미엄 패밀리박스\(4인\)\(GATE:PREMIUM\)\n0\nS1구역\(GATE:4B\)\n12\nE5\n40/.test(sent.text?.s) && /수원삼성 vs FC안양/.test(sent.text.s) && !/홍길동|8:41/.test(sent.text.s), JSON.stringify(sent));
+      check('보내기 스크립트 12판: 놀티켓 형식 감지(관람 구역, 숫자만 줄, 쉼표 숫자), 구역 이름과 숫자, 경기 줄은 보내고 로그인 이름, 남은 시간은 뺌',
+        sent.ping?.state === 'seat' && !sent.ping.need.length && /프리미엄 패밀리박스\(4인\)\(GATE:PREMIUM\)\n0\nS1구역\(GATE:4B\)\n12\nE5\n40/.test(sent.text?.s) && /수원삼성 vs FC안양/.test(sent.text.s) && /2층 E석\(E15~19\)\(GATE:3A,3B\)\n1,191/.test(sent.text.s) && !/홍길동|8:41/.test(sent.text.s), JSON.stringify(sent));
       const pg = await open(b, { url: URL + '?s=suwon#edit' });
       r = await pg.evaluate(s => { const k = fcIngest(s); return { k, S1: state.rows.S1.remain, fam: state.rows.프리미엄패밀리박스.remain, E5: state.rows.E5.remain, date: state.date }; }, sent.text.s);
       await pg.context().close();
@@ -210,6 +211,19 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       r = await pb.evaluate(s => [fcIngest(s).why, fcIngest('FC안양 vs 부천FC1995\n안양종합운동장 | 2026.11.28(토) 14:00\n등급 선택\nR10구역\n20 석').why].join(' | '), sent.text.s);
       await pb.context().close();
       check('다른 원정 구장(부천)은 수원삼성 글자도, 안양 홈 경기 글자도 넘김', /부천종합운동장 없음 \| .*부천종합운동장 없음/.test(r), r);
+      // 놀티켓 등급 목록: 구역 범위와 합계만('2층 E석(E15~19)(GATE:3A,3B)' 1,191) -> 그 구역들의 합계로 비교 (조금 다르면 실시간 차이로 알림만, 크게 다르면 ⚠)
+      const LIST = '수원삼성 vs FC안양 (11.29)\n2026.11.29(토) 2:00 PM\n좌석 선택\n관람 구역을 선택해 주세요\n2층 E석(E15~19)(GATE:3A,3B)\n1,191\n원정석(GATE:4A)\n1,538';
+      const pl = await open(b, { url: URL + '?s=suwon#edit' });
+      r = await pl.evaluate(s => {
+        const st = () => document.getElementById('status').innerText, out = {};
+        fcIngest(s); out.none = st();
+        [['E15', 300], ['E16', 200], ['E17', 250], ['E18', 240], ['E19', 195]].forEach(([id, v]) => state.rows[id].remain = v);  // 합 1185
+        fcIngest(s); out.close = st();
+        state.rows.E19.remain = 100; fcIngest(s); out.far = st();
+        return out;
+      }, LIST);
+      await pl.context().close();
+      check('놀티켓 등급 목록 범위 합계: 구역 모르면 알림, 조금 다르면 실시간 차이, 크게 다르면 ⚠', /2층 E석\(E15~19\) 1191석: 구역 5개 아직 없음/.test(r.none) && /2층 E석\(E15~19\) 1191석, 구역 합 1185석 \(예매가 실시간으로/.test(r.close) && /⚠ 2층 E석\(E15~19\) 1191석인데 구역 합은 1090석/.test(r.far), JSON.stringify(r));
     }
 
     // 보기 화면(입력 화면 아님)은 신호도 응답도 안 함
@@ -546,6 +560,35 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       await p.context().close();
     }
   }
+
+  // 놀티켓 실제 캡처 (11/07 수원삼성 vs 용인, 동그란 점, 색 있는 점 = 남은 좌석): 남은 좌석은 사진에서 직접 센 수, 전체는 줄별로 맞춘 수
+  const NOLD = path.join(ROOT, '좌석스크린샷', '시험_놀티켓');
+  if (fs.existsSync(NOLD)) {
+    for (const [f, id, remain, total] of [['수원삼성_S3.png', 'S3', 36, 637], ['수원삼성_W9.png', 'W9', 0, 504], ['수원삼성_E15.png', 'E15', 19, 843]]) {
+      p = await open(b, { url: URL + '?s=suwon#edit' });
+      await p.evaluate(id => { state.rows[id].max = null; }, id);
+      p.on('dialog', d => d.accept(id));  // E15 사진에는 구역 이름이 없어 물어봄
+      await p.setInputFiles('#file', path.join(NOLD, f));
+      await p.evaluate(() => window.ocrDone);
+      r = await p.evaluate(id => state.rows[id], id);
+      check(`놀티켓 실제 캡처 ${id}: 남은 ${remain} / 전체 ${total}`, r.remain === remain && r.max === total, JSON.stringify(r));
+      await p.context().close();
+    }
+    // 한 화면에 안 들어와 나눠 찍은 경우: E15 를 13줄과 14줄 사이에서 위아래 두 장으로 잘라 넣으면 더해서 같은 수
+    p = await open(b, { url: URL + '?s=suwon#edit' });
+    const halves = await p.evaluate(async d => {
+      const bmp = await createImageBitmap(await (await fetch('data:image/png;base64,' + d)).blob()), cut = (y0, y1) => { const c = document.createElement('canvas'); c.width = bmp.width; c.height = y1 - y0; c.getContext('2d').drawImage(bmp, 0, y0, bmp.width, y1 - y0, 0, 0, bmp.width, y1 - y0); return c.toDataURL('image/png').split(',')[1]; };
+      return [cut(0, 794), cut(794, bmp.height)];
+    }, fs.readFileSync(path.join(NOLD, '수원삼성_E15.png')).toString('base64'));
+    const hf = halves.map((h, i) => { const f = path.join(require('os').tmpdir(), `fc_e15_part${i + 1}.png`); fs.writeFileSync(f, Buffer.from(h, 'base64')); return f; });
+    await p.evaluate(() => { state.rows.E15.max = null; });
+    p.on('dialog', d => d.accept('E15'));
+    await p.setInputFiles('#file', hf);
+    await p.evaluate(() => window.ocrDone);
+    r = await p.evaluate(() => ({ ...state.rows.E15, st: document.getElementById('status').innerText }));
+    check('나눠 찍은 좌석 그림 두 장(E15 위 18줄 + 아래 13줄)을 더함: 남은 19 / 전체 843', r.remain === 19 && r.max === 843 && /E15 좌석 그림 2장을 더했습니다/.test(r.st), JSON.stringify(r));
+    await p.context().close();
+  } else console.log('SKIP  놀티켓 실제 캡처 (좌석스크린샷/시험_놀티켓 없음)');
 
   // 실제 발행 (시험용 브랜치)
   if (process.argv.includes('--publish')) {

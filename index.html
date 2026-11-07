@@ -423,8 +423,14 @@ function parseText(text) {
   const missZones = [];
   if (AWAY) for (const [, n, v] of t.matchAll(/([0-9A-Za-z가-힣·-]{1,12}?)\s*구\s*역\s*\n?\s*(\d+)\s*석/g)) {
     if (/^[A-Z]{1,2}\d{1,2}$/i.test(n)) { if (!state.rows[n.toUpperCase()]) missZones.push(n); continue; }  // 위에서 읽은 표준 이름
+    if (/^\d+$/.test(n)) continue;  // 숫자뿐인 이름은 캡처 인식 찌꺼기 (623구역 → 3 등)
     const id = zoneId(n);
     if (id) add(id, +v); else missZones.push(n);
+  }
+  // 놀티켓 등급 목록은 구역 범위와 합계만 줌('2층 E석(E15~19)(GATE:3A,3B)' 다음 줄 1191): 그 구역들의 합계로 두고 캡처로 센 구역 합과 맞춰 봄
+  if (AWAY) for (const [, n, p, a, z, v] of t.matchAll(/^([^\n]*?\(([A-Z]{1,2})(\d{1,2})\s*~\s*[A-Z]{0,2}(\d{1,2})\)[^\n]*)\n[ \t]*(\d{1,6})[ \t]*$/gm)) {
+    const ids = Array.from({ length: Math.max(0, z - a + 1) }, (_, i) => p + (+a + i)).filter(id => state.rows[id]);
+    if (ids.length) totals.push([{ name: n.replace(/\(GATE[^)]*\)/g, '').trim(), ids }, +v]);
   }
   // 놀티켓은 '구역 이름' 다음 줄에 숫자만 (석 없음): 현황판 칸 이름과 맞는 것만
   if (AWAY) for (const [, n, v] of t.matchAll(/^([^\n]{1,40})\n[ \t]*(\d{1,5})[ \t]*$/gm)) {
@@ -846,7 +852,9 @@ function apply({ found, totals, filled = [], unknown = [], grades = [], missZone
     ...(AWAY && grades.length ? [`등급: ${grades.map(([n, v]) => `${n} ${fmt(v)}석`).join(', ')}`] : []), ...totals.map(([g, v]) => {
     const vals = g.ids.map(id => state.rows[id].remain), miss = vals.filter(x => x == null).length;
     const sum = vals.reduce((a, b) => a + (b ?? 0), 0);
-    return miss ? `${g.name} ${v}석: 구역 ${miss}개 아직 없음` : sum !== v ? `⚠ ${g.name} ${v}석인데 구역 합은 ${sum}석입니다. 숫자를 확인하세요.` : '';
+    if (miss) return `${g.name} ${v}석: 구역 ${miss}개 아직 없음`;
+    if (AWAY && sum !== v && Math.abs(sum - v) <= Math.max(10, v * 0.05)) return `${g.name} ${v}석, 구역 합 ${sum}석 (예매가 실시간으로 바뀌어 조금 다를 수 있음)`;
+    return sum !== v ? `⚠ ${g.name} ${v}석인데 구역 합은 ${sum}석입니다. 숫자를 확인하세요.` : '';
   })].filter(Boolean);
   const over = SECTIONS.filter(s => { const r = state.rows[s.id]; return r.max != null && r.remain > r.max; });
   if (FULL && stats().avail > FULL) notes.push('⚠ 예매 가능 좌석이 만석보다 많습니다. 잘못 들어간 숫자가 있는지 보세요.');
@@ -1514,6 +1522,17 @@ async function ocrRun(files) {
     }
     // 좌석 그림으로 센 남은 칸이 이미 아는 잔여(이번 캡처의 목록 글자, 없으면 표)와 다르면 옆 구역 칸이 섞였거나 잘못 센 것: 남은 수도 총석도 넣지 않음
     // 맞으면 총석을 최대 좌석으로 넣고, 잔여를 아직 모르는 구역이면 센 남은 칸을 잔여로
+    // 같은 구역 좌석 그림이 여러 장이면 물음: 한 화면에 안 들어와 나눠 찍은 것이면 더하고(겹치는 줄 없이 나눴을 때만 맞음), 같은 곳을 다시 찍은 것이면 마지막 한 장만
+    const parts = {}, joined = [];
+    counted.filter(m => m.id).forEach(m => (parts[m.id] ||= []).push(m));
+    for (const [id, l] of Object.entries(parts)) {
+      if (l.length < 2) continue;
+      if (confirm(`${id} 좌석 그림이 ${l.length}장입니다 (${l.map(m => `남은 ${m.remain} / 전체 ${m.total}`).join(', ')}).\n한 화면에 안 들어와 나눠 찍은 것이면 [확인]: 더합니다 (겹치는 줄이 없어야 맞음)\n같은 곳을 다시 찍은 것이면 [취소]: 마지막 한 장만 씁니다`)) {
+        parts[id] = [l.reduce((a, m) => ({ id, remain: a.remain + m.remain, total: a.total + m.total, dropped: a.dropped + (m.dropped || 0) }), { remain: 0, total: 0, dropped: 0 })];
+        joined.push([id, l.length]);
+      } else parts[id] = [l.at(-1)];
+    }
+    counted = [...counted.filter(m => !m.id), ...Object.values(parts).flat()];
     let p = parseText(texts.join(''));
     const known = m => p.found[m.id] ?? state.rows[m.id].remain;
     const skipped = counted.filter(m => !m.id), wrong = counted.filter(m => m.id && known(m) != null && Math.abs(known(m) - m.remain) > Math.max(2, known(m) * 0.03));
@@ -1528,6 +1547,7 @@ async function ocrRun(files) {
     const maxNotes = counted.filter(m => { const r = state.rows[m.id]; return r.max == null || r.learned; })
       .map(m => { Object.assign(state.rows[m.id], { max: m.total }); delete state.rows[m.id].learned; return m; });
     apply(p, [...(bad.length ? [`읽지 못한 캡처: ${bad.join(', ')}`] : []), ...skipped.map(m => `구역 이름을 몰라 넣지 않은 좌석 그림: 남은 ${m.remain} / 전체 ${m.total}`),
+      ...joined.map(([id, n]) => `${id} 좌석 그림 ${n}장을 더했습니다 (겹치는 줄 없이 나눠 찍었을 때만 맞음).`),
       ...counted.filter(m => m.dropped).map(m => `${m.id} 좌석 그림: 떨어져 있는 칸 ${m.dropped}개는 옆 구역으로 보고 뺐습니다.`),
       ...differ.map(m => `${m.id} 좌석 그림 전체 ${m.total}석이 표의 최대 ${state.rows[m.id].max}석과 다릅니다 (표 값 그대로, 센 값이 맞으면 표에서 고치세요).`),
       ...wrong.map(m => `⚠ ${m.id} 좌석 그림의 남은 칸 ${m.remain}석이 잔여 ${known(m)}석과 달라 넣지 않았습니다 (센 전체 ${m.total}석). 옆 구역 칸이 같이 찍혔으면 그 구역만 잘라 다시 넣으세요.`),
@@ -1573,7 +1593,7 @@ function drawLamp() {
     : p ? ['open', `${p.site || '티켓링크'} 열림 · 등급/좌석 선택 화면이 아님` + (p.need?.length ? ` (화면에 없는 글자: ${p.need.join(', ')})` : '')]
     : last ? ['wait', `보내기 스크립트 켜짐 (${BROWSER}) · 예매 사이트 신호 끊김 (마지막 신호 ${hms(last)}). 예매 탭을 닫았거나 다른 브라우저`]
     : lamp.installed ? ['wait', `보내기 스크립트 켜짐 (${BROWSER}) · 이 ${BROWSER}에서 연 예매 사이트(${SELLER})가 없음. 다른 브라우저에서 열었다면 현황판도 그 브라우저에서 여세요`]
-    : ['', `보내기 스크립트 신호 없음 · 이 ${BROWSER}에 Tampermonkey 와 스크립트(11판)가 켜져 있는지 확인`];
+    : ['', `보내기 스크립트 신호 없음 · 이 ${BROWSER}에 Tampermonkey 와 스크립트(12판)가 켜져 있는지 확인`];
   $('lamp').className = 'edit ' + cls;
   $('lamp').lastChild.textContent = msg + (lamp.rejected ? ` · ${lamp.rejected}` : '') + (p?.shape ? `\n좌석 그림: ${p.shape}` : '');  // 좌석 그림 구조: 구역 총석 자동 세기 검토용
 }

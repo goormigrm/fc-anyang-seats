@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         FC안양 예매현황 보내기
 // @namespace    https://goormigrm.github.io/fc-anyang-seats/
-// @version      11
+// @version      12
 // @description  티켓링크, 놀티켓 좌석 선택 화면에 보이는 잔여석 글자를 열려 있는 현황판 탭으로 보냄. 읽기만 하고 클릭, 새로고침, 요청은 하지 않음
 // @match        https://ticketlink.co.kr/*
 // @match        https://*.ticketlink.co.kr/*
@@ -24,10 +24,10 @@ if (site) {
   // 놀티켓은 잔여를 '석' 없이 숫자 줄로만 씀: 숫자만 있는 줄의 바로 앞 줄(구역 이름)도 보냄. 'A vs B' 줄은 경기 확인용 (놀티켓 화면엔 경기장 이름이 없음)
   const pick = () => {
     const ls = document.body.innerText.split('\n').map(l => l.trim()).filter(Boolean);
-    return ls.filter((l, i) => /석|구역|안양|등급|운동장|경기장|스타디움|구장|야드|\svs\s|\d{4}\.\d{2}\.\d{2}|^\d+$/i.test(l) || /^\d+$/.test(ls[i + 1] || '')).join('\n');
+    return ls.filter((l, i) => /석|구역|안양|등급|운동장|경기장|스타디움|구장|야드|\svs\s|\d{4}\.\d{2}\.\d{2}|^[\d,]+$/i.test(l) || /^[\d,]+$/.test(ls[i + 1] || '')).join('\n');  // 놀티켓 '1,191'
   };
   const look = () => {
-    const s = pick(), need = [['안양', /안양/], ['등급 선택', /(등급|좌석)\s*선택|좌석\s*등급|잔여\s*석|관람\s*구역/], ['N석', /\d\s*석|\n\d+(\n|$)/]].filter(([, re]) => !re.test(s)).map(([n]) => n);
+    const s = pick(), need = [['안양', /안양/], ['등급 선택', /(등급|좌석)\s*선택|좌석\s*등급|잔여\s*석|관람\s*구역/], ['N석', /\d\s*석|\n[\d,]+(\n|$)/]].filter(([, re]) => !re.test(s)).map(([n]) => n);
     return { s, seat: !need.length, need, venue: (s.match(/[가-힣]+(?:운동장|경기장|스타디움|구장|야드)/) || [''])[0], zones: (s.match(/구\s*역/g) || []).length };
   };
   const me = Math.random().toString(36).slice(2, 8);  // 탭, 틀(iframe)마다 다른 이름 (현황판이 보낸 곳을 구분)
@@ -90,7 +90,7 @@ if (site) {
   const editing = () => document.body.classList.contains('editing');
   GM_addValueChangeListener('text', (key, old, v, remote) => { const r = remote && editing() && unsafeWindow.fcIngest?.(v.s); if (r) GM_setValue('ack', { ...r, at: Date.now(), page: location.search }); });
   GM_addValueChangeListener('ping', (key, old, v, remote) => { if (remote) unsafeWindow.fcPing?.(v); });
-  unsafeWindow.fcPing?.({ state: 'installed', version: 11, at: Date.now() });
+  unsafeWindow.fcPing?.({ state: 'installed', version: 12, at: Date.now() });
   const beat = () => { if (editing()) GM_setValue('board', { at: Date.now(), page: location.search }); };
   beat();
   setInterval(beat, 5000);
