@@ -64,6 +64,11 @@
   .share button:hover { background: #ffffff38; }
   .share button.main { background: #fff; border-color: #fff; color: var(--p8); }
   .share #note { color: #e4dcf5; } .share #note:empty { display: none; }
+  /* 구장 버튼: 공유 버튼 아래, 지금 구장은 흰색, 버튼마다 마지막 집계 날짜 */
+  .share .stadiums { margin-top: 12px; padding-top: 12px; border-top: 1px solid #ffffff33; }
+  .share a.btn { background: #ffffff14; border-color: #ffffff47; color: #fff; } .share a.btn:hover { background: #ffffff30; }
+  .share a.btn[aria-current] { background: #fff; border-color: #fff; color: var(--p8); }
+  .share a.btn small { margin-left: 6px; font-size: 11px; font-weight: 400; opacity: 0.8; } .share a.btn small:empty { display: none; }
   body:not(.editing) .edit { display: none; }
   /* 수집 상태 램프: 꺼짐(회색) 스크립트 없음, 노랑 설치됨/기다림, 파랑 티켓링크 열림, 초록 예매 화면 감지/수집 중, 빨강 다른 구장 */
   #lamp { position: fixed; top: 10px; right: 10px; z-index: 50; display: none; align-items: center; gap: 10px; max-width: min(420px, calc(100vw - 20px)); box-sizing: border-box;
@@ -104,6 +109,7 @@
   <p class="hint mobile-only">경기장을 누르면 크게, 다시 누르면 원래대로</p>
   <div class="box share">
     <div class="row"><button id="png" class="main">현황판 저장</button><button id="story" class="main">스토리 이미지 저장</button><button id="share" class="main" hidden>스토리로 공유</button><button id="trendImg">추이 이미지</button><button id="link">링크 공유</button><button id="copy">요약 글 복사</button><button id="embedCode">퍼가기 코드</button></div>
+    <nav class="row stadiums" id="stadiums" aria-label="구장"></nav>
     <div id="note"></div>
   </div>
   <div class="panel edit">
@@ -156,16 +162,110 @@
     </div>
   </div>
   <svg id="trend" role="img" aria-label="예매된 좌석 추이" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 280" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif"></svg>
-  <p class="foot">FC안양 팬이 만든 비공식 현황판입니다. 티켓링크 화면의 잔여석을 사람이 확인해 올린 것이라 실제와 다를 수 있습니다. · <a href="./?s=anyang">안양 홈</a> · <a href="./?s=gimcheon">김천 원정</a> · <a href="season.html">경기별 기록</a></p>
+  <p class="foot">FC안양 팬이 만든 비공식 현황판입니다. 티켓링크 화면의 잔여석을 사람이 확인해 올린 것이라 실제와 다를 수 있습니다.</p>
 </main>
 <script>
 // FULL: 만석 1만 1,542석 (2026-04-05 서울전 기사). 중립석 신설(8월) 뒤에도 원정석 쪽 좌석을 나눠 파는 것이라 그대로 씀
 // 구장: 기본은 안양 홈. ?s=gimcheon 처럼 열면 원정 경기 (FC안양이 원정, 원정 응원 쪽은 보라, 홈 팀 쪽은 파랑)
 // 원정 구장은 최대 좌석을 몰라 잔여율 대신 남은 좌석 수 단계로 칠하고, 입력값, 발행 데이터(data 브랜치의 구장 폴더)를 따로 둠
-// max: 구역별 총석 (11/07 김천전 때 티켓링크 좌석 그림으로 센 값, N11~N24 스탠드는 그날 미판매라 모름)
-const STADIUMS = { gimcheon: { venue: '김천종합운동장', host: '김천상무', name: '김천', max: { E11: 305, E12: 336, E13: 346, E14: 334, E15: 307, E21: 229, E22: 272, E23: 422, E24: 273, E25: 230, E31: 269, E32: 338, E33: 321, E34: 270,
-  S11: 193, S12: 258, S13: 256, S14: 198, S21: 220, S22: 210, S23: 45, S24: 210, S25: 218,
-  W11: 240, W12: 311, W13: 309, W14: 250, W21: 231, W22: 301, W23: 302, W24: 229, W31: 144, W32: 141, W33: 141, W34: 145, N1: 182, N2: 182, N3: 182, N4: 182 } } };
+// 원정 구장. layout: 구역 칸 배치 (아래 arc 로 둘레를 따라 같은 폭으로 나눔, null = 빈자리, ours = 원정 응원 쪽 보라)
+// geo 가 없으면 트랙 있는 타원(김천), 있으면 축구 전용: 경기장 둘레를 모서리를 둥글게(chamfer 면 비스듬히 깎아) 도는 사각형, u 0~8
+// (위 직선 왼→오 0~1, 오른쪽 위 모서리 1~2, 오른쪽 직선 위→아래 2~3, 오른쪽 아래 3~4, 아래 직선 오→왼 4~5, 왼쪽 아래 5~6, 왼쪽 직선 아래→위 6~7, 왼쪽 위 7~8)
+// r = 경기장 가장자리에서 바깥으로 거리. 칸 이름(id)은 구단 좌석도 표기, 티켓링크 표기가 다르면 parseText 가 빈칸, 하이픈, 한글 앞말을 빼고 맞춰 봄
+// max: 구역별 총석 (김천은 11/07 티켓링크 좌석 그림으로 센 값, N11~N24 스탠드는 그날 미판매라 모름)
+const STADIUMS = {
+  gimcheon: { venue: '김천종합운동장', host: '김천상무', name: '김천', max: { E11: 305, E12: 336, E13: 346, E14: 334, E15: 307, E21: 229, E22: 272, E23: 422, E24: 273, E25: 230, E31: 269, E32: 338, E33: 321, E34: 270,
+    S11: 193, S12: 258, S13: 256, S14: 198, S21: 220, S22: 210, S23: 45, S24: 210, S25: 218,
+    W11: 240, W12: 311, W13: 309, W14: 250, W21: 231, W22: 301, W23: 302, W24: 229, W31: 144, W32: 141, W33: 141, W34: 145, N1: 182, N2: 182, N3: 182, N4: 182 },
+    // 티켓링크 좌석도: 위 E(안쪽 E11~15, 가운데 E21~25, 바깥 E31~34), 오른쪽 S(원정 쪽: 안쪽 S11~14, 바깥 S21~25),
+    // 아래 W(오른쪽부터 W11~14, W21~24, W31~34, 가운데 기자석과 VIP), 왼쪽 N(아래부터 N11~14, N21~24), 가변석 N1~N4 는 트랙 안쪽
+    layout: () => {
+      const T1 = [285, 312], T2 = [315, 342], T3 = [345, 372], T23 = [315, 372];
+      arc(Rs(11, 15, 'E'), -0.12, 1.12, T1); arc(Rs(21, 25, 'E'), -0.2, 1.2, T2); arc(Rs(31, 34, 'E'), -0.1, 1.1, T3);
+      arc(Rs(11, 14, 'S'), 1.24, 1.76, T1, true); arc(Rs(21, 25, 'S'), 1.22, 1.78, T23, true);
+      arc(['W11', 'W12'], 1.88, 2.4, T1); arc(['W13', 'W14'], 2.6, 3.12, T1);
+      arc(['W21', 'W22'], 1.8, 2.4, T2); arc(['W23', 'W24'], 2.6, 3.2, T2);
+      arc(['W31', 'W32'], 1.9, 2.4, T3); arc(['W33', 'W34'], 2.6, 3.1, T3);
+      arc(Rs(11, 14, 'N'), 3.24, 3.76, T1); arc(Rs(21, 24, 'N'), 3.22, 3.78, T23);
+      cells(['N4', 'N3', 'N2', 'N1'], -300, -130, 50, 65, true);
+      DECOR.push(['기자석', 2.4, 2.6, ...T1], ['VIP', 2.4, 2.6, ...T2]);
+    } },
+  // 전주월드컵경기장 (전북 좌석도): 층마다 1(아래), 테이블 줄, 2(위). E 1H~1A(1E, 1D 센터), N, S 는 1층 한 줄, 테이블 줄, 2층.
+  // S 1C~1A, 2F~2B 줄과 2E~2A 가 S원정. 모서리 네 곳은 코너테이블(가~아)
+  jeonbuk: { venue: '전주월드컵경기장', host: '전북현대', name: '전북', geo: { kx: 1.5, c0: 30, chamfer: true, r: [12, 168], s: 1.3 },
+    layout: () => {
+      const T1 = [14, 72], TT = [75, 95], T2 = [98, 168], ours = ['S1C', 'S1B', 'S1A', 'S2F', 'S2D', 'S2B', 'S2E', 'S2C', 'S2A'], c = (p, l) => l.map(x => x && p + x);
+      arc(c('E', ['1H', '1G', '1F', '1E', '1D', '1C', '1B', '1A']), 0, 1, T1); arc(c('E', ['2R', '2P', '2M', '2K', '2H', '2F', '2D', '2B']), 0, 1, TT);
+      arc(c('E', ['2S', '2Q', '2N', '2L', '2J', '2G', '2E', '2C', '2A']), -0.12, 1.12, T2);
+      arc(c('S', ['1F', '1E', '1D', '1C', '1B', '1A']), 2, 3, T1, ours); arc(c('S', ['2M', '2K', '2H', null, '2F', '2D', '2B']), 2, 3, TT, ours);
+      arc(c('S', ['2N', '2L', '2J', '2G', null, '2E', '2C', '2A']), 2, 3, T2, ours);
+      arc(c('W', ['1Q', '1P', '1N', '1M', '1J', '1H', '1G', '1D', '1C', '1B', '1A']), 4, 5, T1);
+      arc(c('W', ['2R', '2P', null, null, null, null, null, null, null, '2D', '2B']), 4, 5, TT); DECOR.push(['W테이블', 4 + 2 / 11, 4 + 9 / 11, ...TT]);
+      arc(c('W', ['2S', '2Q', '2N', '2L', null, '2G', '2E', '2C', '2A']), 3.88, 5.12, T2); DECOR.push(['', 3.88 + 4 * 1.24 / 9, 3.88 + 5 * 1.24 / 9, ...T2]);
+      arc(c('N', ['1F', '1E', '1D', '1C', '1B', '1A']), 6, 7, T1); arc(c('N', ['2M', '2K', '2H', '2F', '2D', '2B']), 6, 7, TT);
+      arc(c('N', ['2N', '2L', '2J', '2G', '2E', '2C', '2A']), 6, 7, T2);
+      [['라', '마'], ['바', '사'], ['아', '가'], ['나', '다']].forEach((p, i) => arc(p.map(x => '코너' + x), 7 + i * 2, 8 + i * 2, T1));
+      SECTIONS.forEach(x => { if (x.id.startsWith('코너')) Object.assign(x, { name: '코너 ' + x.id.slice(2), alias: ['코너테이블' + x.id.slice(2)] }); });
+    } },
+  // 포항스틸야드 (포항 좌석도): 위 E 청암 E1~E7 / E21~E27, 모서리 T4·N28, 데크석·S21, 오른쪽 S 안쪽 비테이블·라운지, S3~S5, A1~A3(원정),
+  // 바깥 S22~S25, A21~A23(원정), 아래 W 안쪽 W1·W2·프리미엄 테이블·W3·W4, 바깥 W21·W22·스카이박스·W23·W24, 왼쪽 N 안쪽 T2·N1~N5·T3, 바깥 N22~N27
+  pohang: { venue: '포항스틸야드', host: '포항스틸러스', name: '포항', geo: { kx: 1.5, c0: 20, r: [12, 168], s: 1.3 },
+    layout: () => {
+      const T1 = [14, 82], T2 = [86, 168], ours = ['A1', 'A2', 'A3', 'A21', 'A22', 'A23', '원정테이블'];
+      arc(Rs(1, 7, 'E'), 0, 1, T1); arc(Rs(21, 27, 'E'), 0, 1, T2);
+      arc(['T4'], 7, 8, T1); arc(['N28'], 7, 8, T2); arc(['데크석'], 1, 2, T1); arc(['S21'], 1, 2, T2);
+      arc(['비테이블'], 2, 2 + 1 / 7, [14, 48]); arc(['라운지'], 2, 2 + 1 / 7, [48, 82]);
+      arc([null, 'S3', 'S4', 'S5', 'A1', 'A2', 'A3'], 2, 3, T1, ours); arc(['S22', 'S23', 'S24', 'S25', 'A21', 'A22', 'A23'], 2, 3, T2, ours);
+      arc(['원정테이블', 'T5'], 3, 4, T1, ours); arc(['S26'], 3, 4, T2);
+      arc(['W1', 'W2', '프리미엄테이블1', null, '프리미엄테이블2', 'W3', 'W4'], 4, 5, T1); DECOR.push(['VIP', 4 + 3 / 7, 4 + 4 / 7, ...T1]);
+      arc(['W21', 'W22', null, null, 'W23', 'W24'], 4, 5, T2); DECOR.push(['스카이박스', 4 + 2 / 6, 4 + 4 / 6, ...T2]);
+      arc(['T1'], 5, 6, T1); arc(['N21'], 5, 6, T2);
+      arc(['T2', 'N1', 'N2', 'N3', 'N4', 'N5', 'T3'], 6, 7, T1); arc(['N22', 'N23', 'N24', null, 'N25', 'N26', 'N27'], 6, 7, T2);
+      SECTIONS.forEach(x => { const n = { 원정테이블: '원정T', 프리미엄테이블1: '프리미엄1', 프리미엄테이블2: '프리미엄2' }[x.id]; if (n) x.name = n; });
+    } },
+  // 서울월드컵경기장 (서울 좌석도, 팔각형): 구역 = 방향 + 글자. E 안쪽 H(모서리)·G~B·A(모서리)와 앞줄 E 피치석, 바깥 T·S~K·J,
+  // S 안쪽 F·E·D·C·B·A(C, B, A 가 원정석), 바깥 P·N~H·G, W 앞줄 B~G(피치석, 센터석), 뒷줄 J~M, 모서리 A·H, 바깥 N·P~W·X, N 안쪽 A·B~E·F, 바깥 G·H~N·P
+  seoul: { venue: '서울월드컵경기장', host: 'FC서울', name: '서울', geo: { kx: 1.45, c0: 40, chamfer: true, r: [12, 172], s: 1.27 },
+    layout: () => {
+      const T1 = [14, 92], T2 = [98, 172], ours = ['SC', 'SB', 'SA'], c = (p, l) => [...l].map(x => p + x);
+      arc(['E피치석'], 0, 1, [14, 32]); arc(c('E', 'GFEDCB'), 0, 1, [34, 92]); arc(c('E', 'SRQPNMLK'), 0, 1, T2);
+      arc(['NA', 'EH'], 7, 8, T1); arc(['NG', 'ET'], 7, 8, T2); arc(['EA', 'SF'], 1, 2, T1); arc(['EJ', 'SP'], 1, 2, T2);
+      arc(c('S', 'EDCB'), 2, 3, T1, ours); arc(c('S', 'NMLKJH'), 2, 3, T2);
+      arc(['SA', 'WH'], 3, 4, T1, ours); arc(['SG', 'WX'], 3, 4, T2);
+      arc(c('W', 'GFEDCB'), 4, 5, [14, 50]); arc(c('W', 'MLKJ'), 4, 5, [52, 92]); arc(c('W', 'WVUTSRQP'), 4, 5, T2);
+      arc(['WA', 'NF'], 5, 6, T1); arc(['WN', 'NP'], 5, 6, T2);
+      arc(c('N', 'EDCB'), 6, 7, T1); arc(c('N', 'NMLKJH'), 6, 7, T2);
+      SECTIONS.forEach(x => { if (x.id === 'E피치석') x.name = 'E 피치석'; });
+    } },
+  // 울산문수축구경기장 (울산 좌석도, 3층): 안쪽 밤겔 피크닉존·E1~E9·게이밍 체어존·S1~S8·W1~W8(가운데 프리미엄 테이블)·N1~N8,
+  // 가운데 E11~E24·S11~S20·W11~W16(2층 테이블)·N11~N20, 바깥 E31~E40·S31~S34·W31~W38(3층 테이블)·N31~N36. 원정석 = N1~N4, N11~N15, N31~N32
+  ulsan: { venue: '울산문수축구경기장', host: '울산HD', name: '울산', geo: { kx: 1.45, c0: 20, r: [12, 212], s: 1.04 },
+    layout: () => {
+      const T1 = [14, 70], T2 = [74, 140], T3 = [144, 212], ours = [...Rs(1, 4, 'N'), ...Rs(11, 15, 'N'), 'N31', 'N32'];
+      arc(['밤겔피크닉존'], 7.55, 8, T1); arc(Rs(1, 9, 'E'), 0, 1, T1); arc(['게이밍체어존'], 1, 1.45, T1); arc(Rs(1, 8, 'S'), 1.45, 3.55, T1);
+      arc(['W1'], 3.55, 4, T1); arc(['W2', 'W3', 'W4', '프리미엄테이블석', 'W5', 'W6', 'W7'], 4, 5, T1); arc(['W8'], 5, 5.45, T1); arc(Rs(1, 8, 'N'), 5.45, 7.55, T1, ours);
+      arc(['E11', 'E12'], 7.4, 8, T2); arc(Rs(13, 22, 'E'), 0, 1, T2); arc(['E23', 'E24'], 1, 1.6, T2); arc(Rs(11, 20, 'S'), 1.6, 3.4, T2);
+      arc(['W11'], 3.4, 4, T2); arc(['W12', 'W13', null, null, 'W14', 'W15'], 4, 5, T2); arc(['2층테이블석'], 4 + 2 / 6, 4 + 4 / 6, T2); arc(['W16'], 5, 5.6, T2);
+      arc(Rs(11, 20, 'N'), 5.6, 7.4, T2, ours);
+      arc(['E31'], 7.5, 8, T3); arc(Rs(32, 39, 'E'), 0, 1, T3); arc(['E40'], 1, 1.5, T3); arc(Rs(31, 34, 'S'), 1.5, 3.5, T3);
+      arc(['W31'], 3.5, 4, T3); arc(['W32', 'W33', 'W34', null, 'W35', 'W36', 'W37'], 4, 5, T3); arc(['3층테이블석'], 4 + 3 / 7, 4 + 4 / 7, T3); arc(['W38'], 5, 5.5, T3);
+      arc(Rs(31, 36, 'N'), 5.5, 7.5, T3, ours);
+      SECTIONS.forEach(x => { const n = { 밤겔피크닉존: '밤겔', 게이밍체어존: '게이밍', 프리미엄테이블석: '프리미엄', '2층테이블석': '2층 테이블', '3층테이블석': '3층 테이블' }[x.id]; if (n) x.name = n; });
+    } },
+  // 인천축구전용경기장 (인천 좌석도): E 안쪽 1인 테이블(양 끝)·E3~E8, 모서리 피크닉 테이블·하이네켄 테이블, 바깥 E11~E19,
+  // S 안쪽 S2~S6(스탠딩), 바깥 S8~S12, 아래 모서리 라탄 테라스 존, W 안쪽 W2·W3~W5·V1~V3·W6~W9·W10, 바깥 W11·W12~W14·W15~W17·W18, N = 원정석
+  incheon: { venue: '인천축구전용경기장', host: '인천유나이티드', name: '인천', geo: { kx: 1.5, c0: 20, r: [12, 160], s: 1.36 },
+    layout: () => {
+      const T1 = [14, 80], T2 = [84, 160];
+      SECTIONS.push({ id: '1인테이블석', name: '1인', ring: [[0, 0.1, ...T1], [0.9, 1, ...T1]] });
+      arc(Rs(3, 8, 'E'), 0.1, 0.9, T1); arc(['피크닉테이블석'], 7.45, 8, T1); arc(['하이네켄테이블석'], 1, 1.5, T1); arc(Rs(11, 19, 'E'), -0.15, 1.15, T2);
+      arc(Rs(2, 6, 'S'), 1.55, 3.35, T1); arc(Rs(8, 12, 'S'), 1.25, 3.3, T2);
+      arc(['라탄테라스존'], 3.35, 3.65, T1); arc(['W2'], 3.65, 4, T1); arc(['W3', 'W4', 'W5', 'V1', 'V2', 'V3', 'W6', 'W7', 'W8', 'W9'], 4, 5, T1); arc(['W10'], 5, 5.4, T1);
+      arc(['W11'], 3.6, 4, T2); arc(['W12', 'W13', 'W14', null, 'W15', 'W16', 'W17'], 4, 5, T2); DECOR.push(['', 4 + 3 / 7, 4 + 4 / 7, ...T2]); arc(['W18'], 5, 5.4, T2);
+      arc(['원정석'], 5.6, 7.4, T1, true);
+      SECTIONS.forEach(x => { const n = { 피크닉테이블석: '피크닉', 하이네켄테이블석: '하이네켄', 라탄테라스존: '라탄' }[x.id]; if (n) x.name = n; });
+    } },
+};
 const STADIUM = STADIUMS[new URLSearchParams(location.search).get('s')] ? new URLSearchParams(location.search).get('s') : 'anyang', AWAY = STADIUM !== 'anyang';
 const VENUE = AWAY ? STADIUMS[STADIUM].venue : '안양종합운동장', HOST = AWAY ? STADIUMS[STADIUM].host : 'FC안양', DATA = AWAY ? STADIUM + '/' : '';
 const KEY = 'fc-anyang-seat-status' + (AWAY ? '-' + STADIUM : ''), FULL = AWAY ? 0 : 11542, W = 1280, H = 1062, FONT = "'Malgun Gothic','Apple SD Gothic Neo',sans-serif";
@@ -193,22 +293,11 @@ const cells = (ids, x, y, w, h, down) => ids.forEach((id, i) =>
   SECTIONS.push({ id, rect: [CX + x + (down ? 0 : i * w), CY + y + (down ? i * h : 0), w, h] }));
 const arc = (ids, u0, u1, [ri, ro], ours) => ids.forEach((id, i) => {
   const w = (u1 - u0) / ids.length;
-  SECTIONS.push({ id, ring: [[u0 + i * w, u0 + (i + 1) * w, ri, ro]], ...(ours && { ours: true }) });
+  if (id) SECTIONS.push({ id, ring: [[u0 + i * w, u0 + (i + 1) * w, ri, ro]], ...((ours === true || ours?.includes?.(id)) && { ours: true }) });
 });
 const DECOR = [];  // 표시만 하는 칸 (기자석, VIP)
-if (AWAY) {
-  // 김천종합운동장 (티켓링크 좌석도): 위 E(안쪽 E11~15, 가운데 E21~25, 바깥 E31~34), 오른쪽 S(원정 쪽: 안쪽 S11~14, 바깥 S21~25),
-  // 아래 W(오른쪽부터 W11~14, W21~24, W31~34, 가운데 기자석과 VIP), 왼쪽 N(아래부터 N11~14, N21~24), 가변석 N1~N4 는 트랙 안쪽
-  const T1 = [285, 312], T2 = [315, 342], T3 = [345, 372], T23 = [315, 372];
-  arc(Rs(11, 15, 'E'), -0.12, 1.12, T1); arc(Rs(21, 25, 'E'), -0.2, 1.2, T2); arc(Rs(31, 34, 'E'), -0.1, 1.1, T3);
-  arc(Rs(11, 14, 'S'), 1.24, 1.76, T1, true); arc(Rs(21, 25, 'S'), 1.22, 1.78, T23, true);
-  arc(['W11', 'W12'], 1.88, 2.4, T1); arc(['W13', 'W14'], 2.6, 3.12, T1);
-  arc(['W21', 'W22'], 1.8, 2.4, T2); arc(['W23', 'W24'], 2.6, 3.2, T2);
-  arc(['W31', 'W32'], 1.9, 2.4, T3); arc(['W33', 'W34'], 2.6, 3.1, T3);
-  arc(Rs(11, 14, 'N'), 3.24, 3.76, T1); arc(Rs(21, 24, 'N'), 3.22, 3.78, T23);
-  cells(['N4', 'N3', 'N2', 'N1'], -300, -130, 50, 65, true);
-  DECOR.push(['기자석', 2.4, 2.6, ...T1], ['VIP', 2.4, 2.6, ...T2]);
-} else {
+if (AWAY) STADIUMS[STADIUM].layout();
+else {
 cells(Rs(15, 26), -265, -270, 530 / 12, 80);
 cells(['R9', 'R8', 'R7', 'R6', 'T1', 'T2', 'R5', 'R4', 'R3', 'R2', 'R1'], -265, 190, 530 / 11, 80);
 // S쪽: 바깥부터 R11~R13, 스탠딩석(S1~, R11~R13 앞), 퍼스트 스탠딩(FS7이 R14 쪽, FS1이 R10 쪽), 퍼스트석(F1~F7, 맨 앞 한 줄)
@@ -266,6 +355,12 @@ function fillByTotals(found, totals) {
   return filled;
 }
 
+// 구역 이름 → 현황판 칸 id (빈칸, 하이픈, 가운뎃점을 빼고 대문자로. 그대로 → 한글 앞말을 빼고 → 한글을 모두 빼고)
+const zoneId = n => {
+  const k = n.toUpperCase().replace(/[\s·_-]/g, ''), names = {};
+  SECTIONS.forEach(x => [x.id, x.name, ...(x.alias || [])].forEach(a => { if (a) names[a.toUpperCase().replace(/[\s·_-]/g, '')] = x.id; }));
+  return [k, k.replace(/^[가-힣]+/, ''), k.replace(/[가-힣]/g, '')].map(c => c && names[c]).find(Boolean) || null;
+};
 // 화면 글자 해석: 오른쪽 구역 목록 "R8구역 (줄바꿈) 28석", 왼쪽 등급 목록 "가변석 574 석", 상단 "FC안양 vs 상대 / 날짜"
 function parseText(text) {
   // 한글 인식기가 구역 이름의 W 를 \/, \\, VV 로 읽음: 구역 번호 앞이면 W 로 (원정 구장 W11구역 등)
@@ -274,12 +369,21 @@ function parseText(text) {
     seen = {}, totals = [], unknown = [], grades = [];
   const add = (id, v) => (seen[id] ??= []).push(v);
   for (const [, a, n, v] of t.matchAll(/(?<![A-Za-z])([A-Z]{1,2})\s*(\d{1,2})\s*구\s*역\s*(\d+)\s*석/gi)) add(a.toUpperCase() + n, +v);
+  // 원정 구장은 구역 표기가 제각각(전북 'E-2A', 서울 'EA', 포항 '청암E1', '코너테이블 가'): 빈칸, 하이픈을 빼고 현황판 구역 이름과 맞춰 봄
+  // (그대로, 한글 앞말을 빼고, 한글을 모두 빼고). 안 맞는 이름은 '현황판에 없는 구역'으로 알림
+  const missZones = [];
+  if (AWAY) for (const [, n, v] of t.matchAll(/([0-9A-Za-z가-힣·-]{1,12}?)\s*구\s*역\s*\n?\s*(\d+)\s*석/g)) {
+    if (/^[A-Z]{1,2}\d{1,2}$/i.test(n)) { if (!state.rows[n.toUpperCase()]) missZones.push(n); continue; }  // 위에서 읽은 표준 이름
+    const id = zoneId(n);
+    if (id) add(id, +v); else missZones.push(n);
+  }
   // 등급 줄의 "석"을 OCR이 4로 읽는 일이 잦아서("204석" → "2044"), 줄 끝의 남는 4는 석으로 봄
   // PC 화면에서 복사한 글자는 등급 이름과 "158 석"이 다음 줄로 나뉘기도 해서 줄바꿈 하나까지 허용
   for (const [, name, v] of t.matchAll(/([가-힣A-Za-z][가-힣A-Za-z0-9() \t]*?)[ \t]*\n?[ \t]*(\d+)(?:[ \t]*\n?[ \t]*석|4(?=[^\d\n]{0,2}$))/gm)) {
     if (/구\s*역/.test(name)) continue;  // 구역 줄(깨진 "W12구역 196 4석" 포함)은 등급이 아님
-    const g = GRADES.find(g => g.re.test(name));
+    const g = GRADES.find(g => g.re.test(name)), gid = AWAY && zoneId(name);
     grades.push([name.trim(), +v]);
+    if (gid) add(gid, +v);  // 원정 구장에서 등급이 곧 한 칸(인천 '원정석', 울산 '프리미엄 테이블석' 등)
     if (!g) { if (/석(\([^)]*\))?$/.test(name.trim())) unknown.push(`${name.trim()} ${v}석`); continue; }  // 이름이 '석'으로 끝나는 줄만 등급으로 봄
     if (g.ids.length === 1) add(g.ids[0], +v);  // 등급 = 구역 하나
     else if (+v === 0) g.ids.forEach(id => add(id, 0));  // 등급 전체 0석이면 구역도 전부 0
@@ -296,7 +400,7 @@ function parseText(text) {
     .map(c => Object.keys(TEAMS).find(k => c.startsWith(k))).find(Boolean);
   const d = t.match(/(\d{4})\.(\d{2})\.(\d{2})\s*\(.\)\s*(\d{1,2}):(\d{2})/);
   return {
-    found, totals, filled: fillByTotals(found, totals), unknown: [...new Set(unknown)], grades,
+    found, totals, filled: fillByTotals(found, totals), unknown: [...new Set(unknown)], grades, missZones: [...new Set(missZones)],
     opp: team && TEAMS[team],
     date: d && `${d[1]}-${d[2]}-${d[3]}T${d[4].padStart(2, '0')}:${d[5]}`,
   };
@@ -335,7 +439,19 @@ const localISO = (t = Date.now()) => new Date(t - new Date().getTimezoneOffset()
 state.at ||= localISO();
 
 // ---------- 그리기 ----------
+const GEO = AWAY && STADIUMS[STADIUM].geo, PERIOD = GEO ? 8 : 4;
 const P = (u, r) => {
+  if (GEO) {  // 축구 전용 구장: 경기장(440×284)에서 r 만큼 바깥, 가로는 kx 배 (옆 스탠드 글자 자리), 모서리 반지름 c0 + r
+    r *= GEO.s || 1;
+    const { kx, c0, chamfer } = GEO, hw = 220 + r * kx, hh = 142 + r, cx = (c0 + r) * kx, cy = c0 + r, sx = hw - cx, sy = hh - cy;
+    u = ((u % 8) + 8) % 8;
+    const k = Math.floor(u), f = u - k, at = ([x, y]) => [CX + x, CY + y];
+    if (k % 2 === 0) { const [x0, y0, x1, y1] = [[-sx, -hh, sx, -hh], [hw, -sy, hw, sy], [sx, hh, -sx, hh], [-hw, sy, -hw, -sy]][k / 2]; return at([x0 + (x1 - x0) * f, y0 + (y1 - y0) * f]); }
+    const [ox, oy] = [[sx, -sy], [sx, sy], [-sx, sy], [-sx, -sy]][(k - 1) / 2], a0 = (k - 3) * Math.PI / 4, pt = a => [ox + cx * Math.cos(a), oy + cy * Math.sin(a)];
+    if (!chamfer) return at(pt(a0 + f * Math.PI / 2));
+    const [p0, p1] = [pt(a0), pt(a0 + Math.PI / 2)];  // 깎은 모서리: 두 끝을 곧게
+    return at([p0[0] + (p1[0] - p0[0]) * f, p0[1] + (p1[1] - p0[1]) * f]);
+  }
   u = ((u % 4) + 4) % 4;
   const k = Math.floor(u), f = u - k;
   if (k === 0) return [CX - L + 2 * L * f, CY - r];
@@ -345,19 +461,33 @@ const P = (u, r) => {
 };
 const pts = (u0, u1, r, n = 40) => Array.from({ length: n + 1 }, (_, i) => P(u0 + (u1 - u0) * i / n, r).map(v => v.toFixed(1)).join(','));
 const ring = (u0, u1, ri = RI, ro = RO) => 'M' + [...pts(u0, u1, ro), ...pts(u1, u0, ri)].join('L') + 'Z';
-const oval = r => 'M' + pts(0, 4, r, 200).join('L') + 'Z';
+const oval = r => 'M' + pts(0, PERIOD, r, PERIOD * 50).join('L') + 'Z';
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const text = (x, y, s, fs, fill, weight = 400, anchor = 'middle') =>
   `<text x="${x}" y="${y}" font-size="${fs}" font-weight="${weight}" fill="${fill}" text-anchor="${anchor}">${esc(s)}</text>`;
 // hi: 마지막 줄(비교 기준 이후 +N)만 다른 색으로
-const label = (x, y, lines, ink, hi) =>
-  lines.map((s, i) => text(x, y + (i - (lines.length - 1) / 2) * 17 + 5, s, i ? 13 : 15, hi && i === lines.length - 1 ? hi : ink, 700)).join('');
+const label = (x, y, lines, ink, hi, k = 1) =>
+  lines.map((s, i) => text(x, y + ((i - (lines.length - 1) / 2) * 17 + 5) * k, s, +((i ? 13 : 15) * k).toFixed(1), hi && i === lines.length - 1 ? hi : ink, 700)).join('');
 // 얇은 층 칸 글자: 칸 가운데에서 스탠드 방향으로 돌려 한 줄 (거꾸로 서지 않게)
 const arcText = (a, b, ri, ro, str, ink, fs = 11) => {
   const m = (a + b) / 2, [x, y] = P(m, (ri + ro) / 2), [x1, y1] = P(m - 0.01, (ri + ro) / 2), [x2, y2] = P(m + 0.01, (ri + ro) / 2);
+  const [xa, ya] = P(a, (ri + ro) / 2), [xb, yb] = P(b, (ri + ro) / 2);
+  fs = Math.max(7, Math.min(fs, Math.hypot(xb - xa, yb - ya) * 0.9 / Math.max(1, tw(String(str), 1))));  // 짧은 칸은 글자를 줄임
   let deg = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
   if (deg > 90) deg -= 180; else if (deg < -90) deg += 180;
   return `<text transform="translate(${x.toFixed(1)},${y.toFixed(1)}) rotate(${deg.toFixed(1)})" y="${fs * 0.35}" font-size="${fs}" font-weight="700" fill="${ink}" text-anchor="middle">${esc(str)}</text>`;
+};
+// 둘레 칸 글자: 칸의 둘레 방향 길이와 두께를 재서, 넉넉하면 가로 두 줄, 아니면 긴 쪽 방향으로 한 줄. 글자는 칸에 맞게 줄임
+const ringLabel = (a, b, ri, ro, lines, ink) => {
+  const m = (a + b) / 2, rm = (ri + ro) / 2, [x, y] = P(m, rm), d = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]);
+  const len = d(P(a, rm), P(b, rm)), th = d(P(m, ri), P(m, ro)), [x1, y1] = P(m - 0.01, rm), [x2, y2] = P(m + 0.01, rm), deg = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+  const c = Math.abs(Math.cos(deg * Math.PI / 180)), [w, h] = c > 0.75 ? [len, th] : c < 0.35 ? [th, len] : [Math.min(len, th), Math.min(len, th)];
+  if (lines.length > 1 && h >= 36 && w >= 36) return label(x, y, lines, ink, '', Math.min(1, (w - 4) / Math.max(...lines.map((l, i) => tw(l, i ? 13 : 15)))));
+  const str = lines.join(' ').replace('잔여 ', '잔여'), long = Math.max(len, th);
+  let r = len >= th ? deg : deg + 90;
+  if (r > 90) r -= 180; else if (r <= -90) r += 180;
+  const fs = Math.max(7, Math.min(12, (long - 6) / Math.max(1, tw(str, 1)), Math.min(len, th) * 0.7));
+  return `<text transform="translate(${x.toFixed(1)},${y.toFixed(1)}) rotate(${r.toFixed(1)})" y="${(fs * 0.35).toFixed(1)}" font-size="${fs.toFixed(1)}" font-weight="700" fill="${ink}" text-anchor="middle">${esc(str)}</text>`;
 };
 const tw = (s, fs) => [...s].reduce((w, c) => w + (c > 'ᄀ' ? fs : fs * 0.6), 0);
 const fmt = n => n.toLocaleString('ko-KR');
@@ -489,8 +619,7 @@ function build(story) {
     } else {
       s.ring.forEach(([a, b, ri, ro]) => parts.push(`<path d="${ring(a, b, ri, ro)}" fill="${v.fill}" ${stroke}/>`));
       const [a, b, ri = RI, ro = RO] = s.ring[0];
-      if (ro - ri < 40) parts.push(arcText(a, b, ri, ro, [...lines, dl].join(' ').trim().replace('잔여 ', '잔여'), v.ink));  // 얇은 층(원정 구장)은 한 줄
-      else { const [x, y] = P((a + b) / 2, (ri + ro) / 2); parts.push(label(x, y, [...lines, dl].filter(Boolean), v.ink, hi)); }
+      parts.push(ringLabel(a, b, ri, ro, lines, v.ink));
     }
   }
 
@@ -501,10 +630,10 @@ function build(story) {
   const ours = SECTIONS.map(s => s.ours && state.rows[s.id]).filter(r => r && !r.off && r.remain != null && r.max);
   const oCap = ours.reduce((a, r) => a + r.max, 0), oBooked = ours.reduce((a, r) => a + r.max - Math.min(r.remain, r.max), 0), oPc = oCap ? (oBooked / oCap * 100).toFixed(1) : '';
   const sums = [
-    ['예매된 좌석', num(booked), ` / ${fmt(cap)}석`, (FULL ? '만석 기준 (선택 중 좌석 포함)' : '원정석(S) 포함 판매 구역 전체' + (offN ? ` · 미판매 ${offN}개 구역 제외` : '')) + missTxt,
+    ['예매된 좌석', num(booked), ` / ${fmt(cap)}석`, (FULL ? '만석 기준 (선택 중 좌석 포함)' : '원정석 포함 판매 구역 전체' + (offN ? ` · 미판매 ${offN}개 구역 제외` : '')) + missTxt,
       FULL ? '만석 기준' : '원정석 포함 전체'],  // 증감은 추이 그래프에서만
     ['예매율', rate(booked), '%', `남은 좌석 ${num(avail)}석` + (AWAY ? ` · 매진 ${soldN}개${offN ? `, 미판매 ${offN}개` : ''} 구역` : ''), `남은 ${num(avail)}석`],
-    AWAY ? ['원정석(S) 예매', oCap ? fmt(oBooked) : '-', oCap ? ` / ${fmt(oCap)}석` : '', oCap ? `원정석 ${oPc}% 예매 · 남은 ${fmt(oCap - oBooked)}석` : '원정 쪽 총석을 모름', oCap ? `${oPc}% 예매` : '']
+    AWAY ? ['원정석 예매', oCap ? fmt(oBooked) : '-', oCap ? ` / ${fmt(oCap)}석` : '', oCap ? `원정석 ${oPc}% 예매 · 남은 ${fmt(oCap - oBooked)}석` : '원정 쪽 총석을 모름', oCap ? `${oPc}% 예매` : '']
       : ['매진 구역', String(soldN), ' 개', `전체 ${SECTIONS.length}개 구역 중`, `${SECTIONS.length}개 구역 중`],
   ];
   const card = (x, title, big, small, note) => `<g transform="translate(${x},122)"><rect width="400" height="88" rx="10" fill="#fff" stroke="#e5e7eb"/>`
@@ -540,19 +669,20 @@ function build(story) {
     + `<rect width="7" height="7" fill="#ece9df"/><rect width="2.5" height="7" fill="#d8d4c6"/></pattern>`
     + `<pattern id="grass" x="${fx}" width="40" height="40" patternUnits="userSpaceOnUse">`  // 잔디 세로 줄무늬
     + `<rect width="20" height="40" fill="#4f8b3b"/><rect x="20" width="20" height="40" fill="#5c9a46"/></pattern></defs>`;
-  const map = `<path d="${oval(RO + 12)}" fill="#e9ecf1"/><path d="${oval(RO)}" fill="#dde2e9"/><path d="${oval(RI)}" fill="#f3f5f8"/>`
+  const [r0, r1] = GEO ? GEO.r : [RI, RO];
+  const map = `<path d="${oval(r1 + 12)}" fill="#e9ecf1"/><path d="${oval(r1)}" fill="#dde2e9"/><path d="${oval(r0)}" fill="#f3f5f8"/>`
     + `<g fill="none" stroke="#fff" stroke-opacity="0.9" stroke-width="2"><rect x="${fx}" y="${fy}" width="440" height="284" fill="url(#grass)"/>`
     + `<line x1="${CX}" y1="${fy}" x2="${CX}" y2="${fy + 284}"/><circle cx="${CX}" cy="${CY}" r="40"/>`
     + `<rect x="${fx}" y="${CY - 80}" width="66" height="160"/><rect x="${fx + 374}" y="${CY - 80}" width="66" height="160"/>`
     + `<rect x="${fx}" y="${CY - 35}" width="22" height="70"/><rect x="${fx + 418}" y="${CY - 35}" width="22" height="70"/></g>`
     + `<image href="${emb}" x="${CX - 78}" y="${CY - 79}" width="156" height="157"/>`
     + DECOR.map(([n, a, b, ri, ro]) => `<path d="${ring(a, b, ri, ro)}" fill="#c9ced6" stroke="#fff" stroke-width="3"/>` + arcText(a, b, ri, ro, n, '#4b5563')).join('')
-    + `<g fill="#cfd6df" font-size="30" font-weight="700" text-anchor="middle"><text x="${CX}" y="${CY - 152}">${AWAY ? 'E' : 'W'}</text>`  // 위, 아래, 왼쪽, 오른쪽
-    + `<text x="${CX}" y="${CY + 178}">${AWAY ? 'W' : 'E'}</text><text x="${AWAY ? CX - 400 : CX - 262}" y="${CY + 11}">${AWAY ? 'N' : 'S'}</text><text x="${CX + 300}" y="${CY + 11}">${AWAY ? 'S' : 'N'}</text></g>`
+    + (GEO ? '' : `<g fill="#cfd6df" font-size="30" font-weight="700" text-anchor="middle"><text x="${CX}" y="${CY - 152}">${AWAY ? 'E' : 'W'}</text>`  // 위, 아래, 왼쪽, 오른쪽
+    + `<text x="${CX}" y="${CY + 178}">${AWAY ? 'W' : 'E'}</text><text x="${AWAY ? CX - 400 : CX - 262}" y="${CY + 11}">${AWAY ? 'N' : 'S'}</text><text x="${CX + 300}" y="${CY + 11}">${AWAY ? 'S' : 'N'}</text></g>`)
     + parts.join('');
   const title = matchTitle(), when = state.date ? fmtDate(state.date) : '';
   const at = state.at ? `집계 ${state.at.replace(/-/g, '.').replace('T', ' ')} (KST)` : '';
-  const foot = '구역 안 % = 예매율 (총석 대비 팔린 좌석)' + (AWAY ? ' · 보라 = 원정 응원 쪽(S, 실제 원정석 구역은 경기마다 다를 수 있음)' : '');
+  const foot = '구역 안 % = 예매율 (총석 대비 팔린 좌석)' + (AWAY ? ' · 보라 = 원정 응원 쪽(실제 원정석 구역은 경기마다 다를 수 있음)' : '');
 
   if (!story) return defs + `<rect width="${W}" height="${H}" fill="#fff"/><rect width="${W}" height="170" fill="#3e1a78"/>`
     + `<image href="${emb}" x="30" y="16" width="92" height="93"/>`
@@ -630,7 +760,7 @@ function syncInputs() {
   if (time && ![...$('time').options].some(o => o.value === time)) $('time').add(new Option(time));  // 목록에 없는 시각(인식·불러오기)도 보이게
   $('opp').value = state.opp; $('day').value = state.date.slice(0, 10); $('time').value = time; $('at').value = state.at; $('crowd').value = state.crowd ?? '';
 }
-function apply({ found, totals, filled = [], unknown = [], grades = [], opp, date }, pre = []) {
+function apply({ found, totals, filled = [], unknown = [], grades = [], missZones = [], opp, date }, pre = []) {
   // 원정 구장: 등급표가 없어 등급 줄은 알림 대신 그대로 보여 주고, '원정석' 등급 숫자(안양 팬에게 열린 좌석)는 따로 기억
   const aw = AWAY && grades.find(([n]) => /원정/.test(n));
   if (aw) state.awayGrade = aw[1];
@@ -654,6 +784,7 @@ function apply({ found, totals, filled = [], unknown = [], grades = [], opp, dat
     ...live.map(id => `미판매로 둔 ${nameOf(id)}에 잔여 ${found[id]}석이 보입니다. 판매를 시작했으면 표에서 미판매를 끄세요 (그 뒤 숫자를 받음).`),
     ...(learned.length ? [`최대 좌석을 새로 넣음: ${learned.map(id => nameOf(id) + ' ' + fmt(state.rows[id].max)).join(', ')}`] : []),
     ...(unknown.length ? [`현황판에 없는 등급: ${unknown.join(', ')} (등급 이름이 바뀌었으면 알려 주세요)`] : []),
+    ...(missZones.length ? [`현황판에 없는 구역 이름: ${missZones.slice(0, 12).join(', ')}${missZones.length > 12 ? ' 등' : ''} (티켓링크 표기와 현황판 칸 이름이 다르면 알려 주세요)`] : []),
     ...(AWAY && grades.length ? [`등급: ${grades.map(([n, v]) => `${n} ${fmt(v)}석`).join(', ')}`] : []), ...totals.map(([g, v]) => {
     const vals = g.ids.map(id => state.rows[id].remain), miss = vals.filter(x => x == null).length;
     const sum = vals.reduce((a, b) => a + (b ?? 0), 0);
@@ -784,7 +915,7 @@ function summaryText() {
     const oCap = ours.reduce((a, r) => a + r.max, 0), oBooked = ours.reduce((a, r) => a + r.max - Math.min(r.remain, r.max), 0), pc = (x, c) => (x / c * 100).toFixed(1) + '%';
     return [`${matchTitle()}${state.date ? ' ' + fmtDate(state.date) : ''} 원정 예매 현황 (${state.at.slice(5).replace('-', '.').replace('T', ' ')} 기준)`,
       (t.cap ? `예매 ${fmt(t.booked)}석 / ${fmt(t.cap)}석 (${pc(t.booked, t.cap)})` : `남은 좌석 ${fmt(t.avail)}석`)
-        + (oCap ? `, 원정석(S) 예매 ${fmt(oBooked)}석 / ${fmt(oCap)}석 (${pc(oBooked, oCap)})` : '') + (b ? `, ${b} 이후 ${signed(t.soldSum)}석` : ''),
+        + (oCap ? `, 원정석 예매 ${fmt(oBooked)}석 / ${fmt(oCap)}석 (${pc(oBooked, oCap)})` : '') + (b ? `, ${b} 이후 ${signed(t.soldSum)}석` : ''),
       t.soldOut.length ? '매진: ' + t.soldOut.map(nameOf).sort((a, b) => a.localeCompare(b, 'en', { numeric: true })).join(', ') : '',
       t.off.length ? '미판매: ' + t.off.map(nameOf).sort((a, b) => a.localeCompare(b, 'en', { numeric: true })).join(', ') : '',
       t.empty.length ? `(정보 없는 구역 ${t.empty.length}개 빠짐)` : ''].filter(Boolean).join('\n');
@@ -1344,7 +1475,7 @@ function ingest(text) {
   raw.value = text;
   apply(p, hasSeats(p) ? newCapture(p, localISO(), fresh) : []);
   const n = Object.keys(p.found).filter(id => state.rows[id]).length;
-  return n ? { ok: true, n } : { why: '받은 글자에 구역 숫자 없음' };
+  return n ? { ok: true, n } : { why: p.missZones.length ? `구역 이름이 현황판과 다름: ${p.missZones.slice(0, 5).join(', ')}` : '받은 글자에 구역 숫자 없음' };
 }
 window.fcIngest = s => {
   if (!editing) return;
@@ -1412,9 +1543,14 @@ const fetchData = (name, dir = DATA) => fetch(`${API}contents/${dir}${name}?ref=
 const FOLLOW = (q => !q.has('s') || q.has('auto'))(new URLSearchParams(location.search));
 const go = id => { const q = new URLSearchParams(location.search); if (id === 'anyang') { q.delete('s'); q.delete('auto'); } else { q.set('s', id); q.set('auto', ''); } location.replace(location.pathname + (q.size ? '?' + q : '')); };
 const follow = () => newest().then(id => id !== STADIUM && go(id));
-const newest = () => Promise.all(['anyang', ...Object.keys(STADIUMS)].map(id => fetchData('latest.json', id === 'anyang' ? '' : id + '/')
-  .then(r => r.ok ? r.json() : null).then(d => [id, +new Date(d?.updatedAt) || 0]).catch(() => [id, 0])))
-  .then(list => list.reduce((a, b) => b[1] > a[1] ? b : a)[0]);
+// 구장마다 마지막 발행 (raw 로 받아 API 횟수를 쓰지 않음, 최대 몇 분 늦을 수 있음)
+const latestAll = () => Promise.all(['anyang', ...Object.keys(STADIUMS)].map(id => fetch(`${RAW}${id === 'anyang' ? '' : id + '/'}latest.json?t=${Date.now()}`, { cache: 'no-cache' })
+  .then(r => r.ok ? r.json() : null).catch(() => null).then(d => [id, d])));
+const newest = () => latestAll().then(list => list.map(([id, d]) => [id, +new Date(d?.updatedAt) || 0]).reduce((a, b) => b[1] > a[1] ? b : a)[0]);
+// 구장 버튼: 안양 홈, 원정 구장, 경기별 기록. 누르면 그 구장의 마지막 집계(지난 경기면 그 기록)
+$('stadiums').innerHTML = [['anyang', '안양 홈'], ...Object.entries(STADIUMS).map(([k, v]) => [k, v.name])]
+  .map(([k, n]) => `<a class="btn" href="?s=${k}" data-s="${k}"${k === STADIUM ? ' aria-current="page"' : ''}>${n}<small></small></a>`).join('') + '<a class="btn" href="season.html">경기별 기록</a>';
+latestAll().then(list => list.forEach(([k, d]) => { const el = $('stadiums').querySelector(`[data-s="${k}"] small`); if (d?.updatedAt) el.textContent = String(d.updatedAt).slice(5, 10).replace('-', '.'); }));
 const ago = s => { const m = Math.round((Date.now() - new Date(s)) / 60000); return m < 1 ? '방금' : m < 60 ? m + '분 전' : m < 1440 ? (m / 60 | 0) + '시간 전' : (m / 1440 | 0) + '일 전'; };
 const showAgo = () => state.at && note(`마지막 집계 ${ago(state.at)} (${state.at.slice(5).replace('-', '.').replace('T', ' ')})`
   + (phase() === '지난 경기' ? ' · 지난 경기 기록입니다. 다음 경기 예매가 열리면 바뀝니다.' : phase() ? ' · ' + phase() : ''));
@@ -1451,7 +1587,7 @@ document.body.classList.toggle('embed', embed); document.body.classList.toggle('
 if (AWAY) {
   $('markHead').textContent = '매진 / 미판매';
   document.title = `FC안양 원정 예매현황 (${STADIUMS[STADIUM].name})`; $('opp').disabled = true;
-  $('seatHint').textContent = `빈칸 = 정보 없음, 0 = 매진, 미판매 = 이번 경기에 팔지 않는 구역(빗금). 최대 = 구역 총석 (좌석 그림으로 셈, ${STADIUMS[STADIUM].name} 은 넣어 둠). 총석을 모르는 구역은 예매율을 못 냅니다.`;
+  $('seatHint').textContent = `빈칸 = 정보 없음, 0 = 매진, 미판매 = 이번 경기에 팔지 않는 구역(빗금). 최대 = 구역 총석 (${STADIUMS[STADIUM].max ? '넣어 둠, ' : '아직 없음: '}구역 좌석 그림을 잘라 넣으면 셈). 총석을 모르는 구역은 예매율을 못 냅니다.`;
 } document.body.classList.toggle('embed-trend', params.get('embed') === 'trend');
 const toggleEdit = () => { try { localStorage.setItem(EDIT, editing ? '0' : '1'); } catch {} location.replace(location.pathname + location.search); };
 addEventListener('keydown', e => { if (!embed && e.ctrlKey && e.shiftKey && e.code === 'KeyE') { e.preventDefault(); toggleEdit(); } });

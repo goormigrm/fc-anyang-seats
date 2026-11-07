@@ -133,7 +133,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     fcIngest('김천상무 vs FC안양\n김천종합운동장 | 2026.11.07(토) 16:30\n등급 선택\n원정석\n650 석\nS11구역\n50 석\nE21구역\n120 석\nN1구역\n0 석');
     const st = document.getElementById('status').innerText, svg = document.getElementById('board').innerHTML;
     fcIngest('FC안양 vs 제주SK\n안양종합운동장 | 2026.11.28(토) 14:00\n등급 선택\n일반 지정석(2층)\n900 석');
-    return { st, st2: document.getElementById('status').innerText, svg: svg.includes('김천상무 vs FC안양') && svg.includes('원정석(S) 예매') && svg.includes('예매율'), opp: state.opp, S11: state.rows.S11.remain, n: SECTIONS.length,
+    return { st, st2: document.getElementById('status').innerText, svg: svg.includes('김천상무 vs FC안양') && svg.includes('원정석 예매') && svg.includes('예매율'), opp: state.opp, S11: state.rows.S11.remain, n: SECTIONS.length,
       home: JSON.parse(localStorage.getItem('fc-anyang-seat-status')).rows.R10.remain, away: !!localStorage.getItem('fc-anyang-seat-status-gimcheon'), path: record().images.board };
   });
   check('원정(김천): 구역 47개, 원정석 등급 카드, 상대 고정', r.n === 47 && r.S11 === 50 && r.opp === '김천상무' && r.svg && /등급: 원정석 650석/.test(r.st), JSON.stringify(r));
@@ -225,15 +225,47 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     state.base = { at: '2026-11-07T08:00', rows: { W12: 200 } }; render();
     const svg = document.getElementById('board').innerHTML, tr = document.getElementById('trend'), t = stats();
     note('발행했습니다.');
-    return { cap: t.cap, booked: t.booked, svg1: svg.includes('예매된 좌석') && svg.includes('>265<') && svg.includes(' / 762석') && svg.includes('원정석(S) 포함 판매 구역 전체'), rate: svg.includes('34.8<tspan'), s: svg.includes('원정석(S) 예매') && svg.includes(' / 451석') && svg.includes('원정석 33.3% 예매'),
+    return { cap: t.cap, booked: t.booked, svg1: svg.includes('예매된 좌석') && svg.includes('>265<') && svg.includes(' / 762석') && svg.includes('원정석 포함 판매 구역 전체'), rate: svg.includes('34.8<tspan'), s: svg.includes('원정석 예매') && svg.includes(' / 451석') && svg.includes('원정석 33.3% 예매'),
       zone: svg.includes('W12 36%'), diff: /% [+−]\d/.test(svg), since: svg.includes('+4'), legend: svg.includes('>예매율<') && svg.includes('0~24%'),
       trend: getComputedStyle(tr).display !== 'none' && tr.innerHTML.includes('예매된 좌석 추이') && tr.innerHTML.includes('34.8%'),
       head: document.querySelector('thead th:last-child').textContent, cell: document.querySelector('tr[data-id="W12"]').cells[4].textContent, pub: document.getElementById('pubNote').textContent,
       sum: summaryText(), rec: (r => [r.capacity, r.booked])(record()) };
   });
-  check('예매 현황: 예매된 좌석, 예매율, 원정석(S) 예매 카드, 구역 예매율, 증감 표시 없음(구역, 카드), 원정 추이, 표 예매율, 요약 글, 발행 JSON, 발행 칸 알림',
+  check('예매 현황: 예매된 좌석, 예매율, 원정석 예매 카드, 구역 예매율, 증감 표시 없음(구역, 카드), 원정 추이, 표 예매율, 요약 글, 발행 JSON, 발행 칸 알림',
     r.cap === 762 && r.booked === 265 && r.svg1 && r.rate && r.s && r.zone && !r.diff && !r.since && r.legend && r.trend && r.head === '예매율' && r.cell === '36%' && r.pub === '발행했습니다.'
-    && /예매 265석 \/ 762석 \(34\.8%\), 원정석\(S\) 예매 150석 \/ 451석 \(33\.3%\)/.test(r.sum) && r.rec.join() === '762,265', JSON.stringify(r));
+    && /예매 265석 \/ 762석 \(34\.8%\), 원정석 예매 150석 \/ 451석 \(33\.3%\)/.test(r.sum) && r.rec.join() === '762,265', JSON.stringify(r));
+  await p.context().close();
+
+  // 원정 구장 다섯 곳 (좌석도로 그림): 칸 수, 원정석 칸, 그림 오류 없음, 티켓링크 표기가 달라도 구역 이름 맞추기
+  {
+    const H2 = (host, venue) => `${host} vs FC안양\n${venue} | 2026.11.29(일) 14:00\n등급 선택\n`;
+    const cases = [
+      ['jeonbuk', 94, 9, H2('전북현대', '전주월드컵경기장') + 'S원정\n500 석\nS-1C구역\n120 석\nE일반2A구역\n30 석\n1A구역\n7 석', { S1C: 120, E2A: 30 }, '1A'],
+      ['pohang', 61, 7, H2('포항스틸러스', '포항스틸야드') + '청암E1구역\n100 석\nA1구역\n50 석\n데크석\n20 석', { E1: 100, A1: 50, 데크석: 20 }, ''],
+      ['seoul', 69, 3, H2('FC서울', '서울월드컵경기장') + 'E-A구역\n80 석\nSC구역\n40 석', { EA: 80, SC: 40 }, ''],
+      ['ulsan', 106, 11, H2('울산HD', '울산문수축구경기장') + 'N1구역\n120 석\nE13구역\n50 석\n프리미엄 테이블석\n10 석', { N1: 120, E13: 50, 프리미엄테이블석: 10 }, ''],
+      ['incheon', 50, 1, H2('인천유나이티드', '인천축구전용경기장') + '원정석\n500 석\nE3구역\n90 석\nV1구역\n10 석', { 원정석: 500, E3: 90, V1: 10 }, ''],
+    ];
+    for (const [id, n, ours, txt, want, miss] of cases) {
+      p = await open(b, { url: URL + `?s=${id}#edit` });
+      r = await p.evaluate(([txt, want]) => {
+        fcIngest(txt);
+        const svg = document.getElementById('board').innerHTML;
+        return { n: SECTIONS.length, ours: SECTIONS.filter(s => s.ours).length, nan: svg.includes('NaN'), got: Object.keys(want).map(k => `${k}=${state.rows[k]?.remain}`).join(' '),
+          st: document.getElementById('status').innerText, rows: document.querySelectorAll('#rows tr').length, title: document.title };
+      }, [txt, want]);
+      const wantTxt = Object.entries(want).map(([k, v]) => `${k}=${v}`).join(' ');
+      check(`원정 ${id}: 칸 ${n}개(원정석 ${ours}), 그림 오류 없음, 구역 이름 맞추기${miss ? ', 없는 이름 알림' : ''}`, r.n === n && r.ours === ours && !r.nan && r.rows === n && r.got === wantTxt && !p.errors.length
+        && (miss ? r.st.includes(`현황판에 없는 구역 이름: ${miss}`) : !r.st.includes('현황판에 없는 구역')), JSON.stringify({ ...r, want: wantTxt, errors: p.errors }));
+      await p.context().close();
+    }
+  }
+
+  // 구장 버튼: 공유 버튼 아래 안양 홈, 원정 6곳, 경기별 기록. 지금 구장 표시, 마지막 집계 날짜
+  p = await open(b, { url: URL + '?s=gimcheon', data: { 'gimcheon/latest.json': { updatedAt: '2026-11-07T14:06:00+09:00', match: { opponent: '김천상무' }, sections: [] } } });
+  await p.waitForTimeout(1200);
+  r = await p.evaluate(() => [...document.querySelectorAll('#stadiums a')].map(a => a.textContent + (a.getAttribute('aria-current') ? '*' : '')).join('|'));
+  check('구장 버튼: 안양 홈, 김천(지금, 11.07), 전북, 포항, 서울, 울산, 인천, 경기별 기록', r === '안양 홈|김천11.07*|전북|포항|서울|울산|인천|경기별 기록', r);
   await p.context().close();
 
   // 기본 주소(?s 없음) 보기 화면: 홈, 원정 중 가장 최근 발행으로. ?s=anyang 은 홈 그대로
