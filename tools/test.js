@@ -187,8 +187,29 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       await other.setContent('<div>호텔 예약 1박 120,000원</div>');
       await run(other, {}, 'nol.yanolja.com'); await other.waitForTimeout(2200);
       const b6 = await badge(other), ping6 = await other.evaluate(() => __set.ping);
-      check('보내기 스크립트 10판: 놀티켓 좌석 화면 감지(좌석등급), 보낸 곳 놀티켓, 다른 야놀자 화면은 표시 안 함', ping?.state === 'seat' && ping?.site === '놀티켓' && /이 크롬에 현황판 입력 화면이 없어/.test(b5) && !b6 && ping6?.state === 'idle', JSON.stringify({ ping, b5, b6, ping6 }));
+      check('보내기 스크립트: 놀티켓 좌석 화면 감지(좌석등급), 보낸 곳 놀티켓, 다른 야놀자 화면은 표시 안 함', ping?.state === 'seat' && ping?.site === '놀티켓' && /이 크롬에 현황판 입력 화면이 없어/.test(b5) && !b6 && ping6?.state === 'idle', JSON.stringify({ ping, b5, b6, ping6 }));
       await nk.close(); await other.close();
+    }
+
+    // 놀티켓 실제 형식(11/07 사용자 화면): '좌석 선택', '관람 구역을 선택해 주세요', 구역 이름 줄 다음에 숫자만(석 없음), 괄호 붙은 이름, 경기장 이름 없음, '2:00 PM'
+    {
+      const NOL = '<div style="display:flex"><b>좌석 선택</b><span>8:41</span></div><div>수원삼성 vs FC안양 (11.29)</div><div>2026.11.29(토) 2:00 PM</div><div>홍길동님</div><h3>관람 구역을 선택해 주세요</h3>'
+        + '<div style="display:flex"><span>프리미엄 패밀리박스(4인)(GATE:PREMIUM)</span><span>0</span></div><div style="display:flex"><span>S1구역(GATE:4B)</span><span>12</span></div><div style="display:flex"><span>E5</span><span>40</span></div>';
+      const nk = await b.newPage();
+      await nk.setContent(NOL);
+      await run(nk, {}, 'tickets.interpark.com'); await nk.waitForTimeout(2200);
+      const sent = await nk.evaluate(() => __set);
+      await nk.close();
+      check('보내기 스크립트 11판: 놀티켓 형식 감지(관람 구역, 숫자만 줄), 구역 이름과 숫자, 경기 줄은 보내고 로그인 이름, 남은 시간은 뺌',
+        sent.ping?.state === 'seat' && !sent.ping.need.length && /프리미엄 패밀리박스\(4인\)\(GATE:PREMIUM\)\n0\nS1구역\(GATE:4B\)\n12\nE5\n40/.test(sent.text?.s) && /수원삼성 vs FC안양/.test(sent.text.s) && !/홍길동|8:41/.test(sent.text.s), JSON.stringify(sent));
+      const pg = await open(b, { url: URL + '?s=suwon#edit' });
+      r = await pg.evaluate(s => { const k = fcIngest(s); return { k, S1: state.rows.S1.remain, fam: state.rows.프리미엄패밀리박스.remain, E5: state.rows.E5.remain, date: state.date }; }, sent.text.s);
+      await pg.context().close();
+      check('놀티켓 글자 받기(수원삼성): 경기장 이름 없어도 홈 팀 + 안양이면 받음, 숫자만 줄, 괄호 뺀 구역 이름, 오후 2시', r.k?.ok && r.S1 === 12 && r.fam === 0 && r.E5 === 40 && r.date === '2026-11-29T14:00', JSON.stringify(r));
+      const pb = await open(b, { url: URL + '?s=bucheon#edit' });
+      r = await pb.evaluate(s => [fcIngest(s).why, fcIngest('FC안양 vs 부천FC1995\n안양종합운동장 | 2026.11.28(토) 14:00\n등급 선택\nR10구역\n20 석').why].join(' | '), sent.text.s);
+      await pb.context().close();
+      check('다른 원정 구장(부천)은 수원삼성 글자도, 안양 홈 경기 글자도 넘김', /부천종합운동장 없음 \| .*부천종합운동장 없음/.test(r), r);
     }
 
     // 보기 화면(입력 화면 아님)은 신호도 응답도 안 함
@@ -442,6 +463,25 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       check(`좌석 그림 남은 ${want[0]} vs 티켓링크 잔여 ${list}: ${okMax ? '맞음 -> 넣어 둔 총석 302 그대로, 다르다고 알림' : '다름 -> 넣지 않고 경고 (302 그대로)'}`, r.remain === list && (okMax ? r.max === 302 && /W23 좌석 그림 전체 336석이 표의 최대 302석과 다릅니다/.test(r.st) : r.max === 302 && /⚠ W23 좌석 그림의 남은 칸 155석이 잔여 143석과 달라/.test(r.st)), JSON.stringify(r));
       await p.context().close();
     }
+  }
+  // 놀티켓 좌석 그림: 동그란 점, 비스듬한 구역, 같은 회색으로 찍힌 옆 구역(간격의 4배 넘게 떨어짐) -> 동그란 점도 세고 옆 구역은 뺌
+  {
+    const rows = Array.from({ length: 18 }, (_, i) => 22 + (i % 5)), want = rows.reduce((a, b) => a + b, 0);
+    const dot = '<i style="display:inline-block;width:8px;height:8px;margin:1.5px;border-radius:50%;background:#e3e5e9"></i>';
+    const zone = rows.map((n, i) => `<div style="white-space:nowrap;height:11px"><b style="display:inline-block;width:16px;margin-right:8px;font:8px sans-serif;color:#999">${i + 1}</b>${dot.repeat(n)}</div>`).join('');
+    const nb = Array.from({ length: 5 }, () => `<div style="white-space:nowrap;height:11px;padding-left:24px">${dot.repeat(24)}</div>`).join('');
+    const mk = await b.newPage({ viewport: { width: 900, height: 900 } }), f = path.join(tmp, 'nol_dots.png');
+    await mk.setContent(`<body style="margin:0;background:#fff;overflow:hidden"><div style="position:absolute;left:180px;top:300px;transform:rotate(-55deg);transform-origin:200px 120px">${zone}<div style="height:44px"></div>${nb}</div>`
+      + `<div style="position:absolute;left:560px;top:560px;font:700 54px sans-serif;color:#6b6b6b">N6</div></body>`);
+    await mk.screenshot({ path: f }); await mk.close();
+    p = await open(b, { url: URL + '?s=suwon#edit' });
+    await p.evaluate(() => { state.rows.N6.max = null; });
+    p.on('dialog', d => d.accept('N6'));
+    await p.setInputFiles('#file', f);
+    await p.evaluate(() => window.ocrDone);
+    r = await p.evaluate(() => ({ max: state.rows.N6.max, remain: state.rows.N6.remain, st: document.getElementById('status').innerText }));
+    check(`놀티켓 좌석 그림(동그란 점, 옆 구역 섞임): N6 전체 ${want}, 옆 구역 120 은 뺌`, r.max === want && r.remain === 0 && /떨어져 있는 칸 1[12]\d개는 옆 구역으로 보고 뺐습니다/.test(r.st), JSON.stringify(r));
+    await p.context().close();
   }
   const list = (rows, fs) => rows.map(([n, v], i) => `<div style="display:flex;justify-content:space-between;padding:${fs * 0.4}px 16px ${fs * 0.4}px ${i ? 52 : 16}px;font-size:${fs}px;color:${v ? '#222' : '#a9adb5'}">`
     + `<span>${i ? '' : '<b style="display:inline-block;width:' + fs * 0.8 + 'px;height:' + fs * 0.8 + 'px;background:#123;margin-right:8px"></b>'}${n}</span><span style="color:${v ? '#ff2a2a' : '#a9adb5'};font-weight:${v ? 700 : 400}">${v} 석</span></div>`).join('');

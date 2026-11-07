@@ -406,9 +406,9 @@ function fillByTotals(found, totals) {
 
 // 구역 이름 → 현황판 칸 id (빈칸, 하이픈, 가운뎃점을 빼고 대문자로. 그대로 → 한글 앞말을 빼고 → 한글을 모두 빼고)
 const zoneId = n => {
-  const k = n.toUpperCase().replace(/[\s·_-]/g, ''), names = {};
+  const k = n.toUpperCase().replace(/[\s·_-]/g, ''), b = k.replace(/\([^)]*\)/g, ''), names = {};  // 놀티켓 '프리미엄 패밀리박스(4인)(GATE:PREMIUM)'
   SECTIONS.forEach(x => [x.id, x.name, ...(x.alias || [])].forEach(a => { if (a) names[a.toUpperCase().replace(/[\s·_-]/g, '')] = x.id; }));
-  return [k, k.replace(/^[가-힣]+/, ''), k.replace(/[가-힣]/g, '')].map(c => c && names[c]).find(Boolean) || null;
+  return [...new Set([k, b, b.replace(/구역$/, '')])].flatMap(c => [c, c.replace(/^[가-힣]+/, ''), c.replace(/[가-힣]/g, '')]).map(c => c && names[c]).find(Boolean) || null;
 };
 // 화면 글자 해석: 오른쪽 구역 목록 "R8구역 (줄바꿈) 28석", 왼쪽 등급 목록 "가변석 574 석", 상단 "FC안양 vs 상대 / 날짜"
 function parseText(text) {
@@ -425,6 +425,11 @@ function parseText(text) {
     if (/^[A-Z]{1,2}\d{1,2}$/i.test(n)) { if (!state.rows[n.toUpperCase()]) missZones.push(n); continue; }  // 위에서 읽은 표준 이름
     const id = zoneId(n);
     if (id) add(id, +v); else missZones.push(n);
+  }
+  // 놀티켓은 '구역 이름' 다음 줄에 숫자만 (석 없음): 현황판 칸 이름과 맞는 것만
+  if (AWAY) for (const [, n, v] of t.matchAll(/^([^\n]{1,40})\n[ \t]*(\d{1,5})[ \t]*$/gm)) {
+    const id = !/석\s*$/.test(n) && zoneId(n);
+    if (id) add(id, +v);
   }
   // 등급 줄의 "석"을 OCR이 4로 읽는 일이 잦아서("204석" → "2044"), 줄 끝의 남는 4는 석으로 봄
   // PC 화면에서 복사한 글자는 등급 이름과 "158 석"이 다음 줄로 나뉘기도 해서 줄바꿈 하나까지 허용
@@ -447,7 +452,8 @@ function parseText(text) {
   // 여러 장의 맨 위 줄 중 처음으로 지명이 읽힌 것 (한 장은 "BFcotet vs 2MFC1995"처럼 깨지기도 함)
   const team = [...t.matchAll(/안양(?!종합)([^\n]*)/g)].map(m => m[1].replace(/[^가-힣]/g, ''))
     .map(c => Object.keys(TEAMS).find(k => c.startsWith(k))).find(Boolean);
-  const d = t.match(/(\d{4})\.(\d{2})\.(\d{2})\s*\(.\)\s*(\d{1,2}):(\d{2})/);
+  const d = t.match(/(\d{4})\.(\d{2})\.(\d{2})\s*\(.\)\s*(\d{1,2}):(\d{2})\s*(PM|오후)?/i);
+  if (d?.[6] && +d[4] < 12) d[4] = String(+d[4] + 12);  // 놀티켓 '2:00 PM'
   return {
     found, totals, filled: fillByTotals(found, totals), unknown: [...new Set(unknown)], grades, missZones: [...new Set(missZones)],
     opp: team && TEAMS[team],
@@ -1309,13 +1315,24 @@ async function seatMap(bmp, eng, full) {
   }
   // 칸 크기: 정사각형에 가깝고 꽉 찬 덩어리 넓이의 중앙값. 화면 전체 캡처면 좌석 그림이 있는 쪽만 (세로: 위 15~60%, 가로: 왼쪽 78%)
   const inMap = o => !full || (H0 > W0 * 1.2 ? o.cy > H0 * 0.15 && o.cy < H0 * 0.6 : o.cx < W0 * 0.78 && o.cy > H0 * 0.12);
-  const sq = comps.filter(o => o.n >= 25 && o.w / o.h > 0.65 && o.w / o.h < 1.5 && o.n / (o.w * o.h) > 0.8 && inMap(o));
+  // 놀티켓 좌석은 동그란 점: 작은 원은 픽셀 위치에 따라 꽉 찬 정도가 0.65~0.83 으로 흔들려서, 가로세로가 비슷하고(0.6 넘게 참) 넓이가 보통 점과 비슷하면 칸으로 봄
+  // (줄 번호 숫자는 가로세로가 다르거나 점보다 훨씬 작고, 구역 이름 글자는 훨씬 큼)
+  const round = o => o.w / o.h > 0.75 && o.w / o.h < 1.33 && o.n / (o.w * o.h) > 0.6;
+  const sq = comps.filter(o => o.n >= 25 && o.w / o.h > 0.65 && o.w / o.h < 1.5 && (o.n / (o.w * o.h) > 0.8 || round(o)) && inMap(o));
   if (sq.length < 10) return null;
   const med = sq.map(o => o.n).sort((a, b) => a - b)[sq.length >> 1], side = Math.sqrt(med);
   // 붙어 버린 칸 몇 개는 넓이로 나눠 셈. 버튼, 테두리처럼 큰 덩어리, 줄 번호 숫자처럼 성긴 덩어리(꽉 찬 정도 80% 아래), 그림 끝에 잘린 옆 칸은 뺌
-  const seat = o => o.n >= med * 0.45 && o.n / (o.w * o.h) > 0.8 && Math.max(o.w, o.h) <= side * 3.5 && Math.min(o.w, o.h) <= side * 1.6 && !(o.edge && o.n < med * 0.8) && inMap(o);
-  const count = k => comps.filter(o => o.k === k && seat(o)).reduce((a, o) => a + Math.max(1, Math.round(o.n / med)), 0);
-  const remain = count(2), total = remain + count(1);
+  const seat = o => o.n >= med * 0.45 && (o.n / (o.w * o.h) > 0.8 || round(o) && o.n >= med * 0.75 && o.n <= med * 1.3) && Math.max(o.w, o.h) <= side * 3.5 && Math.min(o.w, o.h) <= side * 1.6 && !(o.edge && o.n < med * 0.8) && inMap(o);
+  // 옆 구역 칸 빼기: 칸 사이 간격(가장 가까운 칸까지 거리의 중앙값)의 3.3배 넘게 떨어진 칸 덩어리는 다른 구역으로 보고 가장 큰 덩어리만 셈
+  // (한 구역 안 통로는 칸 2~3개 폭, 구역 사이는 그보다 넓음. 놀티켓은 옆 구역 좌석도 같은 회색으로 그려 잘라 낸 그림에 섞임)
+  const all = comps.filter(seat), d2 = (a, b) => Math.hypot(a.cx - b.cx, a.cy - b.cy);
+  const pitch = all.map(a => Math.min(...all.map(b => a === b ? Infinity : d2(a, b)))).sort((a, b) => a - b)[all.length >> 1];
+  const up = all.map((_, i) => i), find = i => up[i] === i ? i : (up[i] = find(up[i])), groups = {};
+  all.forEach((a, i) => { for (let j = i + 1; j < all.length; j++) if (d2(a, all[j]) <= pitch * 3.3) up[find(i)] = find(j); });
+  all.forEach((o, i) => (groups[find(i)] ||= []).push(o));
+  const units = o => Math.max(1, Math.round(o.n / med)), keep = Object.values(groups).sort((a, b) => b.reduce((s, o) => s + units(o), 0) - a.reduce((s, o) => s + units(o), 0))[0] || [];
+  const count = k => keep.filter(o => o.k === k).reduce((a, o) => a + units(o), 0);
+  const remain = count(2), total = remain + count(1), dropped = all.reduce((a, o) => a + units(o), 0) - total;
   if (!total) return null;
   await eng.setParameters({ tessedit_pageseg_mode: '11', tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789' });
   // 이름 글자는 작고 흐린 회색이라 키우고 흑백으로 (밝은 회색 칸은 지워지고 글자만 남음)
@@ -1341,7 +1358,7 @@ async function seatMap(bmp, eng, full) {
     id = Object.entries(votes).find(([, n]) => n >= 2)?.[0];
   }
   await eng.setParameters({ tessedit_pageseg_mode: '7' });
-  return { id: id || null, remain, total };  // 이름을 끝내 못 읽으면 id 없이 (인식이 끝난 뒤 사람에게 물음)
+  return { id: id || null, remain, total, dropped };  // 이름을 끝내 못 읽으면 id 없이 (인식이 끝난 뒤 사람에게 물음)
 }
 
 // 이름 .... 숫자 석' 줄이 이어진 목록(PC 등급 목록, 잘라 낸 캡처): 한글 인식기는 E 를 6 으로, 구역을 7 로, 석을 4 로 읽어서
@@ -1511,6 +1528,7 @@ async function ocrRun(files) {
     const maxNotes = counted.filter(m => { const r = state.rows[m.id]; return r.max == null || r.learned; })
       .map(m => { Object.assign(state.rows[m.id], { max: m.total }); delete state.rows[m.id].learned; return m; });
     apply(p, [...(bad.length ? [`읽지 못한 캡처: ${bad.join(', ')}`] : []), ...skipped.map(m => `구역 이름을 몰라 넣지 않은 좌석 그림: 남은 ${m.remain} / 전체 ${m.total}`),
+      ...counted.filter(m => m.dropped).map(m => `${m.id} 좌석 그림: 떨어져 있는 칸 ${m.dropped}개는 옆 구역으로 보고 뺐습니다.`),
       ...differ.map(m => `${m.id} 좌석 그림 전체 ${m.total}석이 표의 최대 ${state.rows[m.id].max}석과 다릅니다 (표 값 그대로, 센 값이 맞으면 표에서 고치세요).`),
       ...wrong.map(m => `⚠ ${m.id} 좌석 그림의 남은 칸 ${m.remain}석이 잔여 ${known(m)}석과 달라 넣지 않았습니다 (센 전체 ${m.total}석). 옆 구역 칸이 같이 찍혔으면 그 구역만 잘라 다시 넣으세요.`),
       ...(counted.length ? [`좌석 그림으로 셈: ${counted.map(m => `${m.id} 남은 ${m.remain} / 전체 ${m.total}`).join(', ')}` + (maxNotes.length ? ' (전체를 최대 좌석으로)' : '')] : []), ...(hasSeats(p) ? newCapture(p, localISO(Math.max(...files.map(f => f.lastModified || Date.now())))) : [])]);
@@ -1522,7 +1540,9 @@ $('file').onchange = e => { window.ocrDone = ocr([...e.target.files]); e.target.
 // 인식 없이 화면 숫자 그대로. 10분 안에 이어 들어오면 같은 집계로 보고 비교 기준을 다시 잡지 않음
 function ingest(text) {
   raw.value = text;  // 받은 글자는 먼저 보여 줌 (안 맞으면 무엇이 왔는지 확인할 수 있게)
-  if (!text.includes(VENUE)) { status(`받은 글자에 '${VENUE}'가 없어 넘겼습니다 (다른 구장, 다른 화면). 아래 글자 칸에서 받은 내용을 확인하세요.`); return { why: `받은 글자에 ${VENUE} 없음` }; }
+  // 경기장 이름으로 확인. 놀티켓 화면엔 경기장 이름이 없어 원정은 '홈 팀 이름 + 안양'이어도 받음 (안양 홈 경기 글자는 넘김)
+  const venueOk = text.includes(VENUE) || AWAY && text.includes(STADIUMS[STADIUM].name) && /안양/.test(text) && !text.includes('안양종합운동장');
+  if (!venueOk) { status(`받은 글자에 '${VENUE}'가 없어 넘겼습니다 (다른 구장, 다른 화면). 아래 글자 칸에서 받은 내용을 확인하세요.`); return { why: `받은 글자에 ${VENUE} 없음` }; }
   const p = parseText(text), fresh = !state.at || Math.abs(Date.now() - new Date(state.at)) > 600e3;  // 손으로 바꾼 집계 시각이 미래여도
   raw.value = text;
   apply(p, hasSeats(p) ? newCapture(p, localISO(), fresh) : []);
@@ -1553,7 +1573,7 @@ function drawLamp() {
     : p ? ['open', `${p.site || '티켓링크'} 열림 · 등급/좌석 선택 화면이 아님` + (p.need?.length ? ` (화면에 없는 글자: ${p.need.join(', ')})` : '')]
     : last ? ['wait', `보내기 스크립트 켜짐 (${BROWSER}) · 예매 사이트 신호 끊김 (마지막 신호 ${hms(last)}). 예매 탭을 닫았거나 다른 브라우저`]
     : lamp.installed ? ['wait', `보내기 스크립트 켜짐 (${BROWSER}) · 이 ${BROWSER}에서 연 예매 사이트(${SELLER})가 없음. 다른 브라우저에서 열었다면 현황판도 그 브라우저에서 여세요`]
-    : ['', `보내기 스크립트 신호 없음 · 이 ${BROWSER}에 Tampermonkey 와 스크립트(10판)가 켜져 있는지 확인`];
+    : ['', `보내기 스크립트 신호 없음 · 이 ${BROWSER}에 Tampermonkey 와 스크립트(11판)가 켜져 있는지 확인`];
   $('lamp').className = 'edit ' + cls;
   $('lamp').lastChild.textContent = msg + (lamp.rejected ? ` · ${lamp.rejected}` : '') + (p?.shape ? `\n좌석 그림: ${p.shape}` : '');  // 좌석 그림 구조: 구역 총석 자동 세기 검토용
 }
