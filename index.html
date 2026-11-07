@@ -62,6 +62,15 @@
   .share button.main { background: #fff; border-color: #fff; color: var(--p8); }
   .share #note { color: #e4dcf5; } .share #note:empty { display: none; }
   body:not(.editing) .edit { display: none; }
+  /* 수집 상태 램프: 꺼짐(회색) 스크립트 없음, 노랑 설치됨/기다림, 파랑 티켓링크 열림, 초록 예매 화면 감지/수집 중, 빨강 다른 구장 */
+  #lamp { position: fixed; top: 10px; right: 10px; z-index: 50; display: none; align-items: center; gap: 10px; max-width: min(420px, calc(100vw - 20px)); box-sizing: border-box;
+    padding: 9px 14px; border-radius: 14px; background: #fff; box-shadow: 0 2px 12px #2a0f5733; font-size: 13px; font-weight: 600; line-height: 1.35; }
+  body.editing #lamp { display: flex; }
+  #lamp i { flex: none; width: 16px; height: 16px; border-radius: 50%; background: #9ca3af; box-shadow: 0 0 0 4px #9ca3af33; }
+  #lamp.wait i { background: #eab308; box-shadow: 0 0 0 4px #eab30833; } #lamp.open i { background: #2563eb; box-shadow: 0 0 0 4px #2563eb33; }
+  #lamp.seat i { background: #16a34a; box-shadow: 0 0 0 4px #16a34a40; } #lamp.live i { background: #16a34a; animation: lamp 1s ease-in-out infinite; }
+  #lamp.bad i { background: #dc2626; box-shadow: 0 0 0 4px #dc262633; }
+  @keyframes lamp { 0%, 100% { box-shadow: 0 0 0 3px #16a34a55; } 50% { box-shadow: 0 0 0 9px #16a34a11; } }
   .away #trend { display: none; }  /* 원정 구장은 만석을 몰라 예매 추이를 그리지 않음 */
   .embed main { max-width: none; padding: 0; } .embed #boardWrap { border-radius: 0; box-shadow: none; }
   .embed .share, .embed .panel, .embed .mobile-only, .embed .foot, .embed:not(.embed-trend) #trend { display: none; }
@@ -87,6 +96,7 @@
 </head>
 <body>
 <main>
+  <div id="lamp" class="edit" role="status" aria-live="polite"><i></i><span>수집 상태 확인 중…</span></div>
   <div id="boardWrap"><svg id="board" role="img" aria-label="FC안양 예매 현황판" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 1062" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif"></svg>
     <div id="stadiumWrap"><svg id="stadium" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 740 1080 960" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif"></svg></div></div>
   <p class="hint mobile-only">경기장을 누르면 크게, 다시 누르면 원래대로</p>
@@ -230,6 +240,8 @@ const GRADES = AWAY ? [] : [
   { name: '일반자유석', re: /자유/, ids: ['일반자유석'] },
 ];
 
+// 인식기가 구역 이름의 영문 첫 글자를 잘못 읽은 것 (611구역 → E11구역). 그 구역이 있을 때만 바꿈
+const LOOK = { 6: 'E', G: 'E', 5: 'S', 8: 'S', H: 'N', M: 'N', V: 'W' };
 // 등급 합계로 이번 캡처에서 빠진 구역 하나를 채움 (예: 서포터즈석 79 - 읽은 네 구역 합 = R13)
 function fillByTotals(found, totals) {
   const filled = [];
@@ -243,14 +255,17 @@ function fillByTotals(found, totals) {
 // 화면 글자 해석: 오른쪽 구역 목록 "R8구역 (줄바꿈) 28석", 왼쪽 등급 목록 "가변석 574 석", 상단 "FC안양 vs 상대 / 날짜"
 function parseText(text) {
   // 한글 인식기가 구역 이름의 W 를 \/, \\, VV 로 읽음: 구역 번호 앞이면 W 로 (원정 구장 W11구역 등)
-  const t = text.replace(/(\d),(?=\d{3})/g, '$1').replace(/(^|[^A-Za-z])(?:\\+\/?|VV|vv)(?=\s*\d{1,2}\s*구\s*역)/gm, '$1W'), seen = {}, totals = [], unknown = [], grades = [];
+  const t = text.replace(/(\d),(?=\d{3})/g, '$1').replace(/(^|[^A-Za-z])(?:\\+\/?|VV|vv)(?=\s*\d{1,2}\s*구\s*역)/gm, '$1W')
+    .replace(/(^|[^A-Za-z0-9])([6G58HM])(\d{1,2})(?=\s*구\s*역)/gm, (m, pre, ch, n) => state.rows[LOOK[ch] + n] ? pre + LOOK[ch] + n : m),  // 611구역 → E11구역
+    seen = {}, totals = [], unknown = [], grades = [];
   const add = (id, v) => (seen[id] ??= []).push(v);
   for (const [, a, n, v] of t.matchAll(/(?<![A-Za-z])([A-Z]{1,2})\s*(\d{1,2})\s*구\s*역\s*(\d+)\s*석/gi)) add(a.toUpperCase() + n, +v);
   // 등급 줄의 "석"을 OCR이 4로 읽는 일이 잦아서("204석" → "2044"), 줄 끝의 남는 4는 석으로 봄
   // PC 화면에서 복사한 글자는 등급 이름과 "158 석"이 다음 줄로 나뉘기도 해서 줄바꿈 하나까지 허용
   for (const [, name, v] of t.matchAll(/([가-힣A-Za-z][가-힣A-Za-z0-9() \t]*?)[ \t]*\n?[ \t]*(\d+)(?:[ \t]*\n?[ \t]*석|4(?=[^\d\n]{0,2}$))/gm)) {
+    if (/구\s*역/.test(name)) continue;  // 구역 줄(깨진 "W12구역 196 4석" 포함)은 등급이 아님
     const g = GRADES.find(g => g.re.test(name));
-    if (!/구\s*역$/.test(name.trim())) grades.push([name.trim(), +v]);  // 구역 줄은 빼고 등급 줄만
+    grades.push([name.trim(), +v]);
     if (!g) { if (/석(\([^)]*\))?$/.test(name.trim())) unknown.push(`${name.trim()} ${v}석`); continue; }  // 이름이 '석'으로 끝나는 줄만 등급으로 봄
     if (g.ids.length === 1) add(g.ids[0], +v);  // 등급 = 구역 하나
     else if (+v === 0) g.ids.forEach(id => add(id, 0));  // 등급 전체 0석이면 구역도 전부 0
@@ -1044,10 +1059,151 @@ async function readCards(col, kor, eng) {
 }
 
 // 스크린샷 한 장의 글자. first: 맨 위 경기 정보(상대팀·일시)도 읽음 (앞 3장)
-async function readShot(f, first, kor, eng) {
+// 좌석 그림 캡처: 칸을 색으로 셈 (밝은 회색 = 팔림, 색 있는 칸 = 남음). 남은 좌석과 그 구역 전체 좌석 수를 함께 얻음
+// 구역 이름(W11, R10 등)은 그림 안의 큰 글자를 영문 인식으로 읽음. 등급 목록이 함께 찍힌 화면이면 좌석 그림 쪽만 셈
+async function seatMap(bmp, eng, full) {
+  const W0 = bmp.width, H0 = bmp.height, c = cut(bmp, 0, 0, W0, H0), d = c.getContext('2d').getImageData(0, 0, W0, H0).data;
+  const kind = i => {
+    const r = d[i], g = d[i + 1], b = d[i + 2], mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    if (mn > 244) return 0;                    // 바탕
+    if (mx - mn < 16) return mx > 175 ? 1 : 0;  // 밝은 회색 칸 = 팔림 (어두운 회색은 글자)
+    return 2;                                  // 색 있는 칸 = 남음
+  };
+  const lab = new Uint8Array(W0 * H0), comps = [];
+  for (let s0 = 0; s0 < W0 * H0; s0++) {
+    if (lab[s0]) continue;
+    const k = kind(s0 * 4);
+    if (!k) { lab[s0] = 1; continue; }
+    const st = [s0]; lab[s0] = 1;
+    let n = 0, x0 = W0, x1 = 0, y0 = H0, y1 = 0;
+    while (st.length) {
+      const q = st.pop(), x = q % W0, y = q / W0 | 0;
+      n++; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      for (const nq of [q - 1, q + 1, q - W0, q + W0])
+        if (nq >= 0 && nq < W0 * H0 && !lab[nq] && Math.abs((nq % W0) - x) <= 1 && kind(nq * 4) === k) { lab[nq] = 1; st.push(nq); }
+    }
+    comps.push({ k, n, w: x1 - x0 + 1, h: y1 - y0 + 1, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 });
+  }
+  // 칸 크기: 정사각형에 가깝고 꽉 찬 덩어리 넓이의 중앙값. 화면 전체 캡처면 좌석 그림이 있는 쪽만 (세로: 위 15~60%, 가로: 왼쪽 78%)
+  const inMap = o => !full || (H0 > W0 * 1.2 ? o.cy > H0 * 0.15 && o.cy < H0 * 0.6 : o.cx < W0 * 0.78 && o.cy > H0 * 0.12);
+  const sq = comps.filter(o => o.n >= 25 && o.w / o.h > 0.65 && o.w / o.h < 1.5 && o.n / (o.w * o.h) > 0.6 && inMap(o));
+  if (sq.length < 10) return null;
+  const med = sq.map(o => o.n).sort((a, b) => a - b)[sq.length >> 1], side = Math.sqrt(med);
+  // 붙어 버린 칸 몇 개는 넓이로 나눠 셈. 버튼, 테두리, 글자처럼 크거나 성긴 덩어리는 뺌
+  const seat = o => o.n >= med * 0.45 && o.n / (o.w * o.h) > 0.55 && Math.max(o.w, o.h) <= side * 3.5 && Math.min(o.w, o.h) <= side * 1.6 && inMap(o);
+  const count = k => comps.filter(o => o.k === k && seat(o)).reduce((a, o) => a + Math.max(1, Math.round(o.n / med)), 0);
+  const remain = count(2), total = remain + count(1);
+  await eng.setParameters({ tessedit_pageseg_mode: '11', tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789' });
+  // 이름 글자는 작고 흐린 회색이라 키우고 흑백으로 (밝은 회색 칸은 지워지고 글자만 남음)
+  const z = Math.min(3, 3000 / Math.max(W0, H0));
+  const words = (await eng.recognize(cut(bmp, 0, 0, W0, H0, z, 200))).data.words.filter(w => state.rows[w.text.trim()]);
+  await eng.setParameters({ tessedit_pageseg_mode: '7' });
+  const label = words.sort((a, b) => (b.bbox.y1 - b.bbox.y0) - (a.bbox.y1 - a.bbox.y0))[0];  // 가장 큰 글자가 구역 이름
+  return label && total ? { id: label.text.trim(), remain, total } : null;
+}
+
+// 이름 .... 숫자 석' 줄이 이어진 목록(PC 등급 목록, 잘라 낸 캡처): 한글 인식기는 E 를 6 으로, 구역을 7 로, 석을 4 로 읽어서
+// 줄마다 이름 덩어리와 숫자 덩어리를 위치로 잘라 이름은 영문+숫자, 숫자는 숫자 전용으로 따로 읽고, 이름은 실제 구역과 맞춤
+function zoneOf(tok) {
+  const t = tok.toUpperCase().replace(/^[^A-Z0-9]+/, ''), m = t.match(/^([A-Z0-9])([A-Z]?)(\d{1,2})/);
+  if (!m) return null;
+  for (const first of [m[1], LOOK[m[1]]].filter(Boolean))
+    for (const n of [m[3], m[3].slice(0, 1)]) { const id = first + m[2] + n; if (state.rows[id] && isNaN(first)) return id; }
+  return null;
+}
+async function readList(bmp, eng) {
+  const z = Math.min(3, 2400 / bmp.width), c = cut(bmp, 0, 0, bmp.width, bmp.height, z, 200), W = c.width, H = c.height;
+  const img = c.getContext('2d').getImageData(0, 0, W, H), d = img.data, dark = (x, y) => d[(y * W + x) * 4] === 0;
+  // 꽉 찬 네모(좌석 칸, 등급 색 표시)와 글자보다 훨씬 큰 덩어리(그림, 테두리)는 지움: PC 화면 전체면 왼쪽 좌석 그림이 목록 줄과 섞임
+  const seen = new Uint8Array(W * H);
+  for (let s0 = 0; s0 < W * H; s0++) {
+    if (seen[s0] || d[s0 * 4]) continue;
+    const st = [s0], px = [];
+    let x0 = W, x1 = 0, y0 = H, y1 = 0;
+    seen[s0] = 1;
+    while (st.length) {
+      const q = st.pop(), x = q % W, y = q / W | 0;
+      px.push(q); if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      for (const nq of [q - 1, q + 1, q - W, q + W]) if (nq >= 0 && nq < W * H && !seen[nq] && Math.abs(nq % W - x) <= 1 && !d[nq * 4]) { seen[nq] = 1; st.push(nq); }
+    }
+    const w = x1 - x0 + 1, h = y1 - y0 + 1;
+    if (h > 60 * z || (Math.min(w, h) >= 6 * z && w / h > 0.6 && w / h < 1.6 && px.length / (w * h) > 0.8)) for (const q of px) d[q * 4] = d[q * 4 + 1] = d[q * 4 + 2] = 255;
+  }
+  c.getContext('2d').putImageData(img, 0, 0);
+  const bands = [];  // 글자 줄: 가로로 잉크가 있는 줄 묶음
+  for (let y = 0, s0 = -1; y <= H; y++) {
+    let ink = false;
+    if (y < H) for (let x = 0; x < W; x++) if (dark(x, y)) { ink = true; break; }
+    if (ink && s0 < 0) s0 = y;
+    if (!ink && s0 >= 0) { if (y - s0 >= 10 * z) bands.push([s0, y]); s0 = -1; }
+  }
+  // 잘라 낸 덩어리 하나를 한 줄로 읽음. T: 줄 높이를 T px 로 키워 원본에서 다시 잘라 흑백 (0 이면 지금 그림 그대로)
+  const box = async (x0, x1, a, b, white, T, psm) => {
+    const pad = 6 * z, cc = T ? cut(bmp, (x0 - pad) / z, (a - pad) / z, (x1 - x0 + pad * 2) / z, (b - a + pad * 2) / z, T * z / (b - a), 200) : document.createElement('canvas');
+    if (!T) {
+      cc.width = x1 - x0 + pad * 2; cc.height = b - a + pad * 2;
+      const g = cc.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, cc.width, cc.height); g.drawImage(c, x0, a, x1 - x0, b - a, pad, pad, x1 - x0, b - a);
+    }
+    await eng.setParameters({ tessedit_char_whitelist: white, tessedit_pageseg_mode: psm });
+    return (await eng.recognize(cc)).data.text.trim();
+  };
+  // 크기와 읽기 방식을 바꿔 가며 같은 값이 두 번 나와야 씀 (한 번 읽기는 W 뒤 1 을 빼먹거나 다른 줄 글자를 숫자로 읽는 일이 있음). 끝까지 안 맞으면 그 줄은 넣지 않음
+  const READS = [[0, '7'], [48, '7'], [64, '7'], [40, '8']];
+  const sure = async (w, a, b, white, norm) => {
+    const n = {};
+    for (const [T, psm] of READS) {
+      const v = norm(await box(w[0], w[1], a, b, white, T, psm));
+      if (v != null && (n[v] = (n[v] || 0) + 1) === 2) return v;
+    }
+    return null;
+  };
+  let out = '';
+  for (const [a, b] of bands) {
+    const bh = b - a, ink = new Uint8Array(W + 1);
+    for (let x = 0; x < W; x++) for (let y = a; y < b; y++) if (dark(x, y)) { ink[x] = 1; break; }
+    const runs = (x0, x1, gap) => {  // 잉크가 이어진 구간, gap 보다 좁은 틈은 이음
+      const r = [];
+      for (let x = x0, s0 = -1; x <= x1; x++) {
+        if (ink[x] && x < x1 && s0 < 0) s0 = x;
+        if ((!ink[x] || x === x1) && s0 >= 0) { const w = r.at(-1); if (w && s0 - w[1] < gap) w[1] = x; else r.push([s0, x]); s0 = -1; }
+      }
+      return r;
+    };
+    // 뒤쪽 넓은 글자 조각(한글 한 글자는 줄 높이의 0.75 이상, 영문, 숫자는 대개 그보다 좁음)을 max 개까지 뗌. 다 떼어지면 null
+    const drop = (w, max) => {
+      const s = runs(w[0], w[1], 1);
+      let k = s.length;
+      while (k && s.length - k < max && s[k - 1][1] - s[k - 1][0] >= bh * 0.75) k--;
+      return k ? [w[0], s[k - 1][1]] : null;
+    };
+    const words = runs(0, W, bh * 0.22);  // 글자 사이 좁은 틈은 잇고 넓은 틈에서 나눈 덩어리
+    if (words.length < 2) continue;
+    // 숫자 = 마지막 덩어리에서 '석'을 뗀 것 (마지막이 '석' 하나면 그 앞 덩어리), 이름 = 그 앞 덩어리에서 '구역'을 뗀 것 (떨어져 나온 '구역' 덩어리는 건너뜀)
+    let i = words.length - 1, numW = drop(words[i], 1);
+    if (!numW) numW = words[--i];
+    let nameW = null;
+    while (!nameW && i > 0) nameW = drop(words[--i], 2);
+    if (!numW || !nameW) continue;
+    const id = await sure(nameW, a, b, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', zoneOf);
+    const num = id && await sure(numW, a, b, '0123456789', t => /\d/.test(t) ? +t.replace(/\D/g, '') : null);
+    if (num != null) out += `${id}구역 ${num}석\n`;
+  }
+  await eng.setParameters({ tessedit_char_whitelist: '', tessedit_pageseg_mode: '7' });
+  return out;
+}
+
+async function readShot(f, first, kor, eng, counted = []) {
   const bmp = await createImageBitmap(f), W0 = bmp.width, H0 = bmp.height;
   await kor.setParameters({ tessedit_pageseg_mode: '4' });
-  if (H0 < W0 * 1.2) return (await kor.recognize(cut(bmp, 0, 0, W0, H0, W0 < 1600 ? 2 : 1))).data.text + '\n';  // 가로 캡처(PC)는 통째로, 글자가 작아 2배로 (인식 도구는 ImageBitmap 을 못 읽어 캔버스로)
+  // 좌석 그림만 잘라 낸 캡처면 칸을 세서 '구역 N석' 줄로 덧붙임. 화면 전체(등급 목록, 단계 표시가 보임)는 옆 구역 칸과 표시 테두리까지 섞여 세지 않음
+  const withMap = async text => {
+    if (/등급|선택|단계|구\s*역/.test(text)) return text;
+    const m = await seatMap(bmp, eng, false);
+    if (m) { counted.push(m); text += `\n${m.id}구역 ${m.remain}석\n`; }
+    return text;
+  };
+  // 휴대폰, 태블릿 앱 화면 전체(세로로 길고 큰 캡처)가 아니면(PC 화면, 잘라 낸 캡처): 통째로 읽고 + 목록 줄을 따로 읽고 + 좌석 그림을 셈
+  if (H0 < W0 * 1.2 || H0 < 1200) return withMap((await kor.recognize(cut(bmp, 0, 0, W0, H0, W0 < 1600 ? 2 : 1))).data.text + '\n' + await readList(bmp, eng));
   // 티켓링크 앱 세로 캡처: 아래 목록만, 왼쪽 등급 목록과 오른쪽 구역 카드를 따로 읽음
   // shortcut: 목록 위치를 화면 비율(아래 60~90%, 66%에서 나눔)로 고정, 다른 기기에서 못 읽으면 비율 조정
   let out = (await kor.recognize(cut(bmp, 0, H0 * 0.6, W0 * 0.66, H0 * 0.3))).data.text + '\n';
@@ -1058,7 +1214,7 @@ async function readShot(f, first, kor, eng) {
   }
   // 정해 둔 위치에서 좌석 숫자를 못 찾으면(화면 비율이 다른 기기) 통째로 한 번 더 읽음
   if (!/\d\s*석/.test(out)) { await kor.setParameters({ tessedit_pageseg_mode: '4' }); out += (await kor.recognize(cut(bmp, 0, 0, W0, H0))).data.text + '\n'; }
-  return out;
+  return withMap(out);
 }
 
 const hasSeats = p => Object.keys(p.found).some(id => state.rows[id]);  // 현황판에 있는 구역 숫자가 하나라도 있는지
@@ -1075,7 +1231,7 @@ async function ocrRun(files) {
   catch { return status('글자 인식 도구를 못 불러왔습니다. 인터넷을 확인하거나 표에 직접 넣으세요.'); }
   // 코어·메모리가 넉넉하면 두 갈래로 나눠 동시에 읽음 (갈래마다 한글·영문 인식기 한 쌍)
   const lanes = Math.min(files.length, (navigator.hardwareConcurrency ?? 2) >= 4 && (navigator.deviceMemory ?? 4) >= 4 ? 2 : 1);
-  const pairs = [], texts = [], bad = [];
+  const pairs = [], texts = [], bad = [], counted = [];
   let next = 0, done = 0;
   try {
     status('글자 인식 준비 중… (처음엔 조금 걸림)');
@@ -1087,14 +1243,18 @@ async function ocrRun(files) {
     await Promise.all(pairs.map(([, eng]) => eng.setParameters({ tessedit_pageseg_mode: '7' })));
     await Promise.all(pairs.map(async ([kor, eng]) => {
       for (let k; (k = next++) < files.length;) {
-        try { texts[k] = await readShot(files[k], k < 3, kor, eng); } catch { texts[k] = ''; bad.push(files[k].name); }  // 깨진 캡처 한 장은 건너뜀
+        try { texts[k] = await readShot(files[k], k < 3, kor, eng, counted); } catch { texts[k] = ''; bad.push(files[k].name); }  // 깨진 캡처 한 장은 건너뜀
         status(`${++done}/${files.length}장 인식했습니다…`);
       }
     }));
     raw.value = texts.join('');  // 원래 순서대로 (같은 구역이 여러 장이면 나중 장이 우선)
     const p = parseText(raw.value);
     // 집계 시각 = 가장 늦게 찍은 캡처 (붙여넣기는 지금). 좌석 숫자를 못 찾았으면 경기 판단은 건너뜀 (지난 숫자를 지우지 않게)
-    apply(p, [...(bad.length ? [`읽지 못한 캡처: ${bad.join(', ')}`] : []), ...(hasSeats(p) ? newCapture(p, localISO(Math.max(...files.map(f => f.lastModified || Date.now())))) : [])]);
+    // 좌석 그림에서 센 전체 좌석 수는 실제로 센 값이라 최대 좌석으로 (모르던 구역, 더 큰 값일 때)
+    const maxNotes = counted.filter(m => state.rows[m.id] && (state.rows[m.id].max == null || state.rows[m.id].learned || m.total > state.rows[m.id].max))
+      .map(m => { Object.assign(state.rows[m.id], { max: m.total }); delete state.rows[m.id].learned; return m; });
+    apply(p, [...(bad.length ? [`읽지 못한 캡처: ${bad.join(', ')}`] : []),
+      ...(counted.length ? [`좌석 그림으로 셈: ${counted.map(m => `${m.id} 남은 ${m.remain} / 전체 ${m.total}`).join(', ')}` + (maxNotes.length ? ' (전체를 최대 좌석으로)' : '')] : []), ...(hasSeats(p) ? newCapture(p, localISO(Math.max(...files.map(f => f.lastModified || Date.now())))) : [])]);
   } catch (e) { status('인식 실패: ' + e.message); }
   await Promise.all(pairs.flat().map(w => w.terminate()));
 }
@@ -1103,12 +1263,38 @@ $('file').onchange = e => { window.ocrDone = ocr([...e.target.files]); e.target.
 // 인식 없이 화면 숫자 그대로. 10분 안에 이어 들어오면 같은 집계로 보고 비교 기준을 다시 잡지 않음
 function ingest(text) {
   raw.value = text;  // 받은 글자는 먼저 보여 줌 (안 맞으면 무엇이 왔는지 확인할 수 있게)
-  if (!text.includes(VENUE)) return status(`받은 글자에 '${VENUE}'가 없어 넘겼습니다 (다른 구장, 다른 화면). 아래 글자 칸에서 받은 내용을 확인하세요.`);
+  if (!text.includes(VENUE)) { status(`받은 글자에 '${VENUE}'가 없어 넘겼습니다 (다른 구장, 다른 화면). 아래 글자 칸에서 받은 내용을 확인하세요.`); return { why: `받은 글자에 ${VENUE} 없음` }; }
   const p = parseText(text), fresh = !state.at || Math.abs(Date.now() - new Date(state.at)) > 600e3;  // 손으로 바꾼 집계 시각이 미래여도
   raw.value = text;
   apply(p, hasSeats(p) ? newCapture(p, localISO(), fresh) : []);
+  const n = Object.keys(p.found).filter(id => state.rows[id]).length;
+  return n ? { ok: true, n } : { why: '받은 글자에 구역 숫자 없음' };
 }
-window.fcIngest = s => editing && ingest(s);
+window.fcIngest = s => {
+  if (!editing) return;
+  const r = ingest(s);
+  Object.assign(lamp, r?.ok ? { got: Date.now(), zones: r.n, rejected: '' } : { rejected: r?.why || '' });
+  drawLamp();
+};
+// 수집 상태 램프: 보내기 스크립트 신호로 정함 (설치됨 → 티켓링크 열림 → 예매 화면 감지 → 숫자 받음)
+// 티켓링크 탭이 여럿이거나 예매 화면이 틀(iframe) 안이면 신호가 여러 곳에서 옴: 보낸 곳마다 따로 두고 가장 앞선 상태를 보여 줌
+const lamp = { installed: 0, pings: {}, got: 0, zones: 0, rejected: '' };
+const hms = t => new Date(t).toTimeString().slice(0, 8);
+function drawLamp() {
+  const now = Date.now(), all = Object.values(lamp.pings), last = Math.max(0, ...all.map(p => p.at));
+  const fresh = all.filter(p => now - p.at < (p.hidden ? 90e3 : 20e3));  // 뒤에 있는 탭은 신호가 늦어 오래 기다림
+  const venueOk = p => p.venue && (p.venue.includes(VENUE) || VENUE.includes(p.venue));
+  const p = fresh.find(p => p.state === 'seat' && venueOk(p)) || fresh.find(p => p.state === 'seat') || fresh[0];
+  const [cls, msg] =
+    p?.state === 'seat' && p.venue && !venueOk(p) ? ['bad', `다른 구장 예매 화면 (${p.venue}) · 이 화면은 ${VENUE}`]
+    : p?.state === 'seat' ? [now - lamp.got < 60e3 ? 'live' : 'seat', `예매 화면 감지됨 · ` + (lamp.got ? `숫자 받음 ${hms(lamp.got)} (구역 ${lamp.zones}개)` : '등급을 누르면 숫자가 들어옵니다')]
+    : p ? ['open', '티켓링크 열림 · 등급/좌석 선택 화면이 아님' + (p.need?.length ? ` (화면에 없는 글자: ${p.need.join(', ')})` : '')]
+    : lamp.installed || last ? ['wait', `보내기 스크립트 켜짐 · 티켓링크 예매 화면을 기다리는 중${last ? ` (마지막 신호 ${hms(last)})` : ''}`]
+    : ['', '보내기 스크립트 신호 없음 · 같은 브라우저에 Tampermonkey 와 스크립트(7판)가 켜져 있는지 확인'];
+  $('lamp').className = 'edit ' + cls;
+  $('lamp').lastChild.textContent = msg + (lamp.rejected ? ` · ${lamp.rejected}` : '');
+}
+window.fcPing = v => { if (v.state === 'installed') lamp.installed = v.at; else lamp.pings[v.id || '-'] = v; drawLamp(); };
 addEventListener('paste', e => {
   if (!editing) return;
   const imgs = [...e.clipboardData.files].filter(f => f.type.startsWith('image/')), s = e.clipboardData.getData('text');
@@ -1181,7 +1367,7 @@ const toggleEdit = () => { try { localStorage.setItem(EDIT, editing ? '0' : '1')
 addEventListener('keydown', e => { if (!embed && e.ctrlKey && e.shiftKey && e.code === 'KeyE') { e.preventDefault(); toggleEdit(); } });
 $('viewMode').onclick = toggleEdit;
 portrait.addEventListener('change', render);
-if (editing) { syncInputs(); fillTable(); render(); loadHistory(); tokenInfo(); }
+if (editing) { syncInputs(); fillTable(); render(); loadHistory(); tokenInfo(); drawLamp(); setInterval(drawLamp, 2000); }
 else {
   blank();
   render(); loadPublished().then(loadHistory); setInterval(() => loadPublished().then(loadHistory), 300e3); setInterval(showAgo, 60e3);

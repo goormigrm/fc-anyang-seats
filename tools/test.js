@@ -132,6 +132,114 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   check('원정(김천): 안양 홈 글자는 무시, 홈 입력값과 따로, 데이터 폴더', /'김천종합운동장'가 없어 넘겼습니다/.test(r.st2) && r.home === 7 && r.away && r.path.endsWith('/data/gimcheon/latest.png'), JSON.stringify(r));
   await p.context().close();
 
+  // 보내기 스크립트 (GM 함수는 흉내, 티켓링크에는 접속하지 않음): 현황판에 설치 표시, 티켓링크 화면 상태와 글자가 현황판으로
+  {
+    const src = fs.readFileSync(path.join(ROOT, 'fc-anyang-send.user.js'), 'utf8');
+    p = await open(b, { url: URL + '?s=gimcheon#edit' });
+    const shim = `window.__l = {}; window.GM_addValueChangeListener = (k, f) => (window.__l[k] = f); window.GM_setValue = () => {}; window.unsafeWindow = window;`;
+    await p.evaluate(([shim, src]) => { (0, eval)(shim); (0, eval)(src.replace("location.hostname.endsWith('ticketlink.co.kr')", 'false')); }, [shim, src]);
+    const t1 = await p.locator('#lamp').innerText();
+    const tk = await b.newPage();  // 티켓링크 비슷한 화면 (경기장 이름과 날짜, 구역과 숫자가 다른 줄)
+    await tk.setContent('<div><h2>김천상무프로축구단 vs FC안양</h2><div>김천종합운동장</div><div>2026.11.07(토) 16:30</div><div>홍길동님</div><h3>등급 선택</h3><div style="display:flex"><span>W12구역</span><span>196 석</span></div></div>');
+    const sent = await tk.evaluate(([src]) => new Promise(ok => { const got = {}; window.GM_setValue = (k, v) => { got[k] = v; if (got.text) ok(got); }; window.unsafeWindow = window; (0, eval)(src.replace("location.hostname.endsWith('ticketlink.co.kr')", 'true')); setTimeout(() => ok(got), 4000); }), [src]);
+    await tk.close();
+    r = await p.evaluate(sent => { __l.ping?.('ping', null, sent.ping, true); __l.text?.('text', null, sent.text, true); return { lamp: document.getElementById('lamp').className + ' ' + document.getElementById('lamp').innerText, W12: state.rows.W12.remain }; }, sent);
+    check('보내기 스크립트: 램프에 켜짐 표시, 예매 화면 감지와 숫자가 넘어옴, 개인 글자 뺌', /스크립트 켜짐/.test(t1) && /live/.test(r.lamp) && /숫자 받음/.test(r.lamp) && r.W12 === 196 && sent.ping?.state === 'seat' && sent.ping?.id && !sent.ping.need.length && sent.ping?.venue === '김천종합운동장' && !/홍길동/.test(sent.text?.s || ''), JSON.stringify({ t1, r, s: sent.text?.s, ping: sent.ping }));
+    await p.context().close();
+  }
+
+  // 수집 상태 램프: 신호 없음 / 켜짐 / 티켓링크 열림 / 예매 화면 감지 / 숫자 받음 / 다른 구장 / 신호 끊김 / 뒤 탭
+  p = await open(b, { url: URL + '?s=gimcheon#edit' });
+  r = await p.evaluate(() => {
+    const L = () => (document.getElementById('lamp').className.replace('edit', '').trim() || 'off') + ':' + document.getElementById('lamp').innerText, now = Date.now(), out = {};
+    out.none = L();
+    fcPing({ state: 'installed', at: now }); out.installed = L();
+    fcPing({ state: 'idle', venue: '', at: now }); out.idle = L();
+    fcPing({ state: 'seat', venue: '김천종합운동장', zones: 9, at: now }); out.seat = L();
+    fcIngest('김천상무 vs FC안양\n김천종합운동장 | 2026.11.07(토) 16:30\n등급 선택\nE12구역\n278 석'); out.live = L();
+    fcPing({ state: 'seat', venue: '울산문수축구경기장', at: now }); out.bad = L();
+    fcPing({ state: 'seat', venue: '김천종합운동장', at: now - 30e3 }); out.stale = L();
+    fcPing({ state: 'seat', venue: '김천종합운동장', hidden: true, at: now - 60e3 }); out.hidden = L();
+    fcIngest('울산HD vs FC안양\n울산문수축구경기장 | 2026.11.21(토) 14:00\n등급 선택\nE1구역\n10 석'); out.rejected = L();
+    fcPing({ id: 'a', state: 'seat', venue: '김천종합운동장', at: Date.now() }); fcPing({ id: 'b', state: 'idle', need: ['등급 선택'], at: Date.now() }); out.two = L();  // 탭 둘: 예매 화면 쪽을 보여 줌
+    lamp.pings = {}; fcPing({ id: 'b', state: 'idle', need: ['등급 선택', 'N석'], at: Date.now() }); out.need = L();
+    return out;
+  });
+  const lampOk = /^off:.*신호 없음/.test(r.none) && /^wait:/.test(r.installed) && /^open:/.test(r.idle) && /^seat:.*예매 화면 감지됨/.test(r.seat) && /^live:.*숫자 받음.*구역 1개/.test(r.live)
+    && /^bad:.*다른 구장/.test(r.bad) && /^wait:.*마지막 신호/.test(r.stale) && /^live:/.test(r.hidden) && /김천종합운동장 없음/.test(r.rejected)
+    && /^live:/.test(r.two) && /^open:.*화면에 없는 글자: 등급 선택, N석/.test(r.need);
+  check('수집 상태 램프 (꺼짐, 노랑, 파랑, 초록, 깜빡임, 빨강, 끊김, 뒤 탭, 거부 이유, 탭 둘, 없는 글자)', lampOk, JSON.stringify(r));
+  r = await p.evaluate(() => { const v = getComputedStyle(document.getElementById('lamp')); return v.display + ' ' + v.position; });
+  check('램프는 입력 화면 위에 고정', r === 'flex fixed', r);
+  await p.context().close();
+  p = await open(b, { url: URL + '?s=gimcheon' });
+  check('램프는 보기 화면에서 안 보임', await p.evaluate(() => getComputedStyle(document.getElementById('lamp')).display) === 'none');
+  await p.context().close();
+
+  // 파서 단위 시험 (원정 구장 글자 고치기)
+  p = await open(b, { url: URL + '?s=gimcheon#edit' });
+  r = await p.evaluate(() => {
+    const f = s => JSON.stringify(parseText(s).found);
+    return { e6: f('611구역 0석\n612구역 278석'), w: f('\\/12구역 196 석\nVV13구역 267 석'), s5: f('511구역 30석'), n: f('N1구역 12석\nN11구역 40석'), g: parseText('E석(일반석) 1503 석\nE12구역 278석\nEEEEN W12구역 196 4석').grades.map(x => x.join(':')).join(), bad: f('W12구역 196 4석\nW13구역 2674') };
+  });
+  check('원정 글자 고치기: 611→E11, \\/12→W12, 511→S11, N1 과 N11 구분, 등급 줄만, 깨진 줄은 안 받음', r.e6 === '{"E11":0,"E12":278}' && r.w === '{"W12":196,"W13":267}' && r.s5 === '{"S11":30}' && r.n === '{"N1":12,"N11":40}' && r.g === 'E석(일반석):1503' && r.bad === '{}', JSON.stringify(r));
+  await p.context().close();
+  p = await open(b);
+  r = await p.evaluate(() => JSON.stringify(parseText('611구역 0석\nR10구역 26석').found));
+  check('홈은 611구역을 E11 로 바꾸지 않음 (E 구역 없음)', r === '{"R10":26}', r);
+  await p.context().close();
+
+  // 만든 그림으로 인식 시험: 좌석 그림(색, 칸 크기, 테두리 여러 가지), 등급 목록(글자 크기 여러 가지), PC 화면 전체
+  const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fcseat-')), maker = await b.newPage();
+  const shot = async (name, html, w, h) => { await maker.setViewportSize({ width: w, height: h }); await maker.setContent(`<body style="margin:0;background:#fff;font-family:'Noto Sans KR','Noto Sans CJK KR',sans-serif">${html}</body>`); const f = path.join(tmp, name + '.png'); await maker.screenshot({ path: f }); return f; };
+  const grid = (label, avail, sold, color, size, outline) => {  // 남은 칸(색) avail 개 다음에 팔린 칸(회색) sold 개, 한 줄 20칸
+    const cells = [...Array(avail).fill(color), ...Array(sold).fill('#e6e6e6')].map(c => `<i style="display:inline-block;width:${size}px;height:${size}px;margin:${Math.round(size / 4)}px;background:${c}"></i>`);
+    const rows = []; for (let i = 0; i < cells.length; i += 20) rows.push(`<div style="white-space:nowrap">${cells.slice(i, i + 20).join('')}</div>`);
+    return `<div style="padding:20px 30px"><div style="text-align:center;color:#777;font-weight:700;font-size:${Math.max(16, size)}px;margin-bottom:10px">${label}</div>`
+      + `<div style="display:inline-block;${outline ? 'outline:3px solid #e33;outline-offset:4px' : ''}">${rows.join('')}</div></div>`;
+  };
+  const grids = [['W12', 37, 50, '#0d2b45', 14, 0, '?s=gimcheon'], ['S11', 9, 30, '#c2185b', 22, 1, '?s=gimcheon'], ['E21', 12, 8, '#e5e500', 18, 0, '?s=gimcheon'],
+    ['N12', 60, 0, '#6a40ad', 12, 0, '?s=gimcheon'], ['R10', 26, 100, '#d2143a', 26, 1, ''], ['W31', 0, 44, '#0d2b45', 16, 0, '?s=gimcheon']];
+  for (const [label, avail, sold, color, size, outline, q] of grids) {
+    const f = await shot('grid_' + label, grid(label, avail, sold, color, size, outline), 30 * 2 + 20 * size * 1.5 + 40, 120 + Math.ceil((avail + sold) / 20) * size * 1.5);
+    p = await open(b, { url: URL + q + '#edit' });
+    await p.setInputFiles('#file', f);
+    await p.evaluate(() => window.ocrDone);
+    r = await p.evaluate(id => ({ remain: state.rows[id].remain, max: state.rows[id].max, st: document.getElementById('status').innerText.split('\n')[0] }), label);
+    check(`좌석 그림 세기: ${label} 남은 ${avail} / 전체 ${avail + sold} (칸 ${size}px${outline ? ', 빨간 테두리' : ''})`, r.remain === avail && r.max === avail + sold, JSON.stringify(r));
+    await p.context().close();
+  }
+  const list = (rows, fs) => rows.map(([n, v], i) => `<div style="display:flex;justify-content:space-between;padding:${fs * 0.4}px 16px ${fs * 0.4}px ${i ? 52 : 16}px;font-size:${fs}px;color:${v ? '#222' : '#a9adb5'}">`
+    + `<span>${i ? '' : '<b style="display:inline-block;width:' + fs * 0.8 + 'px;height:' + fs * 0.8 + 'px;background:#123;margin-right:8px"></b>'}${n}</span><span style="color:${v ? '#ff2a2a' : '#a9adb5'};font-weight:${v ? 700 : 400}">${v} 석</span></div>`).join('');
+  const lists = [
+    [16, [['W석(일반석)', 976], ['W11구역', 0], ['W12구역', 196], ['W13구역', 267], ['W14구역', 190], ['W21구역', 0], ['W22구역', 120], ['W23구역', 143], ['W24구역', 60]]],
+    [21, [['S석(원정석)', 640], ['S11구역', 85], ['S12구역', 0], ['S13구역', 120], ['S14구역', 35], ['S21구역', 200], ['S22구역', 0], ['S23구역', 200]]],
+    [26, [['N석(가변석)', 333], ['N1구역', 40], ['N2구역', 0], ['N3구역', 93], ['N4구역', 200], ['N11구역', 0], ['N12구역', 7]]],
+  ];
+  for (const [fsz, rows] of lists) {
+    const f = await shot(`list_${fsz}`, list(rows, fsz), 380, Math.round(rows.length * fsz * 2.25 + 10));
+    p = await open(b, { url: URL + '?s=gimcheon#edit' });
+    await p.setInputFiles('#file', f);
+    await p.evaluate(() => window.ocrDone);
+    r = await p.evaluate(ids => ids.map(id => `${id}=${state.rows[id].remain}`).join(' '), rows.slice(1).map(x => x[0].replace('구역', '')));
+    const want = rows.slice(1).map(([n, v]) => `${n.replace('구역', '')}=${v}`).join(' ');
+    check(`등급 목록 캡처 ${fsz}px (${rows[1][0][0]}구역 ${rows.length - 1}개)`, r === want, `${r} (기대 ${want})`);
+    await p.context().close();
+  }
+  {  // PC 화면 전체: 위에 경기 정보, 왼쪽 좌석 그림(옆 구역 칸 포함), 오른쪽 등급 목록 -> 목록 숫자만 쓰고 좌석 그림은 세지 않음
+    const f = await shot('pc_full', `<div style="padding:16px 24px"><b style="font-size:22px">김천상무프로축구단 vs FC안양</b><div style="color:#666">김천종합운동장 | 2026.11.07(토) 16:30</div></div>`
+      + `<div style="display:flex"><div style="width:720px">${grid('W12', 30, 40, '#0d2b45', 14, 0)}${grid('W13', 10, 10, '#0d2b45', 14, 0)}</div>`
+      + `<div style="width:300px"><div style="padding:8px 16px;font-weight:700">등급 선택</div>${list([['W석(일반석)', 900], ['W12구역', 196], ['W13구역', 267]], 16)}</div></div>`, 1040, 640);
+    p = await open(b, { url: URL + '?s=gimcheon#edit' });
+    await p.setInputFiles('#file', f);
+    await p.evaluate(() => window.ocrDone);
+    r = await p.evaluate(() => ({ W12: state.rows.W12.remain, W13: state.rows.W13.remain, max: state.rows.W12.max, st: document.getElementById('status').innerText }));
+    check('PC 화면 전체 캡처: 목록 숫자를 쓰고 좌석 그림은 세지 않음', r.W12 === 196 && r.W13 === 267 && r.max == null && !/좌석 그림으로 셈/.test(r.st), JSON.stringify(r));
+    await p.context().close();
+  }
+  await maker.close();
+  fs.rmSync(tmp, { recursive: true, force: true });
+
   // 실제 캡처 인식 (11/1 부천전)
   if (fs.existsSync(SHOTS)) {
     p = await open(b);
@@ -148,8 +256,10 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     p = await open(b, { url: URL + '?s=gimcheon#edit' });
     await p.setInputFiles('#file', fs.readdirSync(PC).map(f => path.join(PC, f)));
     await p.evaluate(() => window.ocrDone);
-    r = await p.evaluate(() => ({ W12: state.rows.W12.remain, W13: state.rows.W13.remain, W11: state.rows.W11.remain, st: document.getElementById('status').innerText }));
-    check('PC 가로 캡처 인식 (김천 등급 목록)', r.W12 === 196 && r.W13 === 267 && r.W11 === 0, JSON.stringify(r));
+    r = await p.evaluate(() => ({ W12: state.rows.W12.remain, W13: state.rows.W13.remain, W11: state.rows.W11.remain, W11max: state.rows.W11.max,
+      E: ['E11', 'E12', 'E13', 'E14', 'E15', 'E21', 'E22', 'E23', 'E24'].map(id => state.rows[id].remain).join(), st: document.getElementById('status').innerText }));
+    check('김천 캡처: PC 등급 목록(W), 잘라 낸 목록(E, E 를 6 으로 읽어도), 좌석 그림(W11 칸 세기)',
+      r.W12 === 196 && r.W13 === 267 && r.W11 === 0 && r.W11max === 246 && r.E === '0,278,275,279,0,0,0,415,0', JSON.stringify(r));
     await p.context().close();
   }
 
