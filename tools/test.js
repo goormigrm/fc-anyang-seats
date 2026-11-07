@@ -265,7 +265,22 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   p = await open(b, { url: URL + '?s=gimcheon', data: { 'gimcheon/latest.json': { updatedAt: '2026-11-07T14:06:00+09:00', match: { opponent: '김천상무' }, sections: [] } } });
   await p.waitForTimeout(1200);
   r = await p.evaluate(() => [...document.querySelectorAll('#stadiums a')].map(a => a.textContent + (a.getAttribute('aria-current') ? '*' : '')).join('|'));
-  check('구장 버튼: 안양 홈, 김천(지금, 11.07), 전북, 포항, 서울, 울산, 인천, 경기별 기록', r === '안양 홈|김천11.07*|전북|포항|서울|울산|인천|경기별 기록', r);
+  check('구장 버튼: 안양 홈, 김천(지금, 11.07), 전북, 포항, 북패(서울), 울산, 인천, 경기별 기록', r === '안양 홈|김천11.07*|전북|포항|북패|울산|인천|경기별 기록', r);
+  await p.context().close();
+
+  // 사이트 화면에서만 FC서울 = '북패' (저장, 공유 이미지와 요약 글은 '서울', 경기장 이름은 그대로)
+  p = await open(b, { url: URL + '?s=seoul#edit' });
+  r = await p.evaluate(() => {
+    fcIngest('FC서울 vs FC안양\n서울월드컵경기장 | 2026.11.29(일) 14:00\n등급 선택\nSC구역\n40 석');
+    const svg = document.getElementById('board').innerHTML, png = build(false), story = build(true);
+    return { screen: svg.includes('북패 vs FC안양') && svg.includes('북패 쪽') && !svg.includes('FC서울') && svg.includes('서울월드컵경기장'), title: document.title,
+      png: png.includes('FC서울 vs FC안양') && png.includes('서울 쪽') && !png.includes('북패'), story: story.includes('FC서울 vs FC안양') && !story.includes('북패'), sum: summaryText().startsWith('FC서울 vs FC안양') };
+  });
+  check("사이트 화면은 '북패', 저장/공유 이미지와 요약 글은 '서울'", r.screen && r.title === 'FC안양 원정 예매현황 (북패)' && r.png && r.story && r.sum, JSON.stringify(r));
+  await p.context().close();
+  p = await open(b);
+  r = await p.evaluate(() => { const o = [...document.getElementById('opp').options].find(o => o.value === 'FC서울'); return o && o.text; });
+  check("홈 상대팀 목록도 화면에는 '북패' (값은 FC서울)", r === '북패', r);
   await p.context().close();
 
   // 기본 주소(?s 없음) 보기 화면: 홈, 원정 중 가장 최근 발행으로. ?s=anyang 은 홈 그대로

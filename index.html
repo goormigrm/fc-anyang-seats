@@ -715,9 +715,11 @@ function build(story) {
 }
 
 // 휴대폰: 스토리 모양을 위(보라 띠, 카드)와 경기장(범례 포함)으로 잘라 따로 보여 줌. 저장 PNG 는 그대로
-const portrait = matchMedia('(max-width: 860px)'), show = (el, vb, svg) => { el.setAttribute('viewBox', vb); el.innerHTML = svg; };
+// 사이트 화면에서만 FC서울을 '북패'로 (저장, 공유하는 이미지와 요약 글은 원래 이름: pngBlob 은 build 를 따로 부름). 경기장 이름은 그대로
+const nick = s => String(s).replace(/FC서울|서울(?!월드컵)/g, '북패');
+const portrait = matchMedia('(max-width: 860px)'), show = (el, vb, svg) => { el.setAttribute('viewBox', vb); el.innerHTML = nick(svg); };
 function render() {
-  board.setAttribute('aria-label', summaryText());  // 화면 읽기 프로그램용 요약
+  board.setAttribute('aria-label', nick(summaryText()));  // 화면 읽기 프로그램용 요약
   if (portrait.matches && !embed) {  // 다른 사이트에 퍼간 화면(iframe)은 폭과 상관없이 가로판
     const st = build(true);
     show(board, '0 140 1080 600', `<g id="mstory">${st}</g>`); show(stadium, '0 740 1080 960', '<use href="#mstory"/>');
@@ -743,7 +745,7 @@ const isCell = s => /^[A-Z]+\d/.test(s.id);
 [...SECTIONS].sort((a, b) => isCell(a) - isCell(b) || (isCell(a) ? a.id.localeCompare(b.id, 'en', { numeric: true }) : 0))
   .forEach(s => tbody.insertAdjacentHTML('beforeend', `<tr data-id="${s.id}"><td>${s.name || s.id}</td><td><button data-a="out">매진</button>${AWAY ? ' <button data-a="off">미판매</button>' : ''}</td>`
     + `<td><input type="number" min="0" inputmode="numeric" data-k="remain"></td><td><input type="number" min="0" inputmode="numeric" data-k="max"></td><td></td></tr>`));
-Object.values(TEAMS).forEach(n => $('opp').add(new Option(n)));
+Object.values(TEAMS).forEach(n => $('opp').add(new Option(nick(n), n)));
 for (let m = 600; m <= 1320; m += 30) $('time').add(new Option(`${String(m / 60 | 0).padStart(2, '0')}:${m % 60 ? '30' : '00'}`));  // 10:00~22:00, 30분 단위
 
 function fillTable(hits) {
@@ -1549,7 +1551,7 @@ const latestAll = () => Promise.all(['anyang', ...Object.keys(STADIUMS)].map(id 
 const newest = () => latestAll().then(list => list.map(([id, d]) => [id, +new Date(d?.updatedAt) || 0]).reduce((a, b) => b[1] > a[1] ? b : a)[0]);
 // 구장 버튼: 안양 홈, 원정 구장, 경기별 기록. 누르면 그 구장의 마지막 집계(지난 경기면 그 기록)
 $('stadiums').innerHTML = [['anyang', '안양 홈'], ...Object.entries(STADIUMS).map(([k, v]) => [k, v.name])]
-  .map(([k, n]) => `<a class="btn" href="?s=${k}" data-s="${k}"${k === STADIUM ? ' aria-current="page"' : ''}>${n}<small></small></a>`).join('') + '<a class="btn" href="season.html">경기별 기록</a>';
+  .map(([k, n]) => `<a class="btn" href="?s=${k}" data-s="${k}"${k === STADIUM ? ' aria-current="page"' : ''}>${nick(n)}<small></small></a>`).join('') + '<a class="btn" href="season.html">경기별 기록</a>';
 latestAll().then(list => list.forEach(([k, d]) => { const el = $('stadiums').querySelector(`[data-s="${k}"] small`); if (d?.updatedAt) el.textContent = String(d.updatedAt).slice(5, 10).replace('-', '.'); }));
 const ago = s => { const m = Math.round((Date.now() - new Date(s)) / 60000); return m < 1 ? '방금' : m < 60 ? m + '분 전' : m < 1440 ? (m / 60 | 0) + '시간 전' : (m / 1440 | 0) + '일 전'; };
 const showAgo = () => state.at && note(`마지막 집계 ${ago(state.at)} (${state.at.slice(5).replace('-', '.').replace('T', ' ')})`
@@ -1586,7 +1588,7 @@ document.body.classList.toggle('editing', editing);
 document.body.classList.toggle('embed', embed); document.body.classList.toggle('away', AWAY);
 if (AWAY) {
   $('markHead').textContent = '매진 / 미판매';
-  document.title = `FC안양 원정 예매현황 (${STADIUMS[STADIUM].name})`; $('opp').disabled = true;
+  document.title = nick(`FC안양 원정 예매현황 (${STADIUMS[STADIUM].name})`); $('opp').disabled = true;
   $('seatHint').textContent = `빈칸 = 정보 없음, 0 = 매진, 미판매 = 이번 경기에 팔지 않는 구역(빗금). 최대 = 구역 총석 (${STADIUMS[STADIUM].max ? '넣어 둠, ' : '아직 없음: '}구역 좌석 그림을 잘라 넣으면 셈). 총석을 모르는 구역은 예매율을 못 냅니다.`;
 } document.body.classList.toggle('embed-trend', params.get('embed') === 'trend');
 const toggleEdit = () => { try { localStorage.setItem(EDIT, editing ? '0' : '1'); } catch {} location.replace(location.pathname + location.search); };

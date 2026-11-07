@@ -37,6 +37,8 @@
   <p class="foot">FC안양 팬이 만든 비공식 기록입니다. · <a href="./">현황판으로</a></p>
 </main>
 <script>
+// 사이트 화면에서는 FC서울을 '북패'로 (index.html 과 같음)
+const nick = s => String(s).replace(/FC서울|서울(?!월드컵)/g, '북패');
 // 발행 데이터(data 브랜치)의 games/*.json (경기가 바뀔 때 보관한 지난 경기)과 latest.json (지금 경기)을 모아 보여 줌
 const API = 'https://api.github.com/repos/goormigrm/fc-anyang-seats/', RAW = 'https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/';
 const fmt = n => n.toLocaleString('ko-KR'), esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -60,7 +62,7 @@ const num = v => Number.isInteger(v) && v >= 0 ? v : null;
 
   document.getElementById('rows').innerHTML = games.map(({ now, d }) => {
     const b = num(d.booked), cap = num(d.capacity), crowd = num(d.match?.attendance);
-    return `<tr class="${now ? 'now' : ''}"><td>${esc(day(d.match?.kickoff || ''))} ${esc(String(d.match?.kickoff || '').slice(11, 16))}${now ? ' (지금)' : ''}</td><td>${esc(d.match?.opponent || '-')}</td>`
+    return `<tr class="${now ? 'now' : ''}"><td>${esc(day(d.match?.kickoff || ''))} ${esc(String(d.match?.kickoff || '').slice(11, 16))}${now ? ' (지금)' : ''}</td><td>${esc(nick(d.match?.opponent || '-'))}</td>`
       + `<td>${b == null ? '-' : `${fmt(b)}석 (${cap ? (b / cap * 100).toFixed(1) : '-'}%)`}</td><td>${crowd == null ? '-' : fmt(crowd) + '명'}</td>`
       + `<td>${crowd == null || b == null ? '-' : (crowd - b > 0 ? '+' : '') + fmt(crowd - b)}</td><td>${Array.isArray(d.soldOut) ? d.soldOut.length + '개' : '-'}</td>`
       + `<td>${esc(day(d.updatedAt || ''))} ${esc(String(d.updatedAt || '').slice(11, 16))}</td></tr>`;
@@ -75,7 +77,7 @@ const num = v => Number.isInteger(v) && v >= 0 ? v : null;
     const cx = L + slot * (i + 0.5), b = num(d.booked), crowd = num(d.match?.attendance);
     if (b != null) svg += `<rect x="${cx - bw - 2}" y="${Y(b)}" width="${bw}" height="${B - Y(b)}" rx="4" fill="#6a40ad"/>` + t(cx - bw / 2 - 2, Y(b) - 6, fmt(b), 11, '#3e1a78', 700);
     if (crowd != null) svg += `<rect x="${cx + 2}" y="${Y(crowd)}" width="${bw}" height="${B - Y(crowd)}" rx="4" fill="#f6c453"/>` + t(cx + bw / 2 + 2, Y(crowd) - 6, fmt(crowd), 11, '#b7791f', 700);
-    svg += t(cx, B + 22, d.match?.opponent || '-', 12, '#374151', 700) + t(cx, B + 40, day(d.match?.kickoff || ''), 11, '#9ca3af');
+    svg += t(cx, B + 22, nick(d.match?.opponent || '-'), 12, '#374151', 700) + t(cx, B + 40, day(d.match?.kickoff || ''), 11, '#9ca3af');
   });
   svg += `<rect x="${L}" y="6" width="12" height="12" fill="#6a40ad"/>` + t(L + 18, 17, '예매(마지막 집계)', 12, '#4b5563', 400, 'start')
     + `<rect x="${L + 150}" y="6" width="12" height="12" fill="#f6c453"/>` + t(L + 168, 17, '공식 관중', 12, '#4b5563', 400, 'start');
