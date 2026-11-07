@@ -254,9 +254,9 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     await pg.context().close();
     const pc = await open(b, { url: URL + '?s=gimcheon', data }), e3 = await pc.evaluate(() => embedCode());
     await pc.context().close();
-    check('퍼간 화면: 최근 구장(김천)으로, 홈이 새로 발행되면 홈으로 따라감, 좁아도 가로판, 퍼가기 코드(따라가는 주소, 고른 구장 주소)',
+    check('퍼간 화면: 최근 구장(김천)으로, 홈이 새로 발행되면 홈으로 따라감, 좁아도 가로판, 퍼가기 코드는 어느 화면에서나 따라가는 ?embed',
       /^\?embed=&s=gimcheon&auto= \| true \| 0 0 1280 1062 \| none \| <iframe src="[^"]*index\.html\?embed" title="FC안양 예매 현황" style="width:100%;aspect-ratio:1280\/1062/.test(e1)
-      && e2 === '?embed= | true | FC안양 예매현황 | 26' && /index\.html\?s=gimcheon&embed"/.test(e3), JSON.stringify({ e1, e2, e3 }));
+      && e2 === '?embed= | true | FC안양 예매현황 | 26' && /index\.html\?embed"/.test(e3), JSON.stringify({ e1, e2, e3 }));
   }
 
   // 수집 상태 램프: 신호 없음 / 켜짐 / 티켓링크 열림 / 예매 화면 감지 / 숫자 받음 / 다른 구장 / 신호 끊김 / 뒤 탭

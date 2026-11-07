@@ -795,11 +795,11 @@ function summaryText() {
     state.crowd != null ? `공식 관중 ${fmt(state.crowd)}명 (예매 ${fmt(FULL - t.avail)}석 대비 ${signed(state.crowd - (FULL - t.avail))})` : '',
     t.empty.length ? `(정보 없는 구역 ${t.empty.length}개 빠짐)` : ''].filter(Boolean).join('\n');
 }
-// 다른 사이트에 붙여 넣는 iframe 코드: 현황판만, 5분마다 새 발행. 고른 원정 화면이 아니면 홈, 원정 중 가장 최근 경기를 따라감
-const embedCode = () => `<iframe src="${location.origin + location.pathname}?${AWAY && !FOLLOW ? `s=${STADIUM}&` : ''}embed" title="FC안양 예매 현황" style="width:100%;aspect-ratio:1280/1062;border:0" loading="lazy"></iframe>`;
+// 다른 사이트에 붙여 넣는 iframe 코드: 어느 화면에서 눌러도 홈, 원정 중 가장 최근 경기를 따라가는 ?embed (경기마다 코드를 바꾸지 않게)
+const embedCode = () => `<iframe src="${location.origin + location.pathname}?embed" title="FC안양 예매 현황" style="width:100%;aspect-ratio:1280/1062;border:0" loading="lazy"></iframe>`;
 $('embedCode').onclick = async () => {
-  const code = embedCode(), what = AWAY && !FOLLOW ? `${STADIUMS[STADIUM].name} 원정 현황판` : '홈, 원정 중 가장 최근 경기 현황판';
-  try { await navigator.clipboard.writeText(code); note(`퍼가기 코드(iframe)를 복사했습니다. 다른 사이트 HTML 에 붙여 넣으면 ${what}이 보이고 5분마다 새 발행을 받아 옵니다.`); }
+  const code = embedCode();
+  try { await navigator.clipboard.writeText(code); note('퍼가기 코드(iframe)를 복사했습니다. 다른 사이트 HTML 에 붙여 넣으면 홈, 원정 중 가장 최근 경기 현황판이 보이고 5분마다 새 발행을 받아 옵니다.'); }
   catch { note(code); }
 };
 $('copy').onclick = async () => {
