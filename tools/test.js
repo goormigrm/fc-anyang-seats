@@ -204,9 +204,12 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       check('보내기 스크립트 12판: 놀티켓 형식 감지(관람 구역, 숫자만 줄, 쉼표 숫자), 구역 이름과 숫자, 경기 줄은 보내고 로그인 이름, 남은 시간은 뺌',
         sent.ping?.state === 'seat' && !sent.ping.need.length && /프리미엄 패밀리박스\(4인\)\(GATE:PREMIUM\)\n0\nS1구역\(GATE:4B\)\n12\nE5\n40/.test(sent.text?.s) && /수원삼성 vs FC안양/.test(sent.text.s) && /2층 E석\(E15~19\)\(GATE:3A,3B\)\n1,191/.test(sent.text.s) && !/홍길동|8:41/.test(sent.text.s), JSON.stringify(sent));
       const pg = await open(b, { url: URL + '?s=suwon#edit' });
-      r = await pg.evaluate(s => { const k = fcIngest(s); return { k, S1: state.rows.S1.remain, fam: state.rows.프리미엄패밀리박스.remain, E5: state.rows.E5.remain, date: state.date }; }, sent.text.s);
+      r = await pg.evaluate(s => { const k = fcIngest(s), t = stats(); return { k, S1: state.rows.S1.remain, fam: state.rows.프리미엄패밀리박스.remain, E5: state.rows.E5.remain, date: state.date,
+        max: SECTIONS.filter(x => state.rows[x.id].max).length, none: SECTIONS.filter(x => !state.rows[x.id].max).map(x => x.id).join(), m: ['E15', 'S3', 'W9', 'W5', 'E9', 'N8'].map(id => state.rows[id].max).join(), cap: t.cap, booked: t.booked }; }, sent.text.s);
       await pg.context().close();
       check('놀티켓 글자 받기(수원삼성): 경기장 이름 없어도 홈 팀 + 안양이면 받음, 숫자만 줄, 괄호 뺀 구역 이름, 오후 2시', r.k?.ok && r.S1 === 12 && r.fam === 0 && r.E5 === 40 && r.date === '2026-11-29T14:00', JSON.stringify(r));
+      // 수원삼성 총석(11/08 받은 자료): 그린 칸 60개 모두(테이블석, 패밀리박스 빼고), 캡처로 센 E15 843, S3 637, W9 504 와 같음, 받은 잔여로 예매 수 (S1 546-12, E5 527-40)
+      check('수원삼성 총석: 칸 60개, 캡처로 센 값과 같음, 예매 수 바로 나옴', r.max === 60 && r.none === '2층테이블석S,프리미엄패밀리박스,2층테이블석N' && r.m === '843,637,504,276,116,940' && r.cap === 546 + 527 && r.booked === 534 + 487, JSON.stringify(r));
       const pb = await open(b, { url: URL + '?s=bucheon#edit' });
       r = await pb.evaluate(s => [fcIngest(s).why, fcIngest('FC안양 vs 부천FC1995\n안양종합운동장 | 2026.11.28(토) 14:00\n등급 선택\nR10구역\n20 석').why].join(' | '), sent.text.s);
       await pb.context().close();
