@@ -1,0 +1,449 @@
+{
+ "app": "fc-anyang-seats",
+ "version": 1,
+ "updatedAt": "2026-11-07T15:38:00+09:00",
+ "match": {
+  "opponent": "김천상무",
+  "kickoff": "2026-11-07T16:30:00+09:00",
+  "venue": "김천종합운동장",
+  "home": "김천상무",
+  "away": "FC안양",
+  "competition": "K리그1",
+  "attendance": null
+ },
+ "capacity": 5844,
+ "available": 4423,
+ "booked": 1421,
+ "awayRemain": 1404,
+ "sinceBase": null,
+ "soldOut": [],
+ "unknown": [],
+ "unsold": [
+  "E11",
+  "E15",
+  "E21",
+  "E22",
+  "E24",
+  "E25",
+  "E31",
+  "E34",
+  "W11",
+  "W21",
+  "W24",
+  "W31",
+  "W34",
+  "N11",
+  "N12",
+  "N13",
+  "N14",
+  "N21",
+  "N22",
+  "N23",
+  "N24"
+ ],
+ "sections": [
+  {
+   "id": "E11",
+   "name": "E11",
+   "grade": null,
+   "remain": null,
+   "max": 305,
+   "unsold": true,
+   "sold": null
+  },
+  {
+   "id": "E12",
+   "name": "E12",
+   "grade": null,
+   "remain": 269,
+   "max": 336,
+   "sold": null
+  },
+  {
+   "id": "E13",
+   "name": "E13",
+   "grade": null,
+   "remain": 265,
+   "max": 346,
+   "sold": null
+  },
+  {
+   "id": "E14",
+   "name": "E14",
+   "grade": null,
+   "remain": 279,
+   "max": 334,
+   "sold": null
+  },
+  {
+   "id": "E15",
+   "name": "E15",
+   "grade": null,
+   "remain": null,
+   "max": 307,
+   "unsold": true,
+   "sold": null
+  },
+  {
+   "id": "E21",
+   "name": "E21",
+   "grade": null,
+   "remain": null,
+   "max": 229,
+   "unsold": true,
+   "sold": null
+  },
+  {
+   "id": "E22",
+   "name": "E22",
+   "grade": null,
+   "remain": null,
+   "max": 272,
+   "unsold": true,
+   "sold": null
+  },
+  {
+   "id": "E23",
+   "name": "E23",
+   "grade": null,
+   "remain": 415,
+   "max": 422,
+   "sold": null
+  },
+  {
+   "id": "E24",
+   "name": "E24",
+   "grade": null,
+   "remain": null,
+   "max": 273,
+   "unsold": true,
+   "sold": null
+  },
+  {
+   "id": "E25",
+   "name": "E25",
+   "grade": null,
+   "remain": null,
+   "max": 230,
+   "unsold": true,
+   "sold": null
+  },
+  {
+   "id": "E31",
+   "name": "E31",
+   "grade": null,
+   "remain": null,
+   "max": 269,
+   "unsold": true,
+   "sold": null
+  },
+  {
+   "id": "E32",
+   "name": "E32",
+   "grade": null,
+   "remain": 129,
+   "max": 130,
+   "sold": null
+  },
+  {
+   "id": "E33",
+   "name": "E33",
+   "grade": null,
+   "remain": 126,
+   "max": 129,
+   "sold": null
+  },
+  {
+   "id": "E34",
+   "name": "E34",
+   "grade": null,
+   "remain": null,
+   "max": 270,
+   "unsold": true,
+   "sold": null
+  },
+  {
+   "id": "S11",
+   "name": "S11",
+   "grade": null,
+   "remain": 153,
+   "max": 193,
+   "sold": null
+  },
+  {
+   "id": "S12",
+   "name": "S12",
+   "grade": null,
+   "remain": 131,
+   "max": 258,
+   "sold": null
+  },
+  {
+   "id": "S13",
+   "name": "S13",
+   "grade": null,
+   "remain": 131,
+   "max": 256,
+   "sold": null
+  },
+  {
+   "id": "S14",
+   "name": "S14",
+   "grade": null,
+   "remain": 160,
+   "max": 198,
+   "sold": null
+  },
+  {
+   "id": "S21",
+   "name": "S21",
+   "grade": null,
+   "remain": 220,
+   "max": 220,
+   "sold": null
+  },
+  {
+   "id": "S22",
+   "name": "S22",
+   "grade": null,
+   "remain": 190,
+   "max": 210,
+   "sold": null
+  },
+  {
+   "id": "S23",
+   "name": "S23",
+   "grade": null,
+   "remain": 15,
+   "max": 45,
+   "sold": null
+  },
+  {
+   "id": "S24",
+   "name": "S24",
+   "grade": null,
+   "remain": 191,
+   "max": 210,
+   "sold": null
+  },
+  {
+   "id": "S25",
+   "name": "S25",
+   "grade": null,
+   "remain": 213,
+   "max": 218,
+   "sold": null
+  },
+  {
+   "id": "W11",
+   "name": "W11",
+   "grade": null,
+   "remain": null,
+   "max": 240,
+   "unsold": true,
+   "sold": null
+  },
+  {
+   "id": "W12",
+   "name": "W12",
+   "grade": null,
+   "remain": 193,
+   "max": 311,
+   "sold": null
+  },
+  {
+   "id": "W13",
+   "name": "W13",
+   "grade": null,
+   "remain": 254,
+   "max": 309,
+   "sold": null
+  },
+  {
+   "id": "W14",
+   "name": "W14",
+   "grade": null,
+   "remain": 165,
+   "max": 250,
+   "sold": null
+  },
+  {
+   "id": "W21",
+   "name": "W21",
+   "grade": null,
+   "remain": null,
+   "max": 231,
+   "unsold": true,
+   "sold": null
+  },
+  {
+   "id": "W22",
+   "name": "W22",
+   "grade": null,
+   "remain": 120,
+   "max": 301,
+   "sold": null
+  },
+  {
+   "id": "W23",
+   "name": "W23",
+   "grade": null,
+   "remain": 139,
+   "max": 302,
+   "sold": null
+  },
+  {
+   "id": "W24",
+   "name": "W24",
+   "grade": null,
+   "remain": null,
+   "max": 229,
+   "unsold": true,
+   "sold": null
+  },
+  {
+   "id": "W31",
+   "name": "W31",
+   "grade": null,
+   "remain": null,
+   "max": 144,
+   "unsold": true,
+   "sold": null
+  },
+  {
+   "id": "W32",
+   "name": "W32",
+   "grade": null,
+   "remain": 68,
+   "max": 69,
+   "sold": null
+  },
+  {
+   "id": "W33",
+   "name": "W33",
+   "grade": null,
+   "remain": 69,
+   "max": 69,
+   "sold": null
+  },
+  {
+   "id": "W34",
+   "name": "W34",
+   "grade": null,
+   "remain": null,
+   "max": 145,
+   "unsold": true,
+   "sold": null
+  },
+  {
+   "id": "N11",
+   "name": "N11",
+   "grade": null,
+   "remain": null,
+   "max": null,
+   "unsold": true,
+   "sold": null
+  },
+  {
+   "id": "N12",
+   "name": "N12",
+   "grade": null,
+   "remain": null,
+   "max": null,
+   "unsold": true,
+   "sold": null
+  },
+  {
+   "id": "N13",
+   "name": "N13",
+   "grade": null,
+   "remain": null,
+   "max": null,
+   "unsold": true,
+   "sold": null
+  },
+  {
+   "id": "N14",
+   "name": "N14",
+   "grade": null,
+   "remain": null,
+   "max": null,
+   "unsold": true,
+   "sold": null
+  },
+  {
+   "id": "N21",
+   "name": "N21",
+   "grade": null,
+   "remain": null,
+   "max": null,
+   "unsold": true,
+   "sold": null
+  },
+  {
+   "id": "N22",
+   "name": "N22",
+   "grade": null,
+   "remain": null,
+   "max": null,
+   "unsold": true,
+   "sold": null
+  },
+  {
+   "id": "N23",
+   "name": "N23",
+   "grade": null,
+   "remain": null,
+   "max": null,
+   "unsold": true,
+   "sold": null
+  },
+  {
+   "id": "N24",
+   "name": "N24",
+   "grade": null,
+   "remain": null,
+   "max": null,
+   "unsold": true,
+   "sold": null
+  },
+  {
+   "id": "N4",
+   "name": "N4",
+   "grade": null,
+   "remain": 143,
+   "max": 182,
+   "sold": null
+  },
+  {
+   "id": "N3",
+   "name": "N3",
+   "grade": null,
+   "remain": 116,
+   "max": 182,
+   "sold": null
+  },
+  {
+   "id": "N2",
+   "name": "N2",
+   "grade": null,
+   "remain": 118,
+   "max": 182,
+   "sold": null
+  },
+  {
+   "id": "N1",
+   "name": "N1",
+   "grade": null,
+   "remain": 151,
+   "max": 182,
+   "sold": null
+  }
+ ],
+ "summary": "김천상무 vs FC안양 2026.11.07(토) 16:30 원정 예매 현황 (11.07 15:38 기준)\n예매 1,421석 / 5,844석 (24.3%), 원정석 예매 404석 / 1,808석 (22.3%)\n미판매: E11, E15, E21, E22, E24, E25, E31, E34, N11, N12, N13, N14, N21, N22, N23, N24, W11, W21, W24, W31, W34",
+ "images": {
+  "board": "https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/gimcheon/latest.png",
+  "story": "https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/gimcheon/latest-story.png"
+ },
+ "history": "https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/gimcheon/history.json"
+}
