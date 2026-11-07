@@ -273,19 +273,20 @@ const STADIUMS = {
   // W 안쪽 W1~W9(가운데 W5 프리미엄석), 바깥 W10~W12, 가운데 W13(안쪽 회색 = W13 미판매 구역, 바깥 = W13 2층 테이블), W14~W16. 원정석 = S
   // W13 은 놀티켓 구역도, 좌석 그림(11/08)으로 확인: 2층 테이블은 2인 테이블 짝으로 홀수 줄만, 회색 칸은 놀티켓에서 팔지 않음. 패밀리박스는 구역도에 없어 칸을 두지 않음
   // max: 11/08 받은 수원삼성 구역별 총석 자료 (놀티켓 캡처로 센 S3 637, W9 504, E15 843 과 같음). 자료의 W13 772 = 2층 테이블 318 + 미판매 구역 454 (좌석 그림으로 셈)
-  suwon: { venue: '수원월드컵경기장', host: '수원삼성', name: '수원삼성', seller: '놀티켓', geo: { kx: 0.85, c0: 60, r: [12, 168], s: 1.3 },
+  suwon: { venue: '수원월드컵경기장', host: '수원삼성', name: '수원삼성', seller: '놀티켓', geo: { frame: true, kx: 1.15, gap: 18, r: [12, 168], s: 1.3 },
     max: { E1: 159, E2: 555, E3: 555, E4: 554, E5: 527, E6: 556, E7: 555, E8: 555, E9: 116, E10: 591, E11: 790, E12: 831, E13: 874, E14: 843, E15: 843, E16: 874, E17: 831, E18: 790, E19: 591,
       N1: 582, N2: 637, N3: 626, N4: 626, N5: 637, N6: 671, N7: 664, N8: 940, N9: 935, N10: 698, N11: 935, N12: 940, N13: 664,
       S1: 546, S2: 637, S3: 637, S4: 637, S5: 637, S6: 638, S7: 664, S8: 899, S9: 894, S10: 698, S11: 894, S12: 938, S13: 664,
       W1: 504, W2: 610, W3: 610, W4: 390, W5: 276, W6: 390, W7: 590, W8: 610, W9: 504, W10: 913, W11: 843, W12: 864, W13: 318, W13미판매구역: 454, W14: 860, W15: 843, W16: 918 },
     layout: () => {
       const T1 = [14, 80], T2 = [86, 168];
-      arc(Rs(1, 9, 'E'), -0.15, 1.15, T1); arc(Rs(10, 19, 'E'), -0.2, 1.2, T2);
-      arc(Rs(1, 6, 'N'), 5.85, 7.15, T1); arc(Rs(7, 13, 'N'), 5.7, 7.3, T2);
-      arc(['S6', 'S5', 'S4', 'S3', 'S2', 'S1'], 1.85, 3.15, T1, true); arc(['S13', 'S12', 'S11', 'S10', 'S9', 'S8', 'S7'], 1.7, 3.3, T2, true);
-      arc(['W9', 'W8', 'W7', 'W6', 'W5', 'W4', 'W3', 'W2', 'W1'], 3.85, 5.15, T1);
-      arc(['W16', 'W15', 'W14', null, null, 'W12', 'W11', 'W10'], 3.8, 5.2, T2);
-      arc(['W13미판매구역'], 4.325, 4.675, [86, 125]); arc(['W13'], 4.325, 4.675, [129, 168]);
+      // 놀티켓 구역도: 각 면 양 끝 칸(E1, E9, E10, E19, S6, S1, S13, S7, W9, W1, W16, W10, N1, N6, N7, N13)은 모서리에 비스듬히
+      side(Rs(1, 9, 'E'), 0, T1); side(Rs(10, 19, 'E'), 0, T2);
+      side(['S6', 'S5', 'S4', 'S3', 'S2', 'S1'], 2, T1, true); side(['S13', 'S12', 'S11', 'S10', 'S9', 'S8', 'S7'], 2, T2, true);
+      side(['W9', 'W8', 'W7', 'W6', 'W5', 'W4', 'W3', 'W2', 'W1'], 4, T1);
+      const b = side(['W16', 'W15', 'W14', null, null, 'W12', 'W11', 'W10'], 4, T2);  // 가운데 두 칸 자리 = W13 (안쪽 미판매 구역, 바깥 2층 테이블)
+      arc(['W13미판매구역'], b[3], b[5], [86, 125]); arc(['W13'], b[3], b[5], [129, 168]);
+      side(Rs(1, 6, 'N'), 6, T1); side(Rs(7, 13, 'N'), 6, T2);
       SECTIONS.forEach(x => { if (x.id === 'W13미판매구역') x.name = 'W13'; if (x.id === 'W13') Object.assign(x, { name: 'W13 2층 테이블', alias: ['2층테이블석'] }); });
     } },
   // 수원종합운동장 (수원FC 좌석도, 트랙 있는 타원): E1~E7(양 끝 E1, E7 은 모서리), 트랙 안 N1~N5, S1~S13 원정석, W1~W13(가운데 VIP석, W6·W8·W9 프리미엄)
@@ -350,6 +351,15 @@ const arc = (ids, u0, u1, [ri, ro], ours) => ids.forEach((id, i) => {
   const w = (u1 - u0) / ids.length;
   if (id) SECTIONS.push({ id, ring: [[u0 + i * w, u0 + (i + 1) * w, ri, ro]], ...((ours === true || ours?.includes?.(id)) && { ours: true }) });
 });
+// 액자 모양(geo.frame) 한 면 스탠드: 칸을 스탠드 가운데 높이에서 같은 폭으로, 양 끝 칸은 대각선 통로까지 (통로 쪽이 비스듬히)
+// k: 면 (0 위, 2 오른쪽, 4 아래, 6 왼쪽), null = 빈자리. 칸 경계 u 를 돌려줌 (빈자리에 다른 칸을 넣을 때)
+const side = (ids, k, T, ours, e = 0.98) => {
+  const g = STADIUMS[STADIUM].geo, sc = g.s || 1, half = k % 4 ? 142 : 220, kk = k % 4 ? 1 : g.kx, gap = g.gap || 0, C = Math.max(1, g.r[1] * sc * kk - gap);
+  const span = r => half + e * Math.max(0, r * sc * kk - gap), so = span(T[1]), sm = span((T[0] + T[1]) / 2), n = ids.length;
+  const b = Array.from({ length: n + 1 }, (_, i) => { const t = i === 0 ? -so : i === n ? so : -sm + i * 2 * sm / n; return k + (t < -half ? (t + half) / (2 * C) : t > half ? 1 + (t - half) / (2 * C) : (t + half) / (2 * half)); });
+  ids.forEach((id, i) => arc([id], b[i], b[i + 1], T, ours));
+  return b;
+};
 const DECOR = [];  // 표시만 하는 칸 (기자석, VIP)
 if (AWAY) STADIUMS[STADIUM].layout();
 else {
@@ -527,6 +537,14 @@ state.at ||= localISO();
 // ---------- 그리기 ----------
 const GEO = AWAY && STADIUMS[STADIUM].geo, PERIOD = GEO ? 8 : 4, SELLER = AWAY && STADIUMS[STADIUM].seller || '티켓링크';
 const P = (u, r) => {
+  if (GEO?.frame) {  // 액자 모양: 각 면은 경기장 모서리에서 바깥 모서리로 가는 대각선 앞까지 (놀티켓 구역도처럼). 면마다 u -0.5~0 모서리, 0~1 직선, 1~1.5 모서리
+    r *= GEO.s || 1;  // gap: 대각선 통로 (각 면 끝이 대각선에서 떨어진 거리, 바깥 테두리 모서리도 그만큼 깎임)
+    // 칸 경계는 면에 곧게 서고(u 가 같으면 r 에 관계없이 같은 자리), 통로를 넘는 부분은 통로 선으로 잘림. C: 모서리 u 0.5 = 가장 바깥 줄의 통로
+    const v = ((u + 0.5) % 8 + 8) % 8, sd = Math.floor(v / 2), w = v - 2 * sd - 0.5, half = sd % 2 ? 142 : 220, kk = sd % 2 ? 1 : GEO.kx, gap = GEO.gap || 0;
+    const lim = half + Math.max(0, r * kk - gap), C = Math.max(1, GEO.r[1] * (GEO.s || 1) * kk - gap), ox = 220 + r * GEO.kx, oy = 142 + r;
+    const t = Math.max(-lim, Math.min(lim, w < 0 ? -half + 2 * w * C : w > 1 ? half + 2 * (w - 1) * C : -half + 2 * half * w));
+    return [[t, -oy], [ox, t], [-t, oy], [-ox, -t]][sd].map((d, i) => d + (i ? CY : CX));
+  }
   if (GEO) {  // 축구 전용 구장: 경기장(440×284)에서 r 만큼 바깥, 가로는 kx 배 (옆 스탠드 글자 자리), 모서리 반지름 c0 + r
     r *= GEO.s || 1;
     const { kx, c0, chamfer } = GEO, hw = 220 + r * kx, hh = 142 + r, cx = (c0 + r) * kx, cy = c0 + r, sx = hw - cx, sy = hh - cy;
@@ -565,8 +583,9 @@ const arcText = (a, b, ri, ro, str, ink, fs = 11) => {
 };
 // 둘레 칸 글자: 칸의 둘레 방향 길이와 두께를 재서, 넉넉하면 가로 두 줄, 아니면 긴 쪽 방향으로 한 줄. 글자는 칸에 맞게 줄임
 const ringLabel = (a, b, ri, ro, lines, ink) => {
-  const m = (a + b) / 2, rm = (ri + ro) / 2, [x, y] = P(m, rm), d = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]);
-  const len = d(P(a, rm), P(b, rm)), th = d(P(m, ri), P(m, ro)), [x1, y1] = P(m - 0.01, rm), [x2, y2] = P(m + 0.01, rm), deg = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+  const m = (a + b) / 2, rm = (ri + ro) / 2, d = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]), pa = P(a, rm), pb = P(b, rm);
+  const [x, y] = GEO?.frame ? [(pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2] : P(m, rm);  // 액자 모양 끝 칸은 통로에서 잘리므로 보이는 부분 가운데
+  const len = d(pa, pb), th = d(P(m, ri), P(m, ro)), [x1, y1] = P(m - 0.01, rm), [x2, y2] = P(m + 0.01, rm), deg = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
   const c = Math.abs(Math.cos(deg * Math.PI / 180)), [w, h] = c > 0.75 ? [len, th] : c < 0.35 ? [th, len] : [Math.min(len, th), Math.min(len, th)];
   if (lines.length > 1 && h >= 36 && w >= 36) return label(x, y, lines, ink, '', Math.min(1, (w - 4) / Math.max(...lines.map((l, i) => tw(l, i ? 13 : 15)))));
   const str = lines.join(' ').replace('잔여 ', '잔여'), long = Math.max(len, th);
