@@ -65,7 +65,7 @@
   /* 수집 상태 램프: 꺼짐(회색) 스크립트 없음, 노랑 설치됨/기다림, 파랑 티켓링크 열림, 초록 예매 화면 감지/수집 중, 빨강 다른 구장 */
   #lamp { position: fixed; top: 10px; right: 10px; z-index: 50; display: none; align-items: center; gap: 10px; max-width: min(420px, calc(100vw - 20px)); box-sizing: border-box;
     padding: 9px 14px; border-radius: 14px; background: #fff; box-shadow: 0 2px 12px #2a0f5733; font-size: 13px; font-weight: 600; line-height: 1.35; }
-  body.editing #lamp { display: flex; }
+  body.editing #lamp { display: flex; } #lamp span { white-space: pre-line; }
   #lamp i { flex: none; width: 16px; height: 16px; border-radius: 50%; background: #9ca3af; box-shadow: 0 0 0 4px #9ca3af33; }
   #lamp.wait i { background: #eab308; box-shadow: 0 0 0 4px #eab30833; } #lamp.open i { background: #2563eb; box-shadow: 0 0 0 4px #2563eb33; }
   #lamp.seat i { background: #16a34a; box-shadow: 0 0 0 4px #16a34a40; } #lamp.live i { background: #16a34a; animation: lamp 1s ease-in-out infinite; }
@@ -1082,15 +1082,15 @@ async function seatMap(bmp, eng, full) {
       for (const nq of [q - 1, q + 1, q - W0, q + W0])
         if (nq >= 0 && nq < W0 * H0 && !lab[nq] && Math.abs((nq % W0) - x) <= 1 && kind(nq * 4) === k) { lab[nq] = 1; st.push(nq); }
     }
-    comps.push({ k, n, w: x1 - x0 + 1, h: y1 - y0 + 1, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 });
+    comps.push({ k, n, w: x1 - x0 + 1, h: y1 - y0 + 1, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, edge: !x0 || !y0 || x1 === W0 - 1 || y1 === H0 - 1 });
   }
   // 칸 크기: 정사각형에 가깝고 꽉 찬 덩어리 넓이의 중앙값. 화면 전체 캡처면 좌석 그림이 있는 쪽만 (세로: 위 15~60%, 가로: 왼쪽 78%)
   const inMap = o => !full || (H0 > W0 * 1.2 ? o.cy > H0 * 0.15 && o.cy < H0 * 0.6 : o.cx < W0 * 0.78 && o.cy > H0 * 0.12);
-  const sq = comps.filter(o => o.n >= 25 && o.w / o.h > 0.65 && o.w / o.h < 1.5 && o.n / (o.w * o.h) > 0.6 && inMap(o));
+  const sq = comps.filter(o => o.n >= 25 && o.w / o.h > 0.65 && o.w / o.h < 1.5 && o.n / (o.w * o.h) > 0.8 && inMap(o));
   if (sq.length < 10) return null;
   const med = sq.map(o => o.n).sort((a, b) => a - b)[sq.length >> 1], side = Math.sqrt(med);
-  // 붙어 버린 칸 몇 개는 넓이로 나눠 셈. 버튼, 테두리, 글자처럼 크거나 성긴 덩어리는 뺌
-  const seat = o => o.n >= med * 0.45 && o.n / (o.w * o.h) > 0.55 && Math.max(o.w, o.h) <= side * 3.5 && Math.min(o.w, o.h) <= side * 1.6 && inMap(o);
+  // 붙어 버린 칸 몇 개는 넓이로 나눠 셈. 버튼, 테두리처럼 큰 덩어리, 줄 번호 숫자처럼 성긴 덩어리(꽉 찬 정도 80% 아래), 그림 끝에 잘린 옆 칸은 뺌
+  const seat = o => o.n >= med * 0.45 && o.n / (o.w * o.h) > 0.8 && Math.max(o.w, o.h) <= side * 3.5 && Math.min(o.w, o.h) <= side * 1.6 && !(o.edge && o.n < med * 0.8) && inMap(o);
   const count = k => comps.filter(o => o.k === k && seat(o)).reduce((a, o) => a + Math.max(1, Math.round(o.n / med)), 0);
   const remain = count(2), total = remain + count(1);
   await eng.setParameters({ tessedit_pageseg_mode: '11', tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789' });
@@ -1294,9 +1294,9 @@ function drawLamp() {
     : p ? ['open', '티켓링크 열림 · 등급/좌석 선택 화면이 아님' + (p.need?.length ? ` (화면에 없는 글자: ${p.need.join(', ')})` : '')]
     : last ? ['wait', `보내기 스크립트 켜짐 (${BROWSER}) · 티켓링크 신호 끊김 (마지막 신호 ${hms(last)}). 티켓링크 탭을 닫았거나 다른 브라우저`]
     : lamp.installed ? ['wait', `보내기 스크립트 켜짐 (${BROWSER}) · 이 ${BROWSER}에서 연 티켓링크가 없음. 티켓링크를 다른 브라우저에서 열었다면 현황판도 그 브라우저에서 여세요`]
-    : ['', `보내기 스크립트 신호 없음 · 이 ${BROWSER}에 Tampermonkey 와 스크립트(8판)가 켜져 있는지 확인`];
+    : ['', `보내기 스크립트 신호 없음 · 이 ${BROWSER}에 Tampermonkey 와 스크립트(9판)가 켜져 있는지 확인`];
   $('lamp').className = 'edit ' + cls;
-  $('lamp').lastChild.textContent = msg + (lamp.rejected ? ` · ${lamp.rejected}` : '');
+  $('lamp').lastChild.textContent = msg + (lamp.rejected ? ` · ${lamp.rejected}` : '') + (p?.shape ? `\n좌석 그림: ${p.shape}` : '');  // 좌석 그림 구조: 구역 총석 자동 세기 검토용
 }
 window.fcPing = v => { if (v.state === 'installed') lamp.installed = v.at; else lamp.pings[v.id || '-'] = v; drawLamp(); };
 addEventListener('paste', e => {

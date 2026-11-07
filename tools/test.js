@@ -140,7 +140,8 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       const o = Element.prototype.attachShadow; Element.prototype.attachShadow = function (i) { return o.call(this, { ...i, mode: 'open' }); };`;
     const run = (pg, store, tl) => pg.evaluate(([shim, src, tl]) => { (0, eval)(shim); (0, eval)(src.replace("location.hostname.endsWith('ticketlink.co.kr')", tl)); }, [shim(store), src, tl]);
     const badge = pg => pg.evaluate(() => { const h = [...document.documentElement.children].find(e => e.shadowRoot)?.shadowRoot.firstChild; return h ? h.style.background + ' ' + h.textContent : ''; });
-    const TK = '<div><h2>김천상무프로축구단 vs FC안양</h2><div>김천종합운동장</div><div>2026.11.07(토) 16:30</div><div>홍길동님</div><h3>등급 선택</h3><div style="display:flex"><span>W12구역</span><span>196 석</span></div></div>';
+    const TK = '<div><h2>김천상무프로축구단 vs FC안양</h2><div>김천종합운동장</div><div>2026.11.07(토) 16:30</div><div>홍길동님</div><h3>등급 선택</h3><div style="display:flex"><span>W12구역</span><span>196 석</span></div><canvas width="400" height="300"></canvas>'
+      + '<div>' + '<i class="seat" title="W12구역 1열 1번" style="display:inline-block;width:10px;height:10px;margin:2px;background:#0d2b45"></i>'.repeat(30) + '</div></div>';
     const tkOpen = async store => { const pg = await b.newPage(); await pg.setContent(TK); await run(pg, store, 'true'); await pg.waitForTimeout(2200); return pg; };
 
     p = await open(b, { url: URL + '?s=gimcheon#edit' });
@@ -150,6 +151,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     r = await p.evaluate(sent => { __l.ping('ping', null, sent.ping, true); __l.text('text', null, sent.text, true); return { lamp: document.getElementById('lamp').className + ' ' + document.getElementById('lamp').innerText, W12: state.rows.W12.remain, ack: __set.ack }; }, sent);
     await tk.evaluate(ack => { __l.ack('ack', null, ack, true); __l.ack('ack', null, { why: '받은 글자에 안양종합운동장 없음', at: Date.now() }, true); }, r.ack);  // 홈 현황판의 '안 받음'이 뒤에 와도 받음 유지
     const b2 = await badge(tk);
+    check('보내기 스크립트: 좌석 그림 구조 요약(캔버스, 작은 네모 요소, 속성, 색)이 램프에', /캔버스 400x300/.test(sent.ping?.shape) && /i\.seat 30개 \[class=seat title=W12구역 1열 1번\] 색 rgb\(13, 43, 69\) 30/.test(sent.ping?.shape) && /\n좌석 그림: 캔버스 400x300/.test(r.lamp), JSON.stringify({ shape: sent.ping?.shape, lamp: r.lamp }));
     check('보내기 스크립트: 현황판 켜짐 표시, 입력 화면 신호, 예매 화면 감지와 숫자, 개인 글자 뺌', /스크립트 켜짐 \(크롬\)/.test(t1) && beat?.at > 0 && /live/.test(r.lamp) && /숫자 받음/.test(r.lamp) && r.W12 === 196
       && sent.ping?.state === 'seat' && sent.ping?.id && !sent.ping.need.length && sent.ping?.venue === '김천종합운동장' && !/홍길동/.test(sent.text?.s || ''), JSON.stringify({ t1, beat, r, s: sent.text?.s, ping: sent.ping }));
     check('보내기 스크립트: 티켓링크 쪽에 응답 대기 -> 현황판이 받음(초록, 구역 수), 뒤에 온 안 받음은 무시', /응답 기다리는 중/.test(b1) && /^rgb\(21, 128, 61\).*현황판이 받음 .*구역 1개/.test(b2), JSON.stringify({ b1, b2, ack: r.ack }));
@@ -217,17 +219,19 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
 
   // 만든 그림으로 인식 시험: 좌석 그림(색, 칸 크기, 테두리 여러 가지), 등급 목록(글자 크기 여러 가지), PC 화면 전체
   const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fcseat-')), maker = await b.newPage();
-  const shot = async (name, html, w, h) => { await maker.setViewportSize({ width: w, height: h }); await maker.setContent(`<body style="margin:0;background:#fff;font-family:'Noto Sans KR','Noto Sans CJK KR',sans-serif">${html}</body>`); const f = path.join(tmp, name + '.png'); await maker.screenshot({ path: f }); return f; };
-  const grid = (label, avail, sold, color, size, outline) => {  // 남은 칸(색) avail 개 다음에 팔린 칸(회색) sold 개, 한 줄 20칸
-    const cells = [...Array(avail).fill(color), ...Array(sold).fill('#e6e6e6')].map(c => `<i style="display:inline-block;width:${size}px;height:${size}px;margin:${Math.round(size / 4)}px;background:${c}"></i>`);
-    const rows = []; for (let i = 0; i < cells.length; i += 20) rows.push(`<div style="white-space:nowrap">${cells.slice(i, i + 20).join('')}</div>`);
-    return `<div style="padding:20px 30px"><div style="text-align:center;color:#777;font-weight:700;font-size:${Math.max(16, size)}px;margin-bottom:10px">${label}</div>`
+  const shot = async (name, html, w, h) => { await maker.setViewportSize({ width: Math.ceil(w), height: Math.ceil(h) }); await maker.setContent(`<body style="margin:0;background:#fff;font-family:'Noto Sans KR','Noto Sans CJK KR',sans-serif">${html}</body>`); const f = path.join(tmp, name + '.png'); await maker.screenshot({ path: f }); return f; };
+  // 남은 칸(색) avail 개 다음에 팔린 칸(회색) sold 개, 한 줄 20칸. 티켓링크처럼 줄 앞에 옅은 줄 번호, 그림 왼쪽 끝에 잘린 옆 구역 칸 (둘 다 세면 안 됨)
+  const grid = (label, avail, sold, color, size, outline) => {
+    const cells = [...Array(avail).fill(color), ...Array(sold).fill('#e6e6e6')].map(c => `<i style="display:inline-block;width:${size}px;height:${size}px;margin:${Math.round(size / 4)}px;background:${c};vertical-align:middle"></i>`);
+    const rows = []; for (let i = 0; i < cells.length; i += 20) rows.push(`<div style="white-space:nowrap"><b style="display:inline-block;width:${size * 1.4}px;color:#b4b4b4;font-size:${Math.round(size * 0.9)}px;vertical-align:middle">${rows.length + 1}</b>${cells.slice(i, i + 20).join('')}</div>`);
+    return `<div style="padding:20px 30px;position:relative"><i style="position:absolute;left:-${Math.round(size / 2)}px;top:${30 + Math.max(16, size) * 1.5}px;width:${size}px;height:${size}px;background:#e6e6e6"></i>`
+      + `<div style="text-align:center;color:#777;font-weight:700;font-size:${Math.max(16, size)}px;margin-bottom:10px">${label}</div>`
       + `<div style="display:inline-block;${outline ? 'outline:3px solid #e33;outline-offset:4px' : ''}">${rows.join('')}</div></div>`;
   };
   const grids = [['W12', 37, 50, '#0d2b45', 14, 0, '?s=gimcheon'], ['S11', 9, 30, '#c2185b', 22, 1, '?s=gimcheon'], ['E21', 12, 8, '#e5e500', 18, 0, '?s=gimcheon'],
     ['N12', 60, 0, '#6a40ad', 12, 0, '?s=gimcheon'], ['R10', 26, 100, '#d2143a', 26, 1, ''], ['W31', 0, 44, '#0d2b45', 16, 0, '?s=gimcheon']];
   for (const [label, avail, sold, color, size, outline, q] of grids) {
-    const f = await shot('grid_' + label, grid(label, avail, sold, color, size, outline), 30 * 2 + 20 * size * 1.5 + 40, 120 + Math.ceil((avail + sold) / 20) * size * 1.5);
+    const f = await shot('grid_' + label, grid(label, avail, sold, color, size, outline), 30 * 2 + 20 * size * 1.5 + size * 1.4 + 40, 120 + Math.ceil((avail + sold) / 20) * size * 1.5);
     p = await open(b, { url: URL + q + '#edit' });
     await p.setInputFiles('#file', f);
     await p.evaluate(() => window.ocrDone);
@@ -285,8 +289,17 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     r = await p.evaluate(() => ({ W12: state.rows.W12.remain, W13: state.rows.W13.remain, W11: state.rows.W11.remain, W11max: state.rows.W11.max,
       E: ['E11', 'E12', 'E13', 'E14', 'E15', 'E21', 'E22', 'E23', 'E24'].map(id => state.rows[id].remain).join(), st: document.getElementById('status').innerText }));
     check('김천 캡처: PC 등급 목록(W), 잘라 낸 목록(E, E 를 6 으로 읽어도), 좌석 그림(W11 칸 세기)',
-      r.W12 === 196 && r.W13 === 267 && r.W11 === 0 && r.W11max === 246 && r.E === '0,278,275,279,0,0,0,415,0', JSON.stringify(r));
+      r.W12 === 196 && r.W13 === 267 && r.W11 === 0 && r.W11max === 242 && r.E === '0,278,275,279,0,0,0,415,0', JSON.stringify(r));
     await p.context().close();
+    // 같은 W11 을 다른 크기로 캡처한 것 하나씩: 줄 번호 숫자, 잘린 옆 칸을 빼고 줄별 40, 44, 49, 53, 56 = 242
+    for (const f of fs.readdirSync(PC).filter(f => f.startsWith('좌석그림_W11'))) {
+      p = await open(b, { url: URL + '?s=gimcheon#edit' });
+      await p.setInputFiles('#file', path.join(PC, f));
+      await p.evaluate(() => window.ocrDone);
+      r = await p.evaluate(() => ({ remain: state.rows.W11.remain, max: state.rows.W11.max }));
+      check(`김천 좌석 그림 ${f}: W11 남은 0 / 전체 242`, r.remain === 0 && r.max === 242, JSON.stringify(r));
+      await p.context().close();
+    }
   }
 
   // 실제 발행 (시험용 브랜치)
