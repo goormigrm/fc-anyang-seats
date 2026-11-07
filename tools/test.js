@@ -204,12 +204,12 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       check('보내기 스크립트 12판: 놀티켓 형식 감지(관람 구역, 숫자만 줄, 쉼표 숫자), 구역 이름과 숫자, 경기 줄은 보내고 로그인 이름, 남은 시간은 뺌',
         sent.ping?.state === 'seat' && !sent.ping.need.length && /프리미엄 패밀리박스\(4인\)\(GATE:PREMIUM\)\n0\nS1구역\(GATE:4B\)\n12\nE5\n40/.test(sent.text?.s) && /수원삼성 vs FC안양/.test(sent.text.s) && /2층 E석\(E15~19\)\(GATE:3A,3B\)\n1,191/.test(sent.text.s) && !/홍길동|8:41/.test(sent.text.s), JSON.stringify(sent));
       const pg = await open(b, { url: URL + '?s=suwon#edit' });
-      r = await pg.evaluate(s => { const k = fcIngest(s), t = stats(); return { k, S1: state.rows.S1.remain, fam: state.rows.프리미엄패밀리박스.remain, E5: state.rows.E5.remain, date: state.date,
-        max: SECTIONS.filter(x => state.rows[x.id].max).length, none: SECTIONS.filter(x => !state.rows[x.id].max).map(x => x.id).join(), m: ['E15', 'S3', 'W9', 'W5', 'E9', 'N8'].map(id => state.rows[id].max).join(), cap: t.cap, booked: t.booked }; }, sent.text.s);
+      r = await pg.evaluate(s => { const k = fcIngest(s), t = stats(); return { k, S1: state.rows.S1.remain, fam: !!state.rows.프리미엄패밀리박스, z: [zoneId('W13'), zoneId('W13구역'), zoneId('2층 테이블석(GATE:1A)')].join(), E5: state.rows.E5.remain, date: state.date,
+        max: SECTIONS.filter(x => state.rows[x.id].max).length, none: SECTIONS.filter(x => !state.rows[x.id].max).map(x => x.id).join(), m: ['E15', 'S3', 'W9', 'W5', 'E9', 'N8'].map(id => state.rows[id].max).join(), w13: state.rows.W13.max + state.rows.W13미판매구역.max, cap: t.cap, booked: t.booked }; }, sent.text.s);
       await pg.context().close();
-      check('놀티켓 글자 받기(수원삼성): 경기장 이름 없어도 홈 팀 + 안양이면 받음, 숫자만 줄, 괄호 뺀 구역 이름, 오후 2시', r.k?.ok && r.S1 === 12 && r.fam === 0 && r.E5 === 40 && r.date === '2026-11-29T14:00', JSON.stringify(r));
-      // 수원삼성 총석(11/08 받은 자료): 그린 칸 60개 모두(테이블석, 패밀리박스 빼고), 캡처로 센 E15 843, S3 637, W9 504 와 같음, 받은 잔여로 예매 수 (S1 546-12, E5 527-40)
-      check('수원삼성 총석: 칸 60개, 캡처로 센 값과 같음, 예매 수 바로 나옴', r.max === 60 && r.none === '2층테이블석S,프리미엄패밀리박스,2층테이블석N' && r.m === '843,637,504,276,116,940' && r.cap === 546 + 527 && r.booked === 534 + 487, JSON.stringify(r));
+      check('놀티켓 글자 받기(수원삼성): 경기장 이름 없어도 홈 팀 + 안양이면 받음, 숫자만 줄, 괄호 뺀 구역 이름, 오후 2시, 칸 없는 패밀리박스는 넘김, W13 = 2층 테이블', r.k?.ok && r.S1 === 12 && r.fam === false && r.z === 'W13,W13,W13' && r.E5 === 40 && r.date === '2026-11-29T14:00', JSON.stringify(r));
+      // 수원삼성 총석(11/08 받은 자료, W13 772 는 2층 테이블 318 + 미판매 구역 454 로 나눔): 칸 62개 모두, 받은 잔여로 예매 수 (S1 546-12, E5 527-40)
+      check('수원삼성 총석: 칸 62개 모두, W13 2층 테이블 + 미판매 구역 = 받은 W13 772 (5석 이하 차이 허용), 캡처로 센 값과 같음, 예매 수 바로 나옴', r.max === 62 && r.none === '' && Math.abs(r.w13 - 772) <= 5 && r.m === '843,637,504,276,116,940' && r.cap === 546 + 527 && r.booked === 534 + 487, JSON.stringify(r));
       const pb = await open(b, { url: URL + '?s=bucheon#edit' });
       r = await pb.evaluate(s => [fcIngest(s).why, fcIngest('FC안양 vs 부천FC1995\n안양종합운동장 | 2026.11.28(토) 14:00\n등급 선택\nR10구역\n20 석').why].join(' | '), sent.text.s);
       await pb.context().close();
@@ -312,7 +312,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       ['seoul', 69, 3, H2('FC서울', '서울월드컵경기장') + 'E-A구역\n80 석\nSC구역\n40 석', { EA: 80, SC: 40 }, ''],
       ['ulsan', 106, 11, H2('울산HD', '울산문수축구경기장') + 'N1구역\n120 석\nE13구역\n50 석\n프리미엄 테이블석\n10 석', { N1: 120, E13: 50, 프리미엄테이블석: 10 }, ''],
       ['incheon', 50, 1, H2('인천유나이티드', '인천축구전용경기장') + '원정석\n500 석\nE3구역\n90 석\nV1구역\n10 석', { 원정석: 500, E3: 90, V1: 10 }, ''],
-      ['suwon', 63, 13, H2('수원삼성', '수원월드컵경기장') + 'S3구역\n20 석\nE5구역\n40 석', { S3: 20, E5: 40 }, ''],
+      ['suwon', 62, 13, H2('수원삼성', '수원월드컵경기장') + 'S3구역\n20 석\nE5구역\n40 석', { S3: 20, E5: 40 }, ''],
       ['suwonfc', 38, 13, H2('수원FC', '수원종합운동장') + 'S7구역\n30 석\nVIP석\n5 석', { S7: 30, VIP석: 5 }, ''],
       ['bucheon', 42, 8, H2('부천FC1995', '부천종합운동장') + 'SA구역\n50 석\nGE가구역\n12 석', { SA: 50, GE가: 12 }, ''],
       ['gangwon', 42, 3, H2('강원FC', '강릉종합운동장') + 'S2구역\n15 석\n자유석A구역\n100 석\n테이블석\n4 석', { S2: 15, 자유석A: 100, 테이블석: 4 }, ''],
@@ -627,16 +627,21 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   // 놀티켓 실제 캡처 (11/07 수원삼성 vs 용인, 동그란 점, 색 있는 점 = 남은 좌석): 남은 좌석은 사진에서 직접 센 수, 전체는 줄별로 맞춘 수
   const NOLD = path.join(ROOT, '좌석스크린샷', '시험_놀티켓');
   if (fs.existsSync(NOLD)) {
-    for (const [f, id, remain, total] of [['수원삼성_S3.png', 'S3', 36, 637], ['수원삼성_W9.png', 'W9', 0, 504], ['수원삼성_E15.png', 'E15', 19, 843]]) {
+    // W13(2층 테이블석, 2인 테이블 짝)은 한 화면에 안 들어와 왼쪽, 오른쪽 두 장(가운데 블록이 겹침): 왼쪽 장의 잘린 가운데 블록은 떨어진 칸으로 빠져 122 + 196 = 318 (손으로 센 수)
+    const counted = {}, shared = {};
+    for (const [f, id, remain, total] of [['수원삼성_S3.png', 'S3', 36, 637], ['수원삼성_W9.png', 'W9', 0, 504], ['수원삼성_E15.png', 'E15', 19, 843], [['수원삼성_W13_왼쪽.png', '수원삼성_W13_오른쪽.png'], 'W13', 0, 318]]) {
       p = await open(b, { url: URL + '?s=suwon#edit' });
-      await p.evaluate(id => { state.rows[id].max = null; }, id);
-      p.on('dialog', d => d.accept(id));  // E15 사진에는 구역 이름이 없어 물어봄
-      await p.setInputFiles('#file', path.join(NOLD, f));
+      shared[id] = await p.evaluate(id => { const m = state.rows[id].max; state.rows[id].max = null; return m; }, id);
+      p.on('dialog', d => d.accept(id));  // E15 사진에는 구역 이름이 없어 물어봄, W13 두 장은 더할지 물어봄
+      await p.setInputFiles('#file', [f].flat().map(x => path.join(NOLD, x)));
       await p.evaluate(() => window.ocrDone);
       r = await p.evaluate(id => state.rows[id], id);
+      counted[id] = r.max;
       check(`놀티켓 실제 캡처 ${id}: 남은 ${remain} / 전체 ${total}`, r.remain === remain && r.max === total, JSON.stringify(r));
       await p.context().close();
     }
+    // 코드에 넣은 총석(받은 자료, W13 은 센 값)과 좌석 그림으로 센 값: 5석 이하 차이만 허용
+    check('수원삼성 총석 = 좌석 그림으로 센 값 (5석 이하 차이 허용, S3, W9, E15, W13)', Object.keys(counted).every(id => Math.abs(counted[id] - shared[id]) <= 5), JSON.stringify({ counted, shared }));
     // 한 화면에 안 들어와 나눠 찍은 경우: E15 를 13줄과 14줄 사이에서 위아래 두 장으로 잘라 넣으면 더해서 같은 수
     p = await open(b, { url: URL + '?s=suwon#edit' });
     const halves = await p.evaluate(async d => {
