@@ -40,16 +40,18 @@
 // 사이트 화면에서는 FC서울을 '북패'로 (index.html 과 같음)
 const nick = s => String(s).replace(/FC서울|서울(?!월드컵|이랜드)/g, '북패');
 // 발행 데이터(data 브랜치)의 games/*.json (경기가 바뀔 때 보관한 지난 경기)과 latest.json (지금 경기)을 모아 보여 줌
+// 홈은 맨 위, 원정은 구장 폴더(gimcheon/latest.json, gimcheon/games/*.json). prev/ 는 되돌리기용 바로 전 발행본이라 뺌
 const API = 'https://api.github.com/repos/goormigrm/fc-anyang-seats/', RAW = 'https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/';
 const fmt = n => n.toLocaleString('ko-KR'), esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const day = s => { const d = new Date(String(s).slice(0, 10) + 'T00:00'); return isNaN(d) ? '' : `${s.slice(5, 10).replace('-', '.')}(${'일월화수목금토'[d.getDay()]})`; };
 const json = path => fetch(RAW + path + '?t=' + Date.now(), { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).catch(() => null);
 const num = v => Number.isInteger(v) && v >= 0 ? v : null;
+const road = d => !!d.match?.home && d.match.home !== 'FC안양';  // 원정 경기 (홈 팀이 안양이 아님)
 
 (async () => {
   const tree = await fetch(API + 'git/trees/data?recursive=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null);
-  const paths = (tree?.tree || []).filter(f => /^games\/[^/]+\.json$/.test(f.path)).map(f => f.path);
-  const recs = (await Promise.all([...paths, 'latest.json'].map(async p => ({ now: p === 'latest.json', d: await json(p) })))).filter(x => x.d?.app === 'fc-anyang-seats');
+  const paths = tree?.tree ? tree.tree.map(f => f.path).filter(p => /^(?:[a-z]+\/)?(?:games\/[^/]+|latest)\.json$/.test(p) && !p.startsWith('prev/')) : ['latest.json'];
+  const recs = (await Promise.all(paths.map(async p => ({ now: p.endsWith('latest.json'), d: await json(p) })))).filter(x => x.d?.app === 'fc-anyang-seats');
   // 같은 경기는 마지막 집계 하나만
   const games = Object.values(recs.reduce((m, { now, d }) => {
     const k = (d.match?.opponent || '') + String(d.match?.kickoff || '').slice(0, 10);
@@ -61,9 +63,10 @@ const num = v => Number.isInteger(v) && v >= 0 ? v : null;
   msg.textContent = games.some(g => g.d.unknown?.length) ? '정보 없는 구역이 있던 집계는 예매 수가 조금 많게 나옵니다.' : '';
 
   document.getElementById('rows').innerHTML = games.map(({ now, d }) => {
-    const b = num(d.booked), cap = num(d.capacity), crowd = num(d.match?.attendance), away = num(d.match?.awayAttendance);
-    return `<tr class="${now ? 'now' : ''}"><td>${esc(day(d.match?.kickoff || ''))} ${esc(String(d.match?.kickoff || '').slice(11, 16))}${now ? ' (지금)' : ''}</td><td>${esc(nick(d.match?.opponent || '-'))}</td>`
-      + `<td>${b == null ? '-' : `${fmt(b)}석 (${cap ? (b / cap * 100).toFixed(1) : '-'}%)`}</td><td>${crowd == null ? '-' : fmt(crowd) + '명' + (away == null ? '' : ` (원정 ${fmt(away)})`)}</td>`
+    const b = num(d.booked), cap = num(d.capacity), crowd = num(d.match?.attendance), away = num(d.match?.awayAttendance), ab = num(d.awayBooked);
+    const live = now && !(new Date(d.match?.kickoff) < Date.now() - 2 * 3600e3);  // 지난 경기는 구장 폴더의 마지막 발행본이어도 '지금'이 아님
+    return `<tr class="${live ? 'now' : ''}"><td>${esc(day(d.match?.kickoff || ''))} ${esc(String(d.match?.kickoff || '').slice(11, 16))}${live ? ' (지금)' : ''}</td><td>${esc(nick(d.match?.opponent || '-'))}${road(d) ? ' (원정)' : ''}</td>`
+      + `<td>${b == null ? '-' : `${fmt(b)}석 (${cap ? (b / cap * 100).toFixed(1) : '-'}%)` + (road(d) && ab != null ? ` · 원정석 ${fmt(ab)}` : '')}</td><td>${crowd == null ? '-' : fmt(crowd) + '명' + (away == null ? '' : ` (원정 ${fmt(away)})`)}</td>`
       + `<td>${crowd == null || b == null ? '-' : (crowd - b > 0 ? '+' : '') + fmt(crowd - b)}</td><td>${Array.isArray(d.soldOut) ? d.soldOut.length + '개' : '-'}</td>`
       + `<td>${esc(day(d.updatedAt || ''))} ${esc(String(d.updatedAt || '').slice(11, 16))}</td></tr>`;
   }).join('');
@@ -77,7 +80,7 @@ const num = v => Number.isInteger(v) && v >= 0 ? v : null;
     const cx = L + slot * (i + 0.5), b = num(d.booked), crowd = num(d.match?.attendance);
     if (b != null) svg += `<rect x="${cx - bw - 2}" y="${Y(b)}" width="${bw}" height="${B - Y(b)}" rx="4" fill="#6a40ad"/>` + t(cx - bw / 2 - 2, Y(b) - 6, fmt(b), 11, '#3e1a78', 700);
     if (crowd != null) svg += `<rect x="${cx + 2}" y="${Y(crowd)}" width="${bw}" height="${B - Y(crowd)}" rx="4" fill="#f6c453"/>` + t(cx + bw / 2 + 2, Y(crowd) - 6, fmt(crowd), 11, '#b7791f', 700);
-    svg += t(cx, B + 22, nick(d.match?.opponent || '-'), 12, '#374151', 700) + t(cx, B + 40, day(d.match?.kickoff || ''), 11, '#9ca3af');
+    svg += t(cx, B + 22, nick(d.match?.opponent || '-') + (road(d) ? ' 원정' : ''), 12, '#374151', 700) + t(cx, B + 40, day(d.match?.kickoff || ''), 11, '#9ca3af');
   });
   svg += `<rect x="${L}" y="6" width="12" height="12" fill="#6a40ad"/>` + t(L + 18, 17, '예매(마지막 집계)', 12, '#4b5563', 400, 'start')
     + `<rect x="${L + 150}" y="6" width="12" height="12" fill="#f6c453"/>` + t(L + 168, 17, '공식 관중', 12, '#4b5563', 400, 'start');

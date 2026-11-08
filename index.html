@@ -631,7 +631,6 @@ const signed = d => (d > 0 ? '+' : d < 0 ? '−' : '') + fmt(Math.abs(d));
 const snap = () => ({ at: state.at, rows: Object.fromEntries(SECTIONS.map(s => [s.id, state.rows[s.id].remain])) });
 // 경기 전후: 시작 뒤 3시간까지는 '경기 중', 그 뒤는 '지난 경기'
 const phase = () => { const k = state.date.length > 10 ? new Date(state.date) : null, now = Date.now(); return !k || now < k ? '' : now < +k + 3 * 3600e3 ? '경기 중 (예매 마감)' : '지난 경기'; };
-const crowdLine = () => state.crowd != null && `공식 관중 ${fmt(state.crowd)}명` + (state.crowdAway != null ? ` (원정 ${fmt(state.crowdAway)}명)` : '');
 const matchTitle = () => AWAY ? `${HOST} vs FC안양` : `FC안양 vs ${state.opp || '상대팀'}`;
 const baseLabel = () => state.base ? state.base.at ? state.base.at.slice(5).replace('-', '.').replace('T', ' ') : '비교 기준' : '';  // "11.25 12:00"
 const nameOf = id => SECTIONS.find(s => s.id === id).name || id;
@@ -772,6 +771,12 @@ function build(story) {
     AWAY ? ['원정석 예매', oCap ? fmt(oBooked) : '-', oCap ? ` / ${fmt(oCap)}석` : '', oCap ? `원정석 ${oPc}% 예매 · 남은 ${fmt(oCap - oBooked)}석` : '원정 쪽 총석을 모름', oCap ? `${oPc}% 예매` : '']
       : ['매진 구역', String(soldN), ' 개', `전체 ${SECTIONS.length}개 구역 중`, `${SECTIONS.length}개 구역 중`],
   ];
+  // 공식 관중(연맹 발표)이 나오면 카드는 실제 관중으로. 구역 색과 예매율 범례는 마지막 집계 그대로, 집계 숫자는 설명 줄에
+  const cw = state.crowd, ca = state.crowdAway, ar = state.rows.원정석;
+  const ab = AWAY ? (oCap ? oBooked : null) : ar && ar.remain != null && ar.max ? ar.max - Math.min(ar.remain, ar.max) : null;
+  if (cw != null) sums.splice(0, 2, ['공식 관중', fmt(cw), '명', `연맹 발표 · 마지막 집계 예매 ${num(booked)}석`, '연맹 발표'],
+    ['좌석 대비 관중', cap ? (cw / cap * 100).toFixed(1) : '-', '%', `${FULL ? '만석' : '판매 구역 총석'} ${fmt(cap)}석 대비 · 집계 예매율 ${rate(booked)}%`, `집계 예매율 ${rate(booked)}%`]);
+  if (ca != null) sums[2] = ['원정 관중', fmt(ca), '명', '연맹 발표' + (ab != null ? ` · 원정석 집계 예매 ${fmt(ab)}석` : ''), '연맹 발표'];
   const card = (x, title, big, small, note) => `<g transform="translate(${x},122)"><rect width="400" height="88" rx="10" fill="#fff" stroke="#e5e7eb"/>`
     + text(18, 26, title, 12, '#6b7280', 400, 'start')
     + `<text x="18" y="61" font-size="28" font-weight="700" fill="#111827">${esc(big)}<tspan font-size="14" font-weight="600" fill="#4b5563">${esc(small)}</tspan></text>`
@@ -825,8 +830,8 @@ function build(story) {
     + text(140, 60, title + ' 예매 현황', 28, '#fff', 700, 'start')
     + text(140, 92, [when, VENUE, AWAY ? 'K리그1 · 원정' : 'K리그1'].filter(Boolean).join(' · '), 14, '#e4dcf5', 400, 'start')
     + text(1250, 56, at, 13, '#fff', 600, 'end')
-    + text(1250, 80, `${SELLER} 등급/좌석 선택 화면 잔여석 기준`, 12, '#c3b1e6', 400, 'end')
-    + text(1250, 104, [crowdLine(), phase()].filter(Boolean).join(' · '), 14, '#fde68a', 700, 'end')
+    + text(1250, 80, state.crowd != null ? `관중은 연맹 공식 발표 · 구역 색은 ${SELLER} 마지막 집계 기준` : `${SELLER} 등급/좌석 선택 화면 잔여석 기준`, 12, '#c3b1e6', 400, 'end')
+    + text(1250, 104, phase(), 14, '#fde68a', 700, 'end')
     + sums.map((c, i) => card(30 + i * 410, ...c)).join('')
     + `<rect x="20" y="222" width="1240" height="828" rx="12" fill="#f7f8fa" stroke="#eceff3"/>`
     + `<g transform="translate(40,234)">${map}</g>`
@@ -840,7 +845,7 @@ function build(story) {
     + text(540, 385, title, 58, '#fff', 700)
     + text(540, 440, [when, VENUE].filter(Boolean).join(' · '), 28, '#e4dcf5')
     + text(540, 486, [AWAY ? 'K리그1 원정 예매 현황' : 'K리그1 예매 현황', at].filter(Boolean).join(' · '), 24, '#c3b1e6')
-    + text(540, 526, [crowdLine(), phase()].filter(Boolean).join(' · '), 24, '#fde68a', 700)
+    + text(540, 526, phase(), 24, '#fde68a', 700)
     + sums.map((c, i) => scard(30 + i * 345, c)).join('')
     + `<rect x="20" y="760" width="1040" height="660" rx="24" fill="#f7f8fa" stroke="#eceff3"/>`
     + `<g transform="translate(${40 + 12 * S},${780 - 3 * S}) scale(${S})">${map}</g>`
@@ -1056,17 +1061,18 @@ function summaryText() {
     const ours = SECTIONS.map(s => s.ours && state.rows[s.id]).filter(r => r && !r.off && r.remain != null && r.max);
     const oCap = ours.reduce((a, r) => a + r.max, 0), oBooked = ours.reduce((a, r) => a + r.max - Math.min(r.remain, r.max), 0), pc = (x, c) => (x / c * 100).toFixed(1) + '%';
     return [`${matchTitle()}${state.date ? ' ' + fmtDate(state.date) : ''} 원정 예매 현황 (${state.at.slice(5).replace('-', '.').replace('T', ' ')} 기준)`,
-      (t.cap ? `예매 ${fmt(t.booked)}석 / ${fmt(t.cap)}석 (${pc(t.booked, t.cap)})` : `남은 좌석 ${fmt(t.avail)}석`)
+      state.crowd != null ? `공식 관중 ${fmt(state.crowd)}명` + (state.crowdAway != null ? ` (원정 ${fmt(state.crowdAway)}명${oCap ? `, 원정석 예매 ${fmt(oBooked)}석 대비 ${signed(state.crowdAway - oBooked)}` : ''})` : '') : '',
+      (state.crowd != null ? '마지막 집계 ' : '') + (t.cap ? `예매 ${fmt(t.booked)}석 / ${fmt(t.cap)}석 (${pc(t.booked, t.cap)})` : `남은 좌석 ${fmt(t.avail)}석`)
         + (oCap ? `, 원정석 예매 ${fmt(oBooked)}석 / ${fmt(oCap)}석 (${pc(oBooked, oCap)})` : '') + (b ? `, ${b} 이후 ${signed(t.soldSum)}석` : ''),
       t.soldOut.length ? '매진: ' + t.soldOut.map(nameOf).sort((a, b) => a.localeCompare(b, 'en', { numeric: true })).join(', ') : '',
       t.off.length ? '미판매: ' + t.off.map(nameOf).sort((a, b) => a.localeCompare(b, 'en', { numeric: true })).join(', ') : '',
-      state.crowd != null ? `공식 관중 ${fmt(state.crowd)}명` + (state.crowdAway != null ? ` (원정 ${fmt(state.crowdAway)}명${oCap ? `, 원정석 예매 ${fmt(oBooked)}석 대비 ${signed(state.crowdAway - oBooked)}` : ''})` : '') : '',
       t.empty.length ? `(정보 없는 구역 ${t.empty.length}개 빠짐)` : ''].filter(Boolean).join('\n');
   }
+  // 공식 관중이 나오면 맨 위에, 집계 숫자는 '마지막 집계'로
   return [`FC안양 vs ${state.opp || '상대팀'}${state.date ? ' ' + fmtDate(state.date) : ''} 예매 현황 (${state.at.slice(5).replace('-', '.').replace('T', ' ')} 기준)`,
-    `예매 ${fmt(FULL - t.avail)}석 / ${fmt(FULL)}석 (${((FULL - t.avail) / FULL * 100).toFixed(1)}%)` + (b ? `, ${b} 이후 ${signed(t.soldSum)}석` : ''),
-    t.soldOut.length ? '매진: ' + t.soldOut.map(nameOf).sort((a, b) => a.localeCompare(b, 'en', { numeric: true })).join(', ') : '',
     state.crowd != null ? `공식 관중 ${fmt(state.crowd)}명 (예매 ${fmt(FULL - t.avail)}석 대비 ${signed(state.crowd - (FULL - t.avail))})` + (state.crowdAway != null ? `, 그중 원정 ${fmt(state.crowdAway)}명` : '') : '',
+    (state.crowd != null ? '마지막 집계 ' : '') + `예매 ${fmt(FULL - t.avail)}석 / ${fmt(FULL)}석 (${((FULL - t.avail) / FULL * 100).toFixed(1)}%)` + (b ? `, ${b} 이후 ${signed(t.soldSum)}석` : ''),
+    t.soldOut.length ? '매진: ' + t.soldOut.map(nameOf).sort((a, b) => a.localeCompare(b, 'en', { numeric: true })).join(', ') : '',
     t.empty.length ? `(정보 없는 구역 ${t.empty.length}개 빠짐)` : ''].filter(Boolean).join('\n');
 }
 // 다른 사이트에 붙여 넣는 iframe 코드: 어느 화면에서 눌러도 홈, 원정 중 가장 최근 경기를 따라가는 ?embed (경기마다 코드를 바꾸지 않게)

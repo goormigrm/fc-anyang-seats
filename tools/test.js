@@ -97,13 +97,18 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   // 경기별 기록 화면
   const game = (opp, kick, booked, crowd) => ({ app: 'fc-anyang-seats', updatedAt: kick.slice(0, 10) + 'T12:00:00+09:00', match: { opponent: opp, kickoff: kick, attendance: crowd }, capacity: 11542, booked, soldOut: ['R10'], unknown: [] });
   const sctx = await b.newContext();
-  await sctx.route(/api\.github\.com/, r => r.fulfill({ json: { tree: [{ path: 'games/2026-11-01_부천FC1995.json', type: 'blob' }] } }));
-  await sctx.route(/raw\.githubusercontent\.com/, r => r.fulfill({ json: r.request().url().includes('games/') ? game('부천FC1995', '2026-11-01T16:30:00+09:00', 4500, 4464) : game('제주SK', '2026-11-28T14:00:00+09:00', 6931, null) }));
+  // 원정은 구장 폴더(gimcheon/latest.json), prev/ 는 되돌리기용이라 빠져야 함
+  const gc = { ...game('김천상무', '2026-11-07T16:30:00+09:00', 1530, 1125), capacity: 5844, awayBooked: 423 };
+  Object.assign(gc.match, { home: '김천상무', away: 'FC안양', awayAttendance: 290 });
+  await sctx.route(/api\.github\.com/, r => r.fulfill({ json: { tree: ['games/2026-11-01_부천FC1995.json', 'latest.json', 'prev/latest.json', 'gimcheon/latest.json', 'gimcheon/prev/latest.json', 'gimcheon/history.json'].map(path => ({ path, type: 'blob' })) } }));
+  await sctx.route(/raw\.githubusercontent\.com/, r => { const u = r.request().url();
+    return r.fulfill({ json: u.includes('prev/') ? game('되돌리기용', '2026-10-01T14:00:00+09:00', 1, null) : u.includes('gimcheon/') ? gc : u.includes('games/') ? game('부천FC1995', '2026-11-01T16:30:00+09:00', 4500, 4464) : game('제주SK', '2027-11-28T14:00:00+09:00', 6931, null) }); });
   p = await sctx.newPage();
   await p.goto(pathToFileURL(path.join(ROOT, 'season.html')).href);
   await p.waitForFunction(() => document.querySelectorAll('#rows tr').length > 0);
   r = await p.evaluate(() => [...document.querySelectorAll('#rows tr')].map(tr => tr.innerText.replace(/\s+/g, ' ')).join(' / '));
-  check('경기별 기록: 보관 경기 + 지금 경기', /부천FC1995 4,500석.*4,464명.*-36/.test(r) && /제주SK 6,931석/.test(r), r);
+  check('경기별 기록: 보관 경기 + 지금 경기 + 원정 경기(구장 폴더, 원정석 예매, 원정 관중), prev 는 뺌, 지난 경기는 (지금) 아님',
+    /부천FC1995 4,500석.*4,464명.*-36/.test(r) && /제주SK 6,931석/.test(r) && /11\.07\(토\) 16:30 김천상무 \(원정\) 1,530석 \(26\.2%\) · 원정석 423 1,125명 \(원정 290\) -405/.test(r) && !/되돌리기용/.test(r) && /\(지금\) 제주SK/.test(r) && !/16:30 \(지금\)/.test(r), r);
   await sctx.close();
 
   // 보기 화면: 발행본을 그리고 이 기기 입력값은 그대로
@@ -292,14 +297,15 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   const crowdOf = () => p.evaluate(() => {
     const tr = document.getElementById('trend').innerHTML, rec = record();
     return { tr: /홈 관중 260명 \(홈석 예매 115석 대비 \+145\)/.test(tr) && /원정 관중 140명 \(원정석 예매 150석 대비 [−-]10\)/.test(tr) && !tr.includes('전체 예매'),
-      head: document.getElementById('board').innerHTML.includes('공식 관중 400명 (원정 140명)'), sum: /공식 관중 400명 \(원정 140명, 원정석 예매 150석 대비 [−-]10\)/.test(summaryText()),
+      head: (h => ['>공식 관중<', '400<tspan', '>좌석 대비 관중<', '52.5<tspan', '마지막 집계 예매 265석', '>원정 관중<', '140<tspan', '원정석 집계 예매 150석', '관중은 연맹 공식 발표'].every(x => h.includes(x)))(document.getElementById('board').innerHTML),
+      sum: /^[^\n]+\n공식 관중 400명 \(원정 140명, 원정석 예매 150석 대비 [−-]10\)\n마지막 집계 예매 265석/.test(summaryText()),
       rec: [rec.match.attendance, rec.match.awayAttendance].join(), input: [document.getElementById('crowd').value, document.getElementById('crowdAway').value].join() };
   });
   await p.evaluate(() => [['crowd', '400'], ['crowdAway', '140']].forEach(([id, v]) => { const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event('input')); }));
   r = await crowdOf();
   await p.reload(); await p.waitForFunction(() => typeof record === 'function');
   const r2 = await crowdOf();
-  check('공식 관중 전체/원정 나눠 넣기: 홈 관중 260(홈석 115 대비 +145), 원정 관중 140(원정석 150 대비 −10), 머리글, 요약 글, 발행 JSON, 새로 열어도 남음',
+  check('공식 관중 전체/원정 나눠 넣기: 홈 관중 260(홈석 115 대비 +145), 원정 관중 140(원정석 150 대비 −10), 카드는 공식 숫자(집계는 설명 줄), 요약 글 맨 위, 발행 JSON, 새로 열어도 남음',
     r.tr && r.head && r.sum && r.rec === '400,140' && r.input === '400,140' && JSON.stringify(r2) === JSON.stringify(r), JSON.stringify([r, r2]));
   await p.context().close();
 
