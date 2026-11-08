@@ -1090,11 +1090,11 @@ $('copy').onclick = async () => {
 // 다른 사이트가 가져가는 최신 집계: data 브랜치의 latest.json, latest.png, latest-story.png. 시각은 한국 시간
 const RAW = 'https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/', TOKEN = 'fc-anyang-gh-token';
 function record() {
-  const t = stats(), kst = s => s ? (s.length > 10 ? s + ':00+09:00' : s) : null;
+  const t = stats(), kst = s => s ? (s.length > 10 ? s + ':00+09:00' : s) : null, none = t.empty.length + t.off.length >= SECTIONS.length;  // none: 구역 숫자가 하나도 없음 (예매를 모름)
   return {
     app: 'fc-anyang-seats', version: 1, updatedAt: kst(state.at),
     match: { opponent: state.opp || null, kickoff: kst(state.date), venue: VENUE, home: HOST, away: AWAY ? 'FC안양' : state.opp || null, competition: 'K리그1', attendance: state.crowd ?? null, awayAttendance: state.crowdAway ?? null },
-    capacity: t.cap || null, available: t.avail, booked: t.cap ? t.booked : null,  // 원정 구장은 판매 구역 총석 합 (총석을 모르면 null)
+    capacity: t.cap || null, available: none ? null : t.avail, booked: t.cap && !none ? t.booked : null,  // 원정 구장은 판매 구역 총석 합 (총석을 모르면 null)
     awayCapacity: t.awayCap || null, awayBooked: t.awayCap ? t.awayBooked : null,  // 원정석 쪽 (홈 경기 원정석, 원정 경기 안양 응원 쪽). 홈석 = 전체 - 원정석
     ...(AWAY && { awayRemain: state.awayGrade ?? null }),
     sinceBase: state.base ? { at: kst(state.base.at), booked: t.soldSum } : null,
@@ -1167,7 +1167,7 @@ function publish(token, branch = 'data') {
     const old = (await readJson(gh, find('history.json'))) || [], was = await readJson(gh, find('latest.json'));
     // 같은 경기의 10분 안 발행은 같은 집계로 보고 마지막 점 하나로 (등급을 천천히 눌러 자동 발행이 여러 번 돼도 점이 쌓이지 않게)
     const near = p => sameMatch(p, pt) && Math.abs(new Date(p.at) - new Date(pt.at)) < 600e3;
-    const hist = [...old.filter(p => !near(p)), pt].slice(-500);
+    const hist = rec.booked == null ? old : [...old.filter(p => !near(p)), pt].slice(-500);  // 예매를 모르는 발행은 추이에 점을 남기지 않음
     const archive = was && !sameMatch(was.match, rec.match)
       ? [{ path: DATA + `games/${String(was.match?.kickoff || was.updatedAt).slice(0, 10)}_${was.match?.opponent || '경기'}.json`, sha: find('latest.json').sha }] : [];
     const png = async story => ({ sha: (await gh('git/blobs', { content: await b64(await pngBlob(story)), encoding: 'base64' })).sha });
@@ -1246,6 +1246,14 @@ $('tokenSet').onclick = async () => {
 };
 // ask: 토큰이 없으면 물어봄 (자동 발행은 묻지 않고 건너뜀)
 async function publishNow(ask) {
+  // 구역 숫자가 하나도 없으면(다른 브라우저에서 공식 관중만 넣은 경우 등): 같은 경기 발행본의 구역 숫자를 불러와 공식 관중만 바꿔 발행. 아니면 발행하지 않음
+  if (SECTIONS.every(s => state.rows[s.id].remain == null)) {
+    const keep = { crowd: state.crowd, crowdAway: state.crowdAway }, d = ask ? await fetchData('latest.json').then(r => r.ok ? r.json() : null).catch(() => null) : null;
+    if (!d?.sections?.some(x => Number.isInteger(x.remain)) || !sameMatch(d.match, record().match)
+      || !confirm(`이 브라우저에는 구역 숫자가 없습니다.\n발행된 ${d.match.opponent} 경기 집계(${String(d.updatedAt).slice(5, 16).replace('T', ' ')})의 구역 숫자를 불러와 공식 관중만 바꿔 발행할까요?`))
+      return note('구역 숫자가 없어 발행하지 않았습니다. 숫자를 받거나 넣은 뒤 발행하세요.');
+    await loadPublished(); Object.assign(state, keep); save(); syncInputs(); render();
+  }
   let token = await getToken(ask), fresh = false;
   if (!token && ask && !ls(TOKEN)) { token = (prompt('GitHub 토큰 (fc-anyang-seats 저장소 Contents 읽기/쓰기). 이 브라우저에만 저장됩니다.') || '').trim(); fresh = true; }
   if (!token) return note(ask ? '' : '자동 발행 건너뜀: 토큰이 없거나 잠겨 있습니다. "최신 집계 발행"을 한 번 누르세요.');

@@ -70,6 +70,24 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   // 공식 관중: 기록, 요약 글, 추이의 관중 점
   r = await p.evaluate(() => { history = []; document.getElementById('crowd').value = '4464'; document.getElementById('crowd').dispatchEvent(new Event('input')); return { att: record().match.attendance, sum: summaryText(), chart: document.getElementById('trend').innerHTML.includes('공식 관중') }; });
   check('공식 관중: 기록, 요약 글, 추이 점', r.att === 4464 && /공식 관중 4,464명/.test(r.sum) && r.chart, JSON.stringify(r).slice(0, 200));
+  // 구역 숫자 없이 발행(다른 브라우저에서 공식 관중만 넣음): 예매는 모름(null, 만석으로 올리지 않음). 다른 경기면 발행 안 함, 같은 경기 발행본이 있으면 묻고 그 구역 숫자를 불러와 공식 관중만 바꿈
+  {
+    const pubHome = { app: 'fc-anyang-seats', version: 1, updatedAt: '2026-11-01T16:30:00+09:00', match: { opponent: '부천FC1995', kickoff: '2026-11-01T16:30:00+09:00', attendance: null },
+      sections: [{ id: 'R10', remain: 0, max: 126 }, { id: '일반지정석', remain: 1000, max: null }] };
+    const pg = await open(b, { data: { 'latest.json': pubHome } });
+    pg.on('dialog', d => d.type() === 'confirm' ? d.accept() : d.dismiss());
+    r = await pg.evaluate(async () => {
+      SECTIONS.forEach(s => state.rows[s.id].remain = null); Object.assign(state, { opp: '제주SK', date: '2026-11-01T16:30', at: '2026-11-04T21:08' }); syncInputs();
+      [['crowd', '4464'], ['crowdAway', '555']].forEach(([id, v]) => { const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event('input')); });
+      const before = [record().booked, record().available];
+      await publishNow(true); const other = [document.getElementById('pubNote').textContent, state.rows.R10.remain];
+      state.opp = '부천FC1995'; syncInputs(); await publishNow(true);
+      return { before, other, R10: state.rows.R10.remain, gen: state.rows.일반지정석.remain, crowd: [state.crowd, state.crowdAway].join(), at: state.at, booked: record().booked };
+    });
+    await pg.context().close();
+    check('구역 숫자 없이 발행: 예매 null, 다른 경기면 안 함, 같은 경기면 발행본 구역 숫자를 불러와 공식 관중만 바꿈',
+      r.before.join() === ',' && /구역 숫자가 없어 발행하지 않았습니다/.test(r.other[0]) && r.other[1] === null && r.R10 === 0 && r.gen === 1000 && r.crowd === '4464,555' && r.at === '2026-11-01T16:30' && r.booked > 0, JSON.stringify(r));
+  }
   // 추이 이미지
   r = await p.evaluate(async () => { const bl = await pngBlob('trend'), im = await createImageBitmap(bl); return [im.width, im.height, bl.size]; });
   check('추이 이미지 (1080x1920)', r[0] === 1080 && r[1] === 1920 && r[2] > 20000, r.join());
