@@ -127,6 +127,12 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   r = await p.evaluate(() => [...document.querySelectorAll('#rows tr')].map(tr => tr.innerText.replace(/\s+/g, ' ')).join(' / '));
   check('경기별 기록: 보관 경기 + 지금 경기 + 원정 경기(구장 폴더, 원정석 예매, 원정 관중), prev 는 뺌, 지난 경기는 (지금) 아님',
     /부천FC1995 4,500석.*4,464명.*-36/.test(r) && /제주SK 6,931석/.test(r) && /11\.07\(토\) 16:30 김천상무 \(원정\) 1,530석 \(26\.2%\) · 원정석 423 1,125명 \(원정 290\) -405/.test(r) && !/되돌리기용/.test(r) && /\(지금\) 제주SK/.test(r) && !/16:30 \(지금\)/.test(r), r);
+  // 홈경기만 보기 / 원정 포함 보기 (#home), 오른쪽 위 현황판으로 버튼
+  const rowsTxt = () => p.evaluate(() => [...document.querySelectorAll('#rows tr')].map(tr => tr.innerText.replace(/\s+/g, ' ')).join(' / ') + ' | ' + document.getElementById('chart').textContent);
+  await p.click('#fHome'); const rh = await rowsTxt(), hash = await p.evaluate(() => location.hash);
+  await p.click('#fAll'); const ra = await rowsTxt();
+  const go = await p.evaluate(() => (a => a && getComputedStyle(a).marginLeft !== '0px' && a.getAttribute('href'))(document.querySelector('header .go')));
+  check('경기별 기록: 홈경기만 보기(#home, 김천 원정 빠짐) / 원정 포함 보기, 오른쪽 위 현황판으로', !/김천/.test(rh) && /부천FC1995/.test(rh) && hash === '#home' && /김천상무 \(원정\)/.test(ra) && /김천상무 원정/.test(ra) && go === './', JSON.stringify({ rh, ra, hash, go }));
   await sctx.close();
 
   // 보기 화면: 발행본을 그리고 이 기기 입력값은 그대로

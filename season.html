@@ -22,14 +22,17 @@
   th:nth-child(-n+2), td:nth-child(-n+2) { text-align: left; }
   .now td { background: #fbfaff; font-weight: 700; }
   #msg { color: var(--sub); font-size: 13px; }
+  header .go { margin-left: auto; flex: none; padding: 8px 14px; border-radius: 10px; background: #fff; color: var(--p8); font-weight: 700; text-decoration: none; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 10px; } .tabs button { padding: 7px 14px; border: 1px solid #d9d0ec; border-radius: 10px; background: #fff; color: var(--p8); font: inherit; font-weight: 700; cursor: pointer; }
+  .tabs button[aria-pressed=true] { background: var(--p8); border-color: var(--p8); color: #fff; }
   .foot { margin: 16px 4px; color: var(--sub); font-size: 12px; text-align: center; } .foot a { color: var(--p7); }
   @media (max-width: 860px) { main { padding: 10px; } header { padding: 14px; } header img { width: 48px; height: 48px; } }
 </style>
 </head>
 <body>
 <main>
-  <header><img src="emblem.png" alt=""><div><h1>FC안양 경기별 예매 기록</h1><p>경기마다 마지막으로 발행한 집계와 공식 관중 (티켓링크 잔여석 기준)</p></div></header>
-  <div class="box"><svg id="chart" role="img" aria-label="경기별 예매된 좌석과 공식 관중" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 360" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif"></svg><p id="msg">불러오는 중…</p></div>
+  <header><img src="emblem.png" alt=""><div><h1>FC안양 경기별 예매 기록</h1><p>경기마다 마지막으로 발행한 집계와 공식 관중 (티켓링크 잔여석 기준)</p></div><a class="go" href="./">현황판으로</a></header>
+  <div class="box"><div class="tabs"><button id="fAll" aria-pressed="true">원정 포함 보기</button><button id="fHome" aria-pressed="false">홈경기만 보기</button></div><svg id="chart" role="img" aria-label="경기별 예매된 좌석과 공식 관중" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 360" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif"></svg><p id="msg">불러오는 중…</p></div>
   <div class="box"><table>
     <thead><tr><th>경기</th><th>상대</th><th>예매(마지막 집계)</th><th>공식 관중</th><th>관중 - 예매</th><th>매진 구역</th><th>마지막 집계</th></tr></thead>
     <tbody id="rows"></tbody>
@@ -58,11 +61,15 @@ const road = d => !!d.match?.home && d.match.home !== 'FC안양';  // 원정 경
     if (!m[k] || String(d.updatedAt) > String(m[k].d.updatedAt)) m[k] = { now, d };
     return m;
   }, {})).sort((a, b) => String(a.d.match?.kickoff || a.d.updatedAt).localeCompare(String(b.d.match?.kickoff || b.d.updatedAt)));
-  const msg = document.getElementById('msg');
-  if (!games.length) { msg.textContent = '아직 발행된 기록이 없습니다.'; return; }
-  msg.textContent = games.some(g => g.d.unknown?.length) ? '정보 없는 구역이 있던 집계는 예매 수가 조금 많게 나옵니다.' : '';
+  const msg = document.getElementById('msg'), MAX = 10;  // 그래프는 최근 10경기까지 (표는 전부)
+  // 보기: 원정 포함(기본) / 홈경기만. 주소 끝 #home 이면 홈경기만 (링크로 나눠 줄 수 있게)
+  const draw = () => {
+  const home = location.hash === '#home', list = games.filter(g => !home || !road(g.d));
+  document.getElementById('fAll').setAttribute('aria-pressed', !home); document.getElementById('fHome').setAttribute('aria-pressed', home);
+  if (!list.length) { msg.textContent = games.length ? '홈경기 기록이 아직 없습니다.' : '아직 발행된 기록이 없습니다.'; document.getElementById('rows').innerHTML = ''; document.getElementById('chart').innerHTML = ''; return; }
+  msg.textContent = [list.length > MAX ? `그래프는 최근 ${MAX}경기 (전체 ${list.length}경기는 아래 표)` : '', list.some(g => g.d.unknown?.length) ? '정보 없는 구역이 있던 집계는 예매 수가 조금 많게 나옵니다.' : ''].filter(Boolean).join(' · ');
 
-  document.getElementById('rows').innerHTML = games.map(({ now, d }) => {
+  document.getElementById('rows').innerHTML = list.map(({ now, d }) => {
     const b = num(d.booked), cap = num(d.capacity), crowd = num(d.match?.attendance), away = num(d.match?.awayAttendance), ab = num(d.awayBooked);
     const live = now && !(new Date(d.match?.kickoff) < Date.now() - 2 * 3600e3);  // 지난 경기는 구장 폴더의 마지막 발행본이어도 '지금'이 아님
     return `<tr class="${live ? 'now' : ''}"><td>${esc(day(d.match?.kickoff || ''))} ${esc(String(d.match?.kickoff || '').slice(11, 16))}${live ? ' (지금)' : ''}</td><td>${esc(nick(d.match?.opponent || '-'))}${road(d) ? ' (원정)' : ''}</td>`
@@ -71,8 +78,8 @@ const road = d => !!d.match?.home && d.match.home !== 'FC안양';  // 원정 경
       + `<td>${esc(day(d.updatedAt || ''))} ${esc(String(d.updatedAt || '').slice(11, 16))}</td></tr>`;
   }).join('');
 
-  // 막대: 예매(보라), 공식 관중(금색). 최근 10경기
-  const g = games.slice(-10), top = Math.max(...g.flatMap(({ d }) => [num(d.booked) || 0, num(d.match?.attendance) || 0]), 1000);
+  // 막대: 예매(보라), 공식 관중(금색). 최근 MAX 경기
+  const g = list.slice(-MAX), top = Math.max(...g.flatMap(({ d }) => [num(d.booked) || 0, num(d.match?.attendance) || 0]), 1000);
   const L = 70, R = 980, T = 30, B = 290, slot = (R - L) / g.length, bw = Math.min(36, slot / 3), Y = v => B - v / top * (B - T);
   const t = (x, y, s, size, fill, w = 400, a = 'middle') => `<text x="${x}" y="${y}" font-size="${size}" font-weight="${w}" fill="${fill}" text-anchor="${a}">${esc(s)}</text>`;
   let svg = [0, 0.25, 0.5, 0.75, 1].map(f => `<line x1="${L}" x2="${R}" y1="${Y(top * f)}" y2="${Y(top * f)}" stroke="#eef0f3"/>` + t(L - 8, Y(top * f) + 4, fmt(Math.round(top * f)), 11, '#9ca3af', 400, 'end')).join('');
@@ -85,6 +92,10 @@ const road = d => !!d.match?.home && d.match.home !== 'FC안양';  // 원정 경
   svg += `<rect x="${L}" y="6" width="12" height="12" fill="#6a40ad"/>` + t(L + 18, 17, '예매(마지막 집계)', 12, '#4b5563', 400, 'start')
     + `<rect x="${L + 150}" y="6" width="12" height="12" fill="#f6c453"/>` + t(L + 168, 17, '공식 관중', 12, '#4b5563', 400, 'start');
   document.getElementById('chart').innerHTML = svg;
+  };
+  document.getElementById('fAll').onclick = () => { history.replaceState(null, '', location.pathname + location.search); draw(); };
+  document.getElementById('fHome').onclick = () => { history.replaceState(null, '', '#home'); draw(); };
+  draw();
 })();
 </script>
 </body>
