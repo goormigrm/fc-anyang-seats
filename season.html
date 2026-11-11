@@ -53,7 +53,8 @@ const road = d => !!d.match?.home && d.match.home !== 'FC안양';  // 원정 경
 
 (async () => {
   const tree = await fetch(API + 'git/trees/data?recursive=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null);
-  const paths = tree?.tree ? tree.tree.map(f => f.path).filter(p => /^(?:[a-z]+\/)?(?:games\/[^/]+|latest)\.json$/.test(p) && !p.startsWith('prev/')) : ['latest.json'];
+  const partial = !tree?.tree;  // 목록(API, IP당 시간 60번)을 못 받으면 지금 홈 경기 하나만 보이므로 알림
+  const paths = !partial ? tree.tree.map(f => f.path).filter(p => /^(?:[a-z]+\/)?(?:games\/[^/]+|latest)\.json$/.test(p) && !p.startsWith('prev/')) : ['latest.json'];
   const recs = (await Promise.all(paths.map(async p => ({ now: p.endsWith('latest.json'), d: await json(p) })))).filter(x => x.d?.app === 'fc-anyang-seats');
   // 같은 경기는 마지막 집계 하나만
   const games = Object.values(recs.reduce((m, { now, d }) => {
@@ -67,7 +68,7 @@ const road = d => !!d.match?.home && d.match.home !== 'FC안양';  // 원정 경
   const home = location.hash === '#home', list = games.filter(g => !home || !road(g.d));
   document.getElementById('fAll').setAttribute('aria-pressed', !home); document.getElementById('fHome').setAttribute('aria-pressed', home);
   if (!list.length) { msg.textContent = games.length ? '홈경기 기록이 아직 없습니다.' : '아직 발행된 기록이 없습니다.'; document.getElementById('rows').innerHTML = ''; document.getElementById('chart').innerHTML = ''; return; }
-  msg.textContent = [list.length > MAX ? `그래프는 최근 ${MAX}경기 (전체 ${list.length}경기는 아래 표)` : '', list.some(g => g.d.unknown?.length) ? '정보 없는 구역이 있던 집계는 예매 수가 조금 많게 나옵니다.' : ''].filter(Boolean).join(' · ');
+  msg.textContent = [partial ? '기록 목록을 받지 못해 지금 경기만 보입니다. 잠시 뒤 다시 열어 주세요.' : '', list.length > MAX ? `그래프는 최근 ${MAX}경기 (전체 ${list.length}경기는 아래 표)` : '', list.some(g => g.d.unknown?.length) ? '정보 없는 구역이 있던 집계는 예매 수가 조금 많게 나옵니다.' : ''].filter(Boolean).join(' · ');
 
   document.getElementById('rows').innerHTML = list.map(({ now, d }) => {
     const b = num(d.booked), cap = num(d.capacity), crowd = num(d.match?.attendance), away = num(d.match?.awayAttendance), ab = num(d.awayBooked);
