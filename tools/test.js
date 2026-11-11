@@ -646,7 +646,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   const PC = path.join(ROOT, '좌석스크린샷', '시험_김천');
   if (fs.existsSync(PC)) {  // PC 가로 캡처 (원정 김천, 등급 목록): W 가 \/ 로 깨져도 읽는지
     p = await open(b, { url: URL + '?s=gimcheon#edit' });
-    await p.setInputFiles('#file', fs.readdirSync(PC).map(f => path.join(PC, f)));
+    await p.setInputFiles('#file', fs.readdirSync(PC).filter(f => !/^좌석그림_S/.test(f)).map(f => path.join(PC, f)));  // 원정석 쪽 캡처(S)는 아래에서 한 장씩
     await p.evaluate(() => window.ocrDone);
     r = await p.evaluate(() => ({ W12: state.rows.W12.remain, W13: state.rows.W13.remain, W11: state.rows.W11.remain, W11max: state.rows.W11.max,
       E: ['E11', 'E12', 'E13', 'E14', 'E15', 'E21', 'E22', 'E23', 'E24'].map(id => state.rows[id].remain).join(), st: document.getElementById('status').innerText }));
@@ -661,6 +661,20 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       await p.evaluate(() => window.ocrDone);
       r = await p.evaluate(() => ({ remain: state.rows.W11.remain, max: state.rows.W11.max }));
       check(`김천 좌석 그림 ${f}: W11 남은 0 / 전체 242`, r.remain === 0 && r.max === 242, JSON.stringify(r));
+      await p.context().close();
+    }
+    // 11/7 김천 원정석 쪽 캡처 7장 (작은 네모 칸, GATE 글자 칸 있음): 남은 / 전체는 픽셀을 따로 훑어 센 값. S13 은 초록 칸 옆 흐린 회색 칸 2개까지
+    const GS = { S11: [156, 193], S12: [145, 258], S13: [142, 258], S14: [163, 198], S23: [23, 45], S24: [201, 210], S25: [214, 218] };
+    for (const [id, [remain, total]] of Object.entries(GS)) {
+      const f = path.join(PC, `좌석그림_${id}.png`);
+      if (!fs.existsSync(f)) { console.log('SKIP  김천 좌석 그림 ' + id); continue; }
+      p = await open(b, { url: URL + '?s=gimcheon#edit' });
+      await p.evaluate(id => { state.rows[id].max = null; }, id);
+      p.on('dialog', d => d.accept(id));
+      await p.setInputFiles('#file', f);
+      await p.evaluate(() => window.ocrDone);
+      r = await p.evaluate(id => state.rows[id], id);
+      check(`김천 좌석 그림 ${id}: 남은 ${remain} / 전체 ${total}`, r.remain === remain && r.max === total, JSON.stringify(r));
       await p.context().close();
     }
   }
