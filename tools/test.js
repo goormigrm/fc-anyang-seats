@@ -8,7 +8,20 @@ const fs = require('fs'), path = require('path'), { execSync } = require('child_
 const ROOT = path.join(__dirname, '..'), URL = pathToFileURL(path.join(ROOT, 'index.html')).href, SHOTS = path.join(ROOT, '좌석스크린샷', '시험');
 const H = 'FC안양 vs 제주SK\n안양종합운동장 | 2026.11.28(토) 14:00\n등급 선택\n';
 const results = [];
-const check = (name, ok, info = '') => { results.push(ok); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${ok ? '' : '  ' + info}`); };
+let lastCheck = Date.now();
+const check = (name, ok, info = '') => { lastCheck = Date.now(); results.push(ok); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${ok ? '' : '  ' + info}`); };
+// 3분 넘게 다음 항목으로 못 넘어가면 끝냄 (11/12: 글자 인식 도구를 받다가 멈춰 푸시 전 시험이 끝나지 않은 적이 있음)
+setInterval(() => { if (Date.now() - lastCheck > 180e3) { console.error('시험 실행 실패: 3분 넘게 멈춰 있어 끝냅니다. 다시 돌리세요.'); process.exit(1); } }, 10e3).unref();
+// 글자 인식 도구(jsdelivr, 인식 한 번에 약 10MB)는 처음 한 번만 받아 다시 씀: 시험마다 새 브라우저 창이라 그대로 두면 한 번 돌릴 때 수백 MB 를 받고, 받다가 멈추면 시험도 멈춤
+const cdn = new Map();
+const cached = async r => {
+  const u = r.request().url();
+  if (!cdn.has(u)) cdn.set(u, r.fetch({ timeout: 60e3 }).then(async x => {
+    const headers = { ...x.headers() }; ['content-encoding', 'content-length', 'transfer-encoding'].forEach(h => delete headers[h]);  // 본문은 풀린 채로 주므로
+    return { status: x.status(), headers, body: await x.body() };
+  }));
+  try { await r.fulfill(await cdn.get(u)); } catch { cdn.delete(u); await r.abort().catch(() => {}); }
+};
 
 // 발행 데이터(raw, API)는 기본으로 404, data 를 주면 그 내용으로 응답
 async function open(browser, { url = URL + '#edit', data = {}, device, live } = {}) {
@@ -17,6 +30,7 @@ async function open(browser, { url = URL + '#edit', data = {}, device, live } = 
     const name = Object.keys(data).find(n => r.request().url().includes(n));
     return name ? r.fulfill({ json: data[name] }) : r.fulfill({ status: 404, body: '' });
   });
+  await ctx.route(/cdn\.jsdelivr\.net/, cached);
   const page = await ctx.newPage();
   page.errors = [];
   page.on('pageerror', e => page.errors.push(e.message));
