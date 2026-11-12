@@ -21,7 +21,7 @@
   th, td { padding: 8px 10px; border-bottom: 1px solid #f0edf6; text-align: right; }
   th:nth-child(-n+2), td:nth-child(-n+2) { text-align: left; }
   .now td { background: #fbfaff; font-weight: 700; }
-  #msg { color: var(--sub); font-size: 13px; }
+  #msg, #avg { color: var(--sub); font-size: 13px; } #avg { margin: 0 0 10px; font-weight: 700; color: var(--p8); } #avg:empty { display: none; }
   header .go { margin-left: auto; flex: none; padding: 8px 14px; border-radius: 10px; background: #fff; color: var(--p8); font-weight: 700; text-decoration: none; }
   .tabs { display: flex; gap: 8px; margin-bottom: 10px; } .tabs button { padding: 7px 14px; border: 1px solid #d9d0ec; border-radius: 10px; background: #fff; color: var(--p8); font: inherit; font-weight: 700; cursor: pointer; }
   .tabs button[aria-pressed=true] { background: var(--p8); border-color: var(--p8); color: #fff; }
@@ -33,7 +33,7 @@
 <main>
   <header><img src="emblem.png" alt=""><div><h1>FC안양 경기별 예매 기록</h1><p>경기마다 마지막으로 발행한 집계와 공식 관중 (티켓링크 잔여석 기준)</p></div><a class="go" href="./">현황판으로</a></header>
   <div class="box"><div class="tabs"><button id="fAll" aria-pressed="true">원정 포함 보기</button><button id="fHome" aria-pressed="false">홈경기만 보기</button></div><svg id="chart" role="img" aria-label="경기별 예매된 좌석과 공식 관중" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 360" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif"></svg><p id="msg">불러오는 중…</p></div>
-  <div class="box"><table>
+  <div class="box"><p id="avg"></p><table>
     <thead><tr><th>경기</th><th>상대</th><th>예매(마지막 집계)</th><th>공식 관중</th><th>관중 - 예매</th><th>매진 구역</th><th>마지막 집계</th></tr></thead>
     <tbody id="rows"></tbody>
   </table></div>
@@ -67,14 +67,24 @@ const road = d => !!d.match?.home && d.match.home !== 'FC안양';  // 원정 경
   const draw = () => {
   const home = location.hash === '#home', list = games.filter(g => !home || !road(g.d));
   document.getElementById('fAll').setAttribute('aria-pressed', !home); document.getElementById('fHome').setAttribute('aria-pressed', home);
-  if (!list.length) { msg.textContent = games.length ? '홈경기 기록이 아직 없습니다.' : '아직 발행된 기록이 없습니다.'; document.getElementById('rows').innerHTML = ''; document.getElementById('chart').innerHTML = ''; return; }
-  msg.textContent = [partial ? '기록 목록을 받지 못해 지금 경기만 보입니다. 잠시 뒤 다시 열어 주세요.' : '', list.length > MAX ? `그래프는 최근 ${MAX}경기 (전체 ${list.length}경기는 아래 표)` : '', list.some(g => g.d.unknown?.length) ? '정보 없는 구역이 있던 집계는 예매 수가 조금 많게 나옵니다.' : ''].filter(Boolean).join(' · ');
+  if (!list.length) { msg.textContent = games.length ? '홈경기 기록이 아직 없습니다.' : '아직 발행된 기록이 없습니다.'; document.getElementById('rows').innerHTML = ''; document.getElementById('chart').innerHTML = ''; document.getElementById('avg').textContent = ''; return; }
+  // 끝난 경기(시작 2시간 뒤)만으로: 홈 평균 관중과 평균 예매율, 예상 관중 = 같은 종류(홈/원정) 지난 경기의 관중 합 / 예매 합 을 지금 예매에 곱한 값 (3경기 이상일 때만)
+  const over = d => new Date(d.match?.kickoff) < Date.now() - 2 * 3600e3, mean = a => a.reduce((x, y) => x + y, 0) / a.length;
+  const homes = games.filter(g => !road(g.d) && over(g.d)), att = homes.map(g => num(g.d.match?.attendance)).filter(v => v != null), rates = homes.filter(g => num(g.d.booked) != null && num(g.d.capacity)).map(g => g.d.booked / g.d.capacity);
+  document.getElementById('avg').textContent = [att.length ? `홈 ${att.length}경기 평균 관중 ${fmt(Math.round(mean(att)))}명` : '', rates.length ? `홈 ${rates.length}경기 평균 예매율 ${(mean(rates) * 100).toFixed(1)}%` : ''].filter(Boolean).join(' · ');
+  const guess = d => {
+    const past = games.filter(g => over(g.d) && road(g.d) === road(d) && num(g.d.match?.attendance) != null && num(g.d.booked) > 0), b = num(d.booked);
+    return past.length >= 3 && b != null ? { n: past.length, k: past.reduce((a, g) => a + g.d.match.attendance, 0) / past.reduce((a, g) => a + g.d.booked, 0), kind: road(d) ? '원정' : '홈' } : null;
+  };
+  const fc = list.map(g => g.now && !over(g.d) && num(g.d.match?.attendance) == null && guess(g.d)).find(Boolean);
+  msg.textContent = [partial ? '기록 목록을 받지 못해 지금 경기만 보입니다. 잠시 뒤 다시 열어 주세요.' : '', list.length > MAX ? `그래프는 최근 ${MAX}경기 (전체 ${list.length}경기는 아래 표)` : '', list.some(g => g.d.unknown?.length) ? '정보 없는 구역이 있던 집계는 예매 수가 조금 많게 나옵니다.' : '',
+    fc ? `예상 관중 = 지금 예매 × 지난 ${fc.kind} ${fc.n}경기의 관중 / 예매 비율(${fc.k.toFixed(2)})` : ''].filter(Boolean).join(' · ');
 
-  document.getElementById('rows').innerHTML = list.map(({ now, d }) => {
+  document.getElementById('rows').innerHTML = [...list].reverse().map(({ now, d }) => {  // 최근 경기가 맨 위
     const b = num(d.booked), cap = num(d.capacity), crowd = num(d.match?.attendance), away = num(d.match?.awayAttendance), ab = num(d.awayBooked);
-    const live = now && !(new Date(d.match?.kickoff) < Date.now() - 2 * 3600e3);  // 지난 경기는 구장 폴더의 마지막 발행본이어도 '지금'이 아님
+    const live = now && !over(d), g = live && crowd == null && guess(d);  // 지난 경기는 구장 폴더의 마지막 발행본이어도 '지금'이 아님
     return `<tr class="${live ? 'now' : ''}"><td>${esc(day(d.match?.kickoff || ''))} ${esc(String(d.match?.kickoff || '').slice(11, 16))}${live ? ' (지금)' : ''}</td><td>${esc(nick(d.match?.opponent || '-'))}${road(d) ? ' (원정)' : ''}</td>`
-      + `<td>${b == null ? '-' : `${fmt(b)}석 (${cap ? (b / cap * 100).toFixed(1) : '-'}%)` + (road(d) && ab != null ? ` · 원정석 ${fmt(ab)}` : '')}</td><td>${crowd == null ? '-' : fmt(crowd) + '명' + (away == null ? '' : ` (원정 ${fmt(away)})`)}</td>`
+      + `<td>${b == null ? '-' : `${fmt(b)}석 (${cap ? (b / cap * 100).toFixed(1) : '-'}%)` + (road(d) && ab != null ? ` · 원정석 ${fmt(ab)}` : '')}</td><td>${crowd == null ? (g ? `예상 약 ${fmt(Math.round(b * g.k))}명` : '-') : fmt(crowd) + '명' + (away == null ? '' : ` (원정 ${fmt(away)})`)}</td>`
       + `<td>${crowd == null || b == null ? '-' : (crowd - b > 0 ? '+' : '') + fmt(crowd - b)}</td><td>${Array.isArray(d.soldOut) ? d.soldOut.length + '개' : '-'}</td>`
       + `<td>${esc(day(d.updatedAt || ''))} ${esc(String(d.updatedAt || '').slice(11, 16))}</td></tr>`;
   }).join('');

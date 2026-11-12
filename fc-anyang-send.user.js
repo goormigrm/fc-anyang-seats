@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         FC안양 예매현황 보내기
 // @namespace    https://goormigrm.github.io/fc-anyang-seats/
-// @version      12
-// @description  티켓링크, 놀티켓 좌석 선택 화면에 보이는 잔여석 글자를 열려 있는 현황판 탭으로 보냄. 읽기만 하고 클릭, 새로고침, 요청은 하지 않음
+// @version      13
+// @description  티켓링크, 놀티켓 좌석 선택 화면에 보이는 잔여석 글자와 사람이 연 구역의 좌석 칸 수를 열려 있는 현황판 탭으로 보냄. 읽기만 하고 클릭, 새로고침, 요청은 하지 않음
 // @match        https://ticketlink.co.kr/*
 // @match        https://*.ticketlink.co.kr/*
 // @match        https://nol.yanolja.com/*
@@ -33,6 +33,7 @@ if (site) {
   const me = Math.random().toString(36).slice(2, 8);  // 탭, 틀(iframe)마다 다른 이름 (현황판이 보낸 곳을 구분)
   const hms = t => new Date(t).toTimeString().slice(0, 8);
   // 좌석 그림이 어떻게 그려지는지 요약 (구역 총석을 자동으로 셀 수 있는지 보려고, 읽기만): 큰 캔버스, SVG 도형 수, 가장 많은 작은 정사각형 요소와 그 속성, 색
+  const colorOf = x => { const s = getComputedStyle(x); return x instanceof SVGElement ? s.fill : s.backgroundColor; };
   const probe = () => {
     const cv = [...document.querySelectorAll('canvas')].filter(c => c.width * c.height > 1e5).map(c => `${c.width}x${c.height}`), groups = {};
     for (const e of document.body.querySelectorAll('*')) {
@@ -42,12 +43,29 @@ if (site) {
       (groups[k] ||= []).push(e);
     }
     const [k, els] = Object.entries(groups).sort((a, b) => b[1].length - a[1].length)[0] || [], colors = {};
-    (els || []).forEach(x => { const s = getComputedStyle(x), c = x instanceof SVGElement ? s.fill : s.backgroundColor; colors[c] = (colors[c] || 0) + 1; });
+    (els || []).forEach(x => { const c = colorOf(x); colors[c] = (colors[c] || 0) + 1; });
     const attrs = els ? [...els[0].attributes].filter(a => a.name !== 'style').slice(0, 6).map(a => `${a.name}=${a.value.slice(0, 24)}`).join(' ') : '';
-    return `캔버스 ${cv.join(', ') || '없음'} · SVG 도형 ${document.querySelectorAll('svg rect, svg circle, svg use').length} · 작은 네모 `
-      + (k ? `${k} ${els.length}개 [${attrs}] 색 ${Object.entries(colors).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([c, n]) => `${c} ${n}`).join(', ')}` : '없음');
+    return { cv, els: els || [], text: `캔버스 ${cv.join(', ') || '없음'} · SVG 도형 ${document.querySelectorAll('svg rect, svg circle, svg use').length} · 작은 네모 `
+      + (k ? `${k} ${els.length}개 [${attrs}] 색 ${Object.entries(colors).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([c, n]) => `${c} ${n}`).join(', ')}` : '없음') };
   };
-  let shape = '';
+  // 사람이 연 구역의 좌석 그림이 화면 요소(작은 네모 20개 이상)로 그려져 있으면 칸을 색으로 셈: 밝은 회색 = 팔림, 색 있음 = 남음 (현황판의 캡처 세기와 같은 기준)
+  // 좌석 그림이 캔버스면 세지 않음 (그림 속 점을 읽지 않음: 그때는 지금처럼 캡처를 현황판에 넣음). 어느 구역인지는 좌석 칸 속성(title 등)의 '○○구역'과 화면의 구역 이름들을 같이 보내 현황판이 정함
+  const count = ({ cv, els }) => {
+    if (cv.length || els.length < 20) return null;
+    let remain = 0, sold = 0;
+    for (const x of els) {
+      const m = colorOf(x).match(/[\d.]+/g);
+      if (!m || m.length < 3 || m[3] === '0') continue;  // 색 없음, 투명
+      const [r, g, b] = m.map(Number), mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+      if (mn > 244) continue;  // 흰 바탕
+      if (mx - mn >= 16) remain++; else if (mx > 175) sold++;
+    }
+    const zone = t => (String(t).match(/[0-9A-Za-z가-힣·-]{1,12}\s*구\s*역/) || [])[0];
+    const own = [...new Set(els.slice(0, 50).flatMap(x => [...x.attributes].map(a => zone(a.value))).filter(Boolean))];
+    const names = [...new Set(document.body.innerText.split('\n').map(l => l.trim()).filter(l => l.length <= 24 && (/구\s*역/.test(l) || /^[A-Za-z]{1,2}-?\d{1,2}[A-Za-z]?$/.test(l))))].slice(0, 80);
+    return remain + sold >= 20 ? { remain, total: remain + sold, own, names } : null;
+  };
+  let shape = '', lastSeats = '';
   // 화면 오른쪽 아래 작은 표시 (그림자 DOM 이라 화면 글자에 섞이지 않음). 색: 회색 대기, 보라 보냄, 초록 현황판이 받음, 주황 안 받음, 빨강 현황판 없음
   let badge;
   const show = (msg, bg) => {
@@ -72,7 +90,9 @@ if (site) {
   const check = () => {
     const v = ping(), b = GM_getValue('board'), board = b && Date.now() - b.at < 90e3;  // 현황판 입력 화면이 5초마다 남기는 신호 (뒤 탭은 1분까지 늦음)
     if (!v.seat) return v.need.includes('안양') || show(`대기 · 등급/좌석 선택 화면이 아님 (화면에 없는 글자: ${v.need.join(', ')})`, '#555');  // FC안양 경기 화면이 아니면 표시도 안 함
-    shape = probe();
+    const pr = probe(), seats = count(pr), key = JSON.stringify(seats);
+    shape = pr.text;
+    if (seats && key !== lastSeats) { lastSeats = key; setTimeout(() => GM_setValue('seats', { ...seats, at: Date.now() }), 1500); }  // 글자(잔여)가 먼저 가게 조금 뒤에
     if (v.s !== last) { last = v.s; resent = false; send(); ping(); setTimeout(check, 3000); }
     else if (board && !acked && !resent && Date.now() - sentAt > 4000) { resent = true; send(); setTimeout(check, 3000); }  // 현황판을 나중에 열었으면 한 번 다시 보냄
     if (acked?.ok) show(`현황판이 받음 ${hms(acked.at)} (구역 ${acked.n}개)`, '#15803d');
@@ -90,7 +110,8 @@ if (site) {
   const editing = () => document.body.classList.contains('editing');
   GM_addValueChangeListener('text', (key, old, v, remote) => { const r = remote && editing() && unsafeWindow.fcIngest?.(v.s); if (r) GM_setValue('ack', { ...r, at: Date.now(), page: location.search }); });
   GM_addValueChangeListener('ping', (key, old, v, remote) => { if (remote) unsafeWindow.fcPing?.(v); });
-  unsafeWindow.fcPing?.({ state: 'installed', version: 12, at: Date.now() });
+  GM_addValueChangeListener('seats', (key, old, v, remote) => { if (remote && editing()) unsafeWindow.fcSeats?.(v); });  // 스크립트가 센 좌석 칸 (13판)
+  unsafeWindow.fcPing?.({ state: 'installed', version: 13, at: Date.now() });
   const beat = () => { if (editing()) GM_setValue('board', { at: Date.now(), page: location.search }); };
   beat();
   setInterval(beat, 5000);
