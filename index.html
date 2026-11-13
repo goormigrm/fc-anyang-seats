@@ -122,7 +122,7 @@
   <div class="panel edit">
     <div class="box info">
       <div class="row"><span class="mode">입력 화면</span><span class="hint" style="margin:0">Ctrl+Shift+E 로 끄고 켭니다</span>
-        <button id="viewMode">보기 화면으로</button><a class="btn" href="guide/" target="_blank">작업 가이드</a><a class="btn" href="guide/guide.pdf" download="FC안양_예매현황_집계가이드.pdf">가이드 PDF</a>
+        <button id="viewMode">보기 화면으로</button><a class="btn" href="guide/" target="_blank">작업 가이드</a>
         <a class="btn" id="scriptBtn" href="fc-anyang-send.user.js" target="_blank" rel="noopener">보내기 스크립트 설치/업데이트</a></div>
       <h2>경기 정보</h2>
       <div class="fields">
@@ -166,7 +166,7 @@
     <div class="box">
       <h2>직전 집계와 비교</h2>
       <div class="row"><button id="baseNow">지금 숫자를 기준으로</button><button id="baseLoad">저장한 집계를 기준으로</button><button id="baseClear">비교 끄기</button><input type="file" id="baseFile" accept=".json,application/json" hidden></div>
-      <p class="hint">기준 이후 팔린 좌석이 구역마다 +N으로 나옵니다.</p>
+      <p class="hint">기준 이후 팔린 좌석 합이 요약 글과 발행 데이터에 나옵니다 (구역 칸에는 예매율만).</p>
     </div>
   </div>
   <svg id="trend" role="img" aria-label="예매된 좌석 추이" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 280" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif"></svg>
