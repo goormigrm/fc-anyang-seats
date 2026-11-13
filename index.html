@@ -79,7 +79,11 @@
   /* 수집 상태 램프: 꺼짐(회색) 스크립트 없음, 노랑 설치됨/기다림, 파랑 티켓링크 열림, 초록 예매 화면 감지/수집 중, 빨강 다른 구장 */
   #lamp { position: fixed; top: 10px; right: 10px; z-index: 50; display: none; align-items: center; gap: 10px; max-width: min(420px, calc(100vw - 20px)); box-sizing: border-box;
     padding: 9px 14px; border-radius: 14px; background: #fff; box-shadow: 0 2px 12px #2a0f5733; font-size: 13px; font-weight: 600; line-height: 1.35; }
-  body.editing #lamp { display: flex; } #lamp span { white-space: pre-line; }
+  body.editing #lamp { display: flex; cursor: pointer; } #lamp span { white-space: pre-line; }
+  /* 램프는 두 줄까지만 보이고(현황판, 표를 가리지 않게) 누르면 좌석 그림 구조 같은 자세한 줄까지 펼침. 맨 위 여백은 램프 자리 */
+  #lamp:not(.more) span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+  #lamp::after { content: '▾'; flex: none; color: #9ca3af; } #lamp.more::after { content: '▴'; }
+  body.editing main { padding-top: 76px; }
   #lamp i { flex: none; width: 16px; height: 16px; border-radius: 50%; background: #9ca3af; box-shadow: 0 0 0 4px #9ca3af33; }
   #lamp.wait i { background: #eab308; box-shadow: 0 0 0 4px #eab30833; } #lamp.open i { background: #2563eb; box-shadow: 0 0 0 4px #2563eb33; }
   #lamp.seat i { background: #16a34a; box-shadow: 0 0 0 4px #16a34a40; } #lamp.live i { background: #16a34a; animation: lamp 1s ease-in-out infinite; }
@@ -112,7 +116,7 @@
   <div id="lamp" class="edit" role="status" aria-live="polite"><i></i><span>수집 상태 확인 중…</span></div>
   <div id="boardWrap"><svg id="board" role="img" aria-label="FC안양 예매 현황판" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 1062" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif"></svg>
     <div id="stadiumWrap"><svg id="stadium" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 740 1080 960" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif"></svg></div></div>
-  <p class="hint mobile-only">경기장을 누르면 크게 · 크게 본 상태에서 구역을 누르면 남은 좌석과 총석, 빈 곳을 누르면 원래대로</p>
+  <p class="hint mobile-only">경기장을 누르면 크게 · 크게 한 뒤 구역을 누르면 남은 좌석</p>
   <div id="tip" role="status" hidden></div>
   <div class="box share">
     <div class="row"><button id="png" class="main">현황판 저장</button><button id="story" class="main">스토리 이미지 저장</button><button id="share" class="main" hidden>스토리로 공유</button><button id="trendImg">추이 이미지</button><button id="link">링크 공유</button><button id="copy">요약 글 복사</button><button id="embedCode">퍼가기 코드</button></div>
@@ -139,7 +143,7 @@
       <input type="file" id="file" accept="image/*" multiple hidden>
       <div id="status"></div>
       <textarea id="raw" placeholder="인식된 글자 (고친 뒤 아래 버튼으로 다시 채움. 예: R8구역 28석)"></textarea>
-      <button id="reparse">이 글자로 다시 채우기</button>
+      <div class="row"><button id="reparse">이 글자로 다시 채우기</button><button id="diag" title="숫자가 안 들어오거나 이상할 때: 램프, 예매 탭 신호, 스크립트가 센 좌석, 받은 글자를 한 번에 복사해 개발자에게 보냅니다">진단 글 복사</button></div>
     </div>
     <div class="box seats">
       <h2>구역별 잔여석</h2>
@@ -153,7 +157,7 @@
     <div class="box">
       <h2>발행</h2>
       <div class="row"><button id="publish" class="main">최신 집계 발행</button><label class="check"><input type="checkbox" id="autoPub">숫자가 들어오면 바로 발행 (경고 없을 때)</label></div>
-      <div class="row"><button id="unpub" class="danger">마지막 발행 지우기</button><button id="unpubAll" class="danger">발행 모두 지우기</button><button id="tokenSet">토큰 설정</button></div>
+      <div class="row"><button id="unpub" class="danger">마지막 발행 지우기</button><button id="unpubAll" class="danger">발행 모두 지우기</button><button id="pubCheck">발행 점검</button><button id="tokenSet">토큰 설정</button></div>
       <div id="pubNote" class="edit"></div>
       <p class="hint" id="tokenHint"></p>
       <p class="hint">발행 = 지금 현황판을 누구나 보는 기본 화면(과 다른 사이트)에 올리기. 기본 주소는 홈, 원정 중 가장 최근에 발행한 현황판을 보여 줍니다. 발행하기 전 숫자는 이 브라우저에만 있습니다. 처음 한 번 GitHub 토큰을 묻습니다. 시험으로 발행했으면 '마지막 발행 지우기'로 그 전 발행으로 되돌립니다.</p>
@@ -174,7 +178,7 @@
 </main>
 <script>
 // FULL: 만석 1만 1,542석 (2026-04-05 서울전 기사). 중립석 신설(8월) 뒤에도 원정석 쪽 좌석을 나눠 파는 것이라 그대로 씀
-// 구장: 기본은 안양 홈. ?s=gimcheon 처럼 열면 원정 경기 (FC안양이 원정, 원정 응원 쪽은 보라, 홈 팀 쪽은 파랑)
+// 구장: 기본은 안양 홈. ?s=gimcheon 처럼 열면 원정 경기 (FC안양이 원정, 원정 응원 쪽은 보라, 홈 팀 쪽은 그 구단 상징 색: STADIUMS 의 color, 없으면 파랑)
 // 원정 구장은 최대 좌석을 몰라 잔여율 대신 남은 좌석 수 단계로 칠하고, 입력값, 발행 데이터(data 브랜치의 구장 폴더)를 따로 둠
 // 원정 구장. layout: 구역 칸 배치 (아래 arc 로 둘레를 따라 같은 폭으로 나눔, null = 빈자리, ours = 원정 응원 쪽 보라)
 // geo: 경기장 둘레를 모서리를 둥글게(chamfer 면 비스듬히 깎아) 도는 사각형, u 0~8. c0 가 142 에 가까우면 옆 직선이 거의 없는 타원(트랙 구장 김천, 수원FC, 부천, 강원), frame 이면 액자 모양(수원삼성, side() 참고). geo 가 없으면 안양 홈과 같은 트랙 타원
@@ -182,7 +186,7 @@
 // r = 경기장 가장자리에서 바깥으로 거리, kx = 옆 스탠드 가로 배율(구단 좌석도의 가로:세로 비율에 맞춤), s = 지도 높이를 채우는 배율. 칸 이름(id)은 구단 좌석도 표기, 티켓링크 표기가 다르면 parseText 가 빈칸, 하이픈, 한글 앞말을 빼고 맞춰 봄
 // max: 구역별 총석 (김천은 11/07 티켓링크 좌석 그림으로 센 값, N11~N24 스탠드는 그날 미판매라 모름)
 const STADIUMS = {
-  gimcheon: { venue: '김천종합운동장', host: '김천상무', name: '김천', geo: { kx: 1.12, c0: 141, r: [230, 230] }, max: { E11: 305, E12: 336, E13: 346, E14: 334, E15: 307, E21: 229, E22: 272, E23: 422, E24: 273, E25: 230, E31: 269, E32: 338, E33: 321, E34: 270,
+  gimcheon: { color: 'red', venue: '김천종합운동장', host: '김천상무', name: '김천', geo: { kx: 1.12, c0: 141, r: [230, 230] }, max: { E11: 305, E12: 336, E13: 346, E14: 334, E15: 307, E21: 229, E22: 272, E23: 422, E24: 273, E25: 230, E31: 269, E32: 338, E33: 321, E34: 270,
     S11: 193, S12: 258, S13: 258, S14: 198, S21: 220, S22: 210, S23: 45, S24: 210, S25: 218,
     W11: 240, W12: 311, W13: 309, W14: 250, W21: 231, W22: 301, W23: 302, W24: 229, W31: 144, W32: 141, W33: 141, W34: 145, N1: 182, N2: 182, N3: 182, N4: 182 },
     // 티켓링크 좌석도: 위 E(안쪽 E11~15, 가운데 E21~25, 바깥 E31~34), 오른쪽 S(원정 쪽: 안쪽 S11~14, 바깥 S21~25),
@@ -201,7 +205,7 @@ const STADIUMS = {
   // 전주월드컵경기장 (전북 좌석도): 층마다 1(아래), 테이블 줄, 2(위). E 1H~1A(1E, 1D 센터), N, S 는 1층 한 줄, 테이블 줄, 2층.
   // S 1C~1A, 2F~2B 줄과 2E~2A 가 S원정. 모서리 네 곳은 코너테이블(가~아)
   // 원본은 테이블 줄, 2층 모서리가 비어 있음: 가운데 칸은 원본 자리 그대로 두고 양 끝 칸만 모서리 대각선 통로 앞까지 늘려 회색 빈 곳을 줄임 (스탠드 두께는 원본 비율, 지도 높이 끝까지)
-  jeonbuk: { venue: '전주월드컵경기장', host: '전북현대', name: '전북', geo: { kx: 0.95, c0: 5, chamfer: true, r: [12, 168], s: 1.35 },
+  jeonbuk: { color: 'green', venue: '전주월드컵경기장', host: '전북현대', name: '전북', geo: { kx: 0.95, c0: 5, chamfer: true, r: [12, 168], s: 1.35 },
     layout: () => {
       const T1 = [14, 66], TT = [70, 90], T2 = [93, 168], ours = ['S1C', 'S1B', 'S1A', 'S2F', 'S2D', 'S2B', 'S2E', 'S2C', 'S2A'];
       // seq: 칸 [id, 폭 배율, 빈자리 글자], id 가 null 이면 빈자리. row: 면 k 의 가운데 칸은 u k+a~k+b, 양 끝 칸은 모서리 통로(k-e, k+1+e)까지 비스듬히
@@ -219,7 +223,7 @@ const STADIUMS = {
   // 바깥 S22~S25, A21~A23(원정), 아래 W 안쪽 W1·W2·프리미엄 테이블·W3·W4, 바깥 W21·W22·스카이박스·W23·W24, 왼쪽 N 안쪽 T2·N1~N5·T3, 바깥 N22~N27
   // 좌석도처럼 액자 모양: 모서리는 경기장 모서리에서 바깥 모서리로 가는 대각선으로 나뉘고, 모서리 칸(T4, N28 등)은 면 끝에서 대각선까지.
   // E, W 줄은 경기장 폭의 0.09~0.91, N, S 줄은 경기장 높이의 0.17~0.83 (A3 는 경기장 끝까지, 원정테이블은 그 아래 모서리)
-  pohang: { venue: '포항스틸야드', host: '포항스틸러스', name: '포항', geo: { frame: true, kx: 1.2, gap: 5, r: [12, 168], s: 1.3 },
+  pohang: { color: 'red', venue: '포항스틸야드', host: '포항스틸러스', name: '포항', geo: { frame: true, kx: 1.2, gap: 5, r: [12, 168], s: 1.3 },
     layout: () => {
       const T1 = [14, 90], T2 = [94, 168], ours = ['A1', 'A2', 'A3', 'A21', 'A22', 'A23', '원정테이블'], e0 = 0.09, e1 = 0.91, n0 = 0.17, n1 = 0.83, w = (e1 - e0) / 7, h = (1 - n0) / 6;
       arc(Rs(1, 7, 'E'), e0, e1, T1); arc(Rs(21, 27, 'E'), e0, e1, T2);
@@ -238,7 +242,7 @@ const STADIUMS = {
   // 서울월드컵경기장 (서울 좌석도, 팔각형): 구역 = 방향 + 글자. E 안쪽 H(모서리)·G~B·A(모서리)와 앞줄 E 피치석, 바깥 T·S~K·J,
   // S 안쪽 F·E·D·C·B·A(C, B, A 가 원정석), 바깥 P·N~H·G, W 앞줄 B~G(피치석, 센터석), 뒷줄 J~M, 모서리 A·H, 바깥 N·P~W·X, N 안쪽 A·B~E·F, 바깥 G·H~N·P
   // c0 음수: 직선 부분이 경기장보다 조금 길고 모서리 칸이 작음 (원본 팔각형 비율). E 피치석 줄은 원본처럼 두껍게, 층 사이 통로는 좁게
-  seoul: { venue: '서울월드컵경기장', host: 'FC서울', name: '서울', geo: { kx: 0.9, c0: -6, chamfer: true, r: [12, 172], s: 1.32 },
+  seoul: { color: 'red', venue: '서울월드컵경기장', host: 'FC서울', name: '서울', geo: { kx: 0.9, c0: -6, chamfer: true, r: [12, 172], s: 1.32 },
     layout: () => {
       const T1 = [14, 100], T2 = [106, 172], ours = ['SC', 'SB', 'SA'], c = (p, l) => [...l].map(x => p + x);
       arc(['E피치석'], 0, 1, [14, 48]); arc(c('E', 'GFEDCB'), 0, 1, [50, 100]); arc(c('E', 'SRQPNMLK'), 0, 1, T2);
@@ -322,7 +326,7 @@ const STADIUMS = {
   // S 안쪽 SA~SF(원정석)·SG, SH(중립석), 바깥 SJ, SK(원정석)·SN, SO(중립석), W 안쪽 W다·W나·W가 … VIP … WC(프리미엄 테이블)·WD~WF, 바깥 W바·W마 … WH~WM
   // 트랙 구장이지만 geo(c0 142 = 타원에 가까운 둥근 사각형)로 좌석도처럼 경기장을 바짝 둘러싼 두 층 스탠드 (회색 = 팔지 않는 스탠드). S 바깥 SK 와 SN 사이는 전광판 자리.
   // u 경계는 둘레 길이로 같은 폭이 되게 미리 잰 값 (오른쪽 직선은 길이 0 이라 SE 가 가운데에 걸침)
-  bucheon: { venue: '부천종합운동장', host: '부천FC1995', name: '부천', seller: '놀티켓', geo: { kx: 1.25, c0: 142, r: [100, 214], s: 1 },
+  bucheon: { color: 'red', venue: '부천종합운동장', host: '부천FC1995', name: '부천', seller: '놀티켓', geo: { kx: 1.25, c0: 142, r: [100, 214], s: 1 },
     layout: () => {
       const T1 = [100, 150], T2 = [158, 214], ours = ['SA', 'SB', 'SC', 'SD', 'SE', 'SF', 'SJ', 'SK'], at = (ids, us, T, o) => ids.forEach((id, i) => arc([id], us[i], us[i + 1], T, o));
       ['GE가', 'GE나', 'GE다', 'GE라', 'GE마', 'GE바', 'GE사', 'GE아', 'GE자'].forEach((id, i) => cells([id], -208 + i * 46, i > 1 && i < 8 ? -226 : -200, 46, i > 1 && i < 8 ? 70 : 44));  // GE다~GE아 는 두 줄
@@ -338,7 +342,7 @@ const STADIUMS = {
   // 모서리 자유석 A(오른쪽 위), B(왼쪽 위), C(왼쪽 아래), W8~W1(가운데 P 프리미엄 테이블석), 그 뒤 스카이 라운지. 춘천 홈경기는 다른 구장
   // 트랙 구장이지만 geo(c0 142 = 타원에 가까운 둥근 사각형)로 좌석도처럼 경기장을 바짝 둘러싼 스탠드 한 층 (회색 = 좌석도의 검은 스탠드, 자유석 말고는 팔지 않음).
   // S 칸은 스탠드 두께를 다 채움, W 블록은 본부석 안. u 경계는 둘레 길이로 같은 폭이 되게 미리 잰 값
-  gangwon: { venue: '강릉종합운동장', host: '강원FC', name: '강원', seller: '놀티켓', geo: { kx: 0.9, c0: 142, r: [125, 225], s: 1 },
+  gangwon: { color: 'orange', venue: '강릉종합운동장', host: '강원FC', name: '강원', seller: '놀티켓', geo: { kx: 0.9, c0: 142, r: [125, 225], s: 1 },
     layout: () => {
       const at = (ids, us, T, o) => ids.forEach((id, i) => arc([id], us[i], us[i + 1], T, o)), TS = [125, 225], TF = [138, 212];
       cells(Rs(1, 9, 'E'), -189, -194, 377 / 9, 42); cells([...Rs(10, 15, 'E')], -170, -238, 42, 42); cells(['테이블석'], -170 + 252, -238, 84, 42);  // 좌석도보다 조금 높게 (두 줄 글자)
@@ -356,7 +360,10 @@ const KEY = 'fc-anyang-seat-status' + (AWAY ? '-' + STADIUM : ''), FULL = AWAY ?
 const CX = 600, CY = 375, L = 240, RI = 285, RO = AWAY ? 372 : 360;
 const PURPLE = ['#c3b1e6', '#9572cf', '#6a40ad', '#3e1a78'];  // 잔여율 1~24 / 25~49 / 50~74 / 75%+
 const RED = ['#e58b8b', '#d24a4a', '#a82020', '#761212'];
-const BLUE = ['#c6d6ec', '#8fb0d9', '#4f7fbf', '#24508f'];  // 원정 경기의 홈 팀 쪽
+const BLUE = ['#c6d6ec', '#8fb0d9', '#4f7fbf', '#24508f'], GREEN = ['#bfe0c4', '#7fc08b', '#2e9550', '#145f2c'], ORANGE = ['#fbd5ac', '#f5a65b', '#e2761b', '#9c4a08'];
+// 원정 경기의 홈 팀 쪽은 그 구단 상징 색으로 [4단계 색, 옅은 칸의 글자색, 범례에 쓰는 이름]. STADIUMS.<구장>.color (11/13 사용자 요청)
+// 빨강: 김천상무, 포항, FC서울, 부천 / 초록: 전북 / 주황: 강원 / 파랑(기본): 울산, 인천, 수원삼성, 수원FC(상징색이 청색, 적색 둘이라 먼저 적힌 청색으로)
+const HOSTPAL = { red: [RED, '#4a0e0e', '빨강'], green: [GREEN, '#0f3d1e', '초록'], orange: [ORANGE, '#5a2a04', '주황'] }[STADIUMS[STADIUM]?.color] || [BLUE, '#1e3a5f', '파랑'];
 const Rs = (a, b, p = 'R') => Array.from({ length: b - a + 1 }, (_, i) => p + (a + i));
 
 // ring: 스탠드 위치 [u0, u1, 안쪽 반지름, 바깥 반지름]. u 0~1 위 직선 왼→오, 1~2 오른쪽 곡선, 2~3 아래 직선 오→왼, 3~4 왼쪽 곡선 아래→위
@@ -621,14 +628,24 @@ const ringLabel = (a, b, ri, ro, lines, ink) => {
   const [x, y] = GEO?.frame ? [(pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2] : P(m, rm);  // 액자 모양 끝 칸은 통로에서 잘리므로 보이는 부분 가운데
   const len = d(pa, pb), th = d(P(m, ri), P(m, ro)), [x1, y1] = P(m - 0.01, rm), [x2, y2] = P(m + 0.01, rm), deg = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
   const c = Math.abs(Math.cos(deg * Math.PI / 180)), [w, h] = c > 0.75 ? [len, th] : c < 0.35 ? [th, len] : [Math.min(len, th), Math.min(len, th)];
-  if (lines.length > 1 && h >= 36 && w >= 36) return label(x, y, lines, ink, '', Math.min(1, (w - 4) / Math.max(...lines.map((l, i) => tw(l, i ? 13 : 15)))));
+  // 글자가 칸(보이는 모양) 밖으로 나가 옆 칸이나 통로에 걸치지 않게: 글자 상자의 네 귀가 칸 안(테두리에서 3~4 안쪽)에 들어가는 자리와 크기를 찾음
+  // 자리는 칸 가운데, 안 되면 칸의 무게중심(모서리의 세모꼴 칸은 가운데가 칸 밖). 차례: 가로 두 줄(100%, 85%) -> 긴 방향 한 줄(글자 9.5 이상) -> 가로 두 줄 70% -> 그래도 안 되면 긴 방향 한 줄
+  const poly = [...Array(13)].map((_, i) => P(a + (b - a) * i / 12, ro)).concat([...Array(13)].map((_, i) => P(b + (a - b) * i / 12, ri)));
+  const inside = (px, py) => poly.reduce((v, [xi, yi], i) => { const [xj, yj] = poly[(i || poly.length) - 1]; return (yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi ? !v : v; }, false);
+  const area = poly.reduce((v, [xi, yi], i) => { const [xj, yj] = poly[(i + 1) % poly.length]; return v + xi * yj - xj * yi; }, 0) / 2;
+  const [gx, gy] = poly.reduce(([sx, sy], [xi, yi], i) => { const [xj, yj] = poly[(i + 1) % poly.length], k = xi * yj - xj * yi; return [sx + (xi + xj) * k, sy + (yi + yj) * k]; }, [0, 0]).map(v => v / (6 * area || 1));
+  const spots = [[x, y], [gx, gy]], box = (cx, cy, hw, hh, rot = 0) => { const co = Math.cos(rot * Math.PI / 180), si = Math.sin(rot * Math.PI / 180); return [-1, 1].every(sx => [-1, 1].every(sy => inside(cx + sx * hw * co - sy * hh * si, cy + sx * hw * si + sy * hh * co))); };
+  const need = Math.max(...lines.map((l, i) => tw(l, i ? 13 : 15))), half = lines.length > 1 ? 14 : 7, flat = k => { const at = spots.find(([cx, cy]) => box(cx, cy + k, need * k / 2 + 4, half * k + 3)); return at && label(...at, lines, ink, '', k); };
   const str = lines.join(' ').replace('잔여 ', '잔여'), long = Math.max(len, th);
   let r = len >= th ? deg : deg + 90;
   if (r > 90) r -= 180; else if (r <= -90) r += 180;
-  const fs = Math.max(7, Math.min(12, (long - 6) / Math.max(1, tw(str, 1)), Math.min(len, th) * 0.7));
-  return `<text transform="translate(${x.toFixed(1)},${y.toFixed(1)}) rotate(${r.toFixed(1)})" y="${(fs * 0.35).toFixed(1)}" font-size="${fs.toFixed(1)}" font-weight="700" fill="${ink}" text-anchor="middle">${esc(str)}</text>`;
+  const fs = Math.max(7, Math.min(12, (long - 6) / Math.max(1, tw(str, 1)), Math.min(len, th) * 0.7)), fit = spots.find(([cx, cy]) => box(cx, cy, tw(str, fs) / 2 + 2, fs * 0.6, r));
+  const [ox, oy] = fit || (inside(x, y) ? [x, y] : [gx, gy]);
+  return flat(h >= 36 && w >= 36 ? Math.min(1, (w - 4) / need) : 1) || flat(0.85) || !(fit && fs >= 9.5) && flat(0.7)
+    || `<text transform="translate(${ox.toFixed(1)},${oy.toFixed(1)}) rotate(${r.toFixed(1)})" y="${(fs * 0.35).toFixed(1)}" font-size="${fs.toFixed(1)}" font-weight="700" fill="${ink}" text-anchor="middle">${esc(str)}</text>`;
 };
-const tw = (s, fs) => [...s].reduce((w, c) => w + (c > 'ᄀ' ? fs : fs * 0.6), 0);
+// 글자 폭 어림: 한글은 글자 크기만큼, 굵은 영문 대문자와 ≈ 는 0.72배(W, M, % 는 0.95배), 나머지(숫자, 빈칸 등)는 0.6배
+const tw = (s, fs) => [...s].reduce((w, c) => w + fs * (c > 'ᄀ' ? 1 : /[WM%]/.test(c) ? 0.95 : /[A-Z≈]/.test(c) ? 0.72 : 0.6), 0);
 const fmt = n => n.toLocaleString('ko-KR');
 
 // 이번 경기 총석 = 최대 좌석 - 막힌 좌석(사람이 확인해 뺀 것)
@@ -656,7 +673,7 @@ function look(s, r, est) {
   const rem = r.remain ?? (est == null ? null : Math.round(est)), cap = capOf(r);
   if (rem == null) return { fill: '#fff', ink: '#9aa4b1', sub: [], empty: true };
   if (r.remain === 0) return { fill: '#b4b1a7', ink: '#2f2f2f', sub: ['매진'] };
-  const pal = s.away ? RED : AWAY && !s.ours ? BLUE : PURPLE, ink0 = s.away ? '#4a0e0e' : pal === BLUE ? '#1e3a5f' : '#2b1450';
+  const pal = s.away ? RED : AWAY && !s.ours ? HOSTPAL[0] : PURPLE, ink0 = s.away ? '#4a0e0e' : AWAY && !s.ours ? HOSTPAL[1] : '#2b1450';
   if (!cap) return { fill: '#857d96', ink: '#fff', sub: ['잔여 ' + rem], noMax: true };
   // 예매율(총석 대비 팔린 좌석): 많이 팔릴수록 진하게. 1석이라도 남으면 100% 로 보이지 않게 내림
   const b = 1 - Math.min(rem, cap) / cap, i = b >= 0.75 ? 3 : b >= 0.5 ? 2 : b >= 0.25 ? 1 : 0;
@@ -774,7 +791,7 @@ function chart(x0, y0, w, h, k = 1, n = 8, side) {
     out.push(f ? `<circle cx="${x}" cy="${y}" r="${z(6)}" fill="#fff" stroke="#6a40ad" stroke-width="${z(2.5)}"/>` : `<circle cx="${x}" cy="${y}" r="${z(5.5)}" fill="${ink}" stroke="#fff" stroke-width="${z(2)}"/>`,
       text(x, y + z(22), (f ? '약 ' : '') + fmt(p.booked), z(13), f ? '#6a40ad' : '#111827', 700),
       text(x, y + z(36), f ? `${pc} · 남은 약 ${fmt(p.cap - p.booked)}` : pc, z(10), '#9ca3af'),
-      text(x, B + z(34), tick(p.at), z(two ? 11 : 12), '#374151', 700), text(x, B + z(49), f ? '경기 시작 예상' : '집계', z(10), '#9ca3af'));
+      text(x, B + z(34), tick(p.at).slice(0, 8), z(two ? 11 : 12), '#374151', 700), text(x, B + z(49), tick(p.at).slice(9) + (f ? ' 경기 시작' : ''), z(10), f ? '#6a40ad' : '#6b7280'));  // 날짜 / 시각 두 줄 (한 줄이면 옆 점의 글자와 겹침)
   });
   if (pts.length === 1) out.push(text(x0 + w / 2, y0 + z(two ? 74 : 58), '다음 집계부터 증감이 나옵니다.', z(12), '#9ca3af'));
   return out.join('');
@@ -800,7 +817,7 @@ function build(story) {
         + esc(one) + '</text>');  // 좁고 긴 칸(스탠딩석, 퍼스트석)은 세로 글자
       else if (h < 40) parts.push(text(x + w / 2, y + h / 2 + 4, one, fit(w, 12), v.ink, 700));  // 낮은 칸은 한 줄
       else if (w < 60 && v.sub[0]?.includes('/')) parts.push(label(x + w / 2, y + h / 2, [lines[0], ...v.sub[0].replace('/', ' /').split(' '), dl].filter(Boolean), v.ink, hi));
-      else { const ls = [...(w < 60 ? lines.map(l => l.replace('잔여 ', '')) : lines), dl].filter(Boolean); parts.push(label(x + w / 2, y + h / 2, ls, v.ink, hi, Math.min(1, (w - 4) / Math.max(...ls.map((l, i) => tw(l, i ? 13 : 15)))))); }
+      else { const ls = [...(w < 60 ? lines.map(l => l.replace('잔여 ', '')) : lines), dl].filter(Boolean); parts.push(label(x + w / 2, y + h / 2, ls, v.ink, hi, Math.min(1, (w - 8) / Math.max(...ls.map((l, i) => tw(l, i ? 13 : 15)))))); }
     } else {
       s.ring.forEach(([a, b, ri, ro]) => parts.push(`<path ${dz} d="${ring(a, b, ri, ro)}" fill="${v.fill}" ${stroke}/>`));
       const [a, b, ri = RI, ro = RO] = s.ring[0];
@@ -828,14 +845,14 @@ function build(story) {
   const card = (x, title, big, small, note) => `<g transform="translate(${x},122)"><rect width="400" height="88" rx="10" fill="#fff" stroke="#e5e7eb"/>`
     + text(18, 26, title, 12, '#6b7280', 400, 'start')
     + `<text x="18" y="61" font-size="28" font-weight="700" fill="#111827">${esc(big)}<tspan font-size="14" font-weight="600" fill="#4b5563">${esc(small)}</tspan></text>`
-    + text(18, 79, note, 11, '#9ca3af', 400, 'start') + '</g>';
+    + text(18, 79, note, +Math.min(11, 364 / tw(note, 1)).toFixed(1), '#9ca3af', 400, 'start') + '</g>';  // 긴 설명(미판매, 정보 없는 구역 안내)은 카드 폭에 맞게 줄임
   const scard = (x, [title, big, small, , short]) => `<g transform="translate(${x},540)"><rect width="330" height="180" rx="20" fill="#fff" stroke="#e5e7eb"/>`
     + text(24, 48, title, 24, '#6b7280', 600, 'start')
     + `<text x="24" y="114" font-size="46" font-weight="700" fill="#111827">${esc(big)}<tspan font-size="22" font-weight="600" fill="#4b5563">${esc(small)}</tspan></text>`
     + text(24, 154, short, 20, '#9ca3af', 400, 'start') + '</g>';
 
   const items = [[PURPLE[3], '75% 이상'], [PURPLE[2], '50~74%'], [PURPLE[1], '25~49%'], [PURPLE[0], '0~24%'],
-    AWAY ? [BLUE, `${STADIUMS[STADIUM].name} 쪽 (같은 구간, 파랑)`] : [RED, '원정석 (같은 구간, 빨강)'], ['#b4b1a7', '매진']];
+    AWAY ? [HOSTPAL[0], `${STADIUMS[STADIUM].name} 쪽 (같은 구간, ${HOSTPAL[2]})`] : [RED, '원정석 (같은 구간, 빨강)'], ['#b4b1a7', '매진']];
   if (offN) items.push(['url(#hatch)', '미판매']);
   if (emptyN) items.push(['#fff', '정보 없음', 'stroke="#b9c2ce" stroke-dasharray="3 2"']);
   if (noMax) items.push(['#857d96', '총석 모름 (잔여만)']);
@@ -1244,6 +1261,9 @@ function publish(token, branch = 'data') {
     // 같은 경기의 10분 안 발행은 같은 집계로 보고 마지막 점 하나로 (등급을 천천히 눌러 자동 발행이 여러 번 돼도 점이 쌓이지 않게)
     const near = p => sameMatch(p, pt) && Math.abs(new Date(p.at) - new Date(pt.at)) < 600e3;
     const hist = rec.booked == null ? old : [...old.filter(p => !near(p)), pt].slice(-500);  // 예매를 모르는 발행은 추이에 점을 남기지 않음
+    // 구역별 잔여 기록(zones.json): 추이 점과 같은 때에 구역마다 잔여를 남김 (등급별 추이, 구역 매진 시각을 나중에 낼 수 있게. 화면은 읽지 않아 history.json 과 따로 둠)
+    const zold = (await readJson(gh, find('zones.json'))) || [];
+    const zones = rec.booked == null ? zold : [...zold.filter(p => !near(p)), { at: pt.at, opponent: pt.opponent, kickoff: pt.kickoff, r: Object.fromEntries(rec.sections.filter(x => x.remain != null).map(x => [x.id, x.remain])) }].slice(-500);
     const archive = was && !sameMatch(was.match, rec.match)
       ? [{ path: DATA + `games/${String(was.match?.kickoff || was.updatedAt).slice(0, 10)}_${was.match?.opponent || '경기'}.json`, sha: find('latest.json').sha }] : [];
     const png = async story => ({ sha: (await gh('git/blobs', { content: await b64(await pngBlob(story)), encoding: 'base64' })).sha });
@@ -1254,12 +1274,22 @@ function publish(token, branch = 'data') {
     const boardPng = await png(false), newer = (rec.updatedAt || '') >= ((await readJson(gh, tree.find(f => f.path === 'og.json')))?.at || '');
     await writeTree(gh, branch, [...others.filter(f => !newer || !og(f)), ...(newer ? [{ path: 'og.png', ...boardPng }, { path: 'og.json', content: JSON.stringify({ at: rec.updatedAt, stadium: STADIUM }) }] : []),
       ...files.filter(f => rel(f).startsWith('games/') && !archive.some(a => a.path === f.path)), ...archive,
-      ...files.filter(f => rel(f).startsWith('latest') || rel(f) === 'history.json').map(f => ({ path: DATA + 'prev/' + rel(f), sha: f.sha })), ...olds,
-      { path: DATA + 'latest.json', content: JSON.stringify(rec, null, 1) }, { path: DATA + 'history.json', content: JSON.stringify(hist) },
+      ...files.filter(f => rel(f).startsWith('latest') || ['history.json', 'zones.json'].includes(rel(f))).map(f => ({ path: DATA + 'prev/' + rel(f), sha: f.sha })), ...olds,
+      { path: DATA + 'latest.json', content: JSON.stringify(rec, null, 1) }, { path: DATA + 'history.json', content: JSON.stringify(hist) }, { path: DATA + 'zones.json', content: JSON.stringify(zones) },
       { path: DATA + 'latest.png', ...boardPng }, { path: DATA + 'latest-story.png', ...await png(true) },
     ], `집계 ${AWAY ? STADIUM + ' ' : ''}${state.at}`, ref?.object.sha ?? null);
     history = hist;  // 그래프도 바로 반영
   });
+}
+// 지운 뒤의 미리보기(og.png, og.json): 남은 발행(홈, 원정 구장의 latest.json) 중 가장 늦은 집계의 그림. 남은 발행이 없으면 미리보기 파일도 없음
+// list: 지운 뒤 브랜치에 남길 파일 목록 { path, sha }
+async function ogAfter(gh, list) {
+  let best = null;
+  for (const f of list.filter(f => /^([a-z]+\/)?latest\.json$/.test(f.path))) {
+    const d = await readJson(gh, f), img = list.find(x => x.path === f.path.replace(/json$/, 'png'));
+    if (img && d?.updatedAt && (!best || d.updatedAt > best.at)) best = { at: d.updatedAt, sha: img.sha, stadium: f.path.includes('/') ? f.path.split('/')[0] : 'anyang' };
+  }
+  return best ? [{ path: 'og.png', sha: best.sha }, { path: 'og.json', content: JSON.stringify({ at: best.at, stadium: best.stadium }) }] : [];
 }
 // 발행 지우기
 // - all=false: 마지막 발행만 지우고 prev/ (그때의 추이 기록 포함)로 되돌림. 한 번만
@@ -1268,13 +1298,14 @@ function unpublish(token, all, branch = 'data') {
   return exclusive(async () => {
     const gh = ghApi(token), ref = await getRef(gh, branch);
     if (!ref) { history = []; return '지울 발행이 없습니다.'; }
-    const tree = blobs(await gh(`git/trees/${ref.object.sha}?recursive=1`, null, 'GET')), others = tree.filter(f => !mine(f));
+    const tree = blobs(await gh(`git/trees/${ref.object.sha}?recursive=1`, null, 'GET')), others = tree.filter(f => !mine(f) && !og(f));  // 미리보기 파일은 지운 뒤 다시 정함 (ogAfter)
     const files = tree.filter(mine), find = path => files.find(f => rel(f) === path), games = files.filter(f => rel(f).startsWith('games/'));
+    const zold = (await readJson(gh, find('zones.json'))) || [], json = (name, v) => v.length ? [{ path: DATA + name, content: JSON.stringify(v) }] : [];
     if (all) {
-      const was = await readJson(gh, find('latest.json'));
-      history = ((await readJson(gh, find('history.json'))) || []).filter(p => !was || !sameMatch(p, was.match));
-      if (!others.some(f => !og(f)) && !games.length && !history.length) await gh('git/refs/heads/' + branch, null, 'DELETE');  // 미리보기 파일만 남으면 브랜치째 지움
-      else await writeTree(gh, branch, [...others, ...games, ...(history.length ? [{ path: DATA + 'history.json', content: JSON.stringify(history) }] : [])], '이번 경기 발행 지움', ref.object.sha);
+      const was = await readJson(gh, find('latest.json')), keep = p => !was || !sameMatch(p, was.match);
+      history = ((await readJson(gh, find('history.json'))) || []).filter(keep);
+      if (!others.length && !games.length && !history.length) await gh('git/refs/heads/' + branch, null, 'DELETE');  // 남는 것이 없으면 브랜치째 지움
+      else await writeTree(gh, branch, [...others, ...games, ...json('history.json', history), ...json('zones.json', zold.filter(keep)), ...await ogAfter(gh, others)], '이번 경기 발행 지움', ref.object.sha);
       return '이번 경기 발행을 모두 지웠습니다. 보기 화면에는 곧 반영됩니다.';
     }
     const prev = files.filter(f => rel(f).startsWith('prev/') && !rel(f).startsWith('prev/old/')), olds = files.filter(f => rel(f).startsWith('prev/old/'));
@@ -1282,7 +1313,8 @@ function unpublish(token, all, branch = 'data') {
     const back = prev.map(f => ({ path: DATA + rel(f).slice(5), sha: f.sha }));
     history = (await readJson(gh, find('prev/history.json'))) ?? ((await readJson(gh, find('history.json'))) || []).slice(0, -1);
     if (!find('prev/history.json')) back.push({ path: DATA + 'history.json', content: JSON.stringify(history) });
-    await writeTree(gh, branch, [...others, ...games, ...back, ...olds], '마지막 발행 지움', ref.object.sha);
+    if (!find('prev/zones.json')) back.push(...json('zones.json', zold.slice(0, -1)));  // 구역별 기록을 남기기 전 발행으로 되돌릴 때
+    await writeTree(gh, branch, [...others, ...games, ...back, ...olds, ...await ogAfter(gh, [...others, ...back])], '마지막 발행 지움', ref.object.sha);
     return '마지막 발행을 지우고 그 전 발행으로 되돌렸습니다. 보기 화면에는 곧 반영됩니다.';
   });
 }
@@ -1362,6 +1394,22 @@ async function unpublishNow(all) {
   note('지우는 중…');
   try { note(await unpublish(token, all)); render(); } catch (e) { note('지우기 실패: ' + e.message); }
 }
+// 발행 점검: 발행하지 않고 준비가 됐는지 봄 (예매 여는 날 전에). 토큰은 어느 브랜치에도 닿지 않는 파일 조각(blob) 하나를 올려 쓰기 권한까지 확인 (내용이 늘 같아 쌓이지 않음)
+$('pubCheck').onclick = async () => {
+  note('발행 점검 중…');
+  const token = await getToken(true), exp = ls(EXP), out = [], kst = v => String(v || '').slice(5, 16).replace('-', '.').replace('T', ' ');
+  if (!token) out.push('⚠ 토큰: 없음 (잠갔으면 비밀번호를 넣지 않음). "토큰 설정"으로 넣으세요.');
+  else {
+    const r = await apiFetch('git/blobs', { method: 'POST', body: JSON.stringify({ content: 'fc-anyang-seats check', encoding: 'utf-8' }) }, token).catch(() => ({ status: 0 }));
+    out.push(r.ok ? '토큰: 발행할 수 있음' + (exp ? ` (만료 ${exp})` : ' (만료일을 적어 두지 않음)') : r.status === 401 ? '⚠ 토큰: 만료됐거나 잘못됐습니다. 새로 만들어 "토큰 설정"으로 넣으세요.'
+      : [403, 404].includes(r.status) ? '⚠ 토큰: 이 저장소에 쓸 권한이 없습니다 (fc-anyang-seats 의 Contents 를 Read and write 로).' : `⚠ 토큰: 확인하지 못했습니다 (${r.status ? 'GitHub ' + r.status : '연결 안 됨'}).`);
+  }
+  out.push(!lamp.installed ? `⚠ 보내기 스크립트: 신호 없음 (이 ${BROWSER}에 Tampermonkey 와 스크립트가 켜져 있는지 확인)` : (lamp.version || 0) < SCRIPT_VERSION ? `⚠ 보내기 스크립트: ${lamp.version ? lamp.version + '판' : '옛 판'} (맨 위 버튼으로 ${SCRIPT_VERSION}판으로 업데이트)` : `보내기 스크립트: ${lamp.version}판 (최신)`);
+  out.push($('autoPub').checked ? '바로 발행: 켜짐 (숫자가 들어오고 30초 뒤 저절로 발행)' : '바로 발행: 꺼짐 (숫자가 들어와도 "최신 집계 발행"을 직접 눌러야 함)');
+  const d = await fetchData('latest.json').then(r => r.ok ? r.json() : null).catch(() => null);
+  out.push(d ? `지금 발행본: ${d.match?.opponent || '상대 없음'} ${kst(d.match?.kickoff)} 경기, 집계 ${kst(d.updatedAt)} (시험 발행이면 "마지막 발행 지우기")` : '지금 발행본: 없음');
+  note('발행 점검 (발행하지 않았습니다)\n' + out.join('\n'));
+};
 $('unpub').onclick = () => unpublishNow(false);
 $('unpubAll').onclick = () => unpublishNow(true);
 // 숫자가 들어오면 바로 발행: 보내기 스크립트로 등급을 차례로 누르는 동안은 기다렸다가 마지막 입력 30초 뒤 한 번
@@ -1773,12 +1821,14 @@ window.fcIngest = s => {
 // 어느 구역인지: 좌석 칸 속성의 이름 하나 → 화면의 이름 하나 → 화면의 이름(없으면 모든 구역) 중 표의 잔여가 센 남은 칸과 같은 것 하나. 못 정하면 넘김 (묻지 않음)
 // 캡처로 셀 때와 같은 규칙: 표의 잔여와 다르면 안 넣고, 이미 있는 총석은 바꾸지 않음, 미판매로 둔 구역은 그대로. 이 현황판이 방금(10분 안) 글자를 받은 예매 화면일 때만 (다른 구장 현황판이 받지 않게)
 window.fcSeats = v => {
-  if (!editing || !(v?.total > 0) || !Number.isInteger(v.remain) || Date.now() - lamp.got > 600e3) return;
+  if (!editing || !(v?.total > 0) || !Number.isInteger(v.remain)) return;
+  const status = (msg, quiet) => { lamp.seats = { at: Date.now(), remain: v.remain, total: v.total, own: v.own, names: v.names, msg }; drawLamp(); if (!quiet) $('status').textContent = msg; };  // 결과를 램프와 진단 글에도 남김
+  if (Date.now() - lamp.got > 600e3) return status('이 현황판이 최근 10분 안에 받은 글자가 없어 넘김', true);
   const ids = l => [...new Set((Array.isArray(l) ? l : []).map(n => zoneId(String(n))).filter(Boolean))], one = l => l.length === 1 ? l[0] : null, names = ids(v.names);
   const id = one(ids(v.own)) || one(names) || one((names.length ? names : SECTIONS.map(s => s.id)).filter(id => !state.rows[id].off && state.rows[id].remain === v.remain));
   const counted = `남은 ${fmt(v.remain)} / 전체 ${fmt(v.total)}`, r = state.rows[id];
   if (!r) return status(`보내기 스크립트가 좌석 그림을 셌지만(${counted}) 어느 구역인지 몰라 넣지 않았습니다. 그 구역 좌석 그림을 캡처해 넣으세요.`);
-  if (r.off) return;
+  if (r.off) return status(`${nameOf(id)}: 미판매로 둔 구역이라 넘김`, true);
   if (r.remain != null && Math.abs(r.remain - v.remain) > Math.max(2, r.remain * 0.03)) return status(`⚠ 보내기 스크립트가 센 ${nameOf(id)} 남은 칸 ${fmt(v.remain)}석이 잔여 ${fmt(r.remain)}석과 달라 넣지 않았습니다 (센 전체 ${fmt(v.total)}석).`);
   const setMax = r.max == null || r.learned, setRemain = r.remain == null;
   if (setMax) { r.max = v.total; delete r.learned; }
@@ -1789,7 +1839,7 @@ window.fcSeats = v => {
 };
 // 수집 상태 램프: 보내기 스크립트 신호로 정함 (설치됨 → 티켓링크 열림 → 예매 화면 감지 → 숫자 받음)
 // 티켓링크 탭이 여럿이거나 예매 화면이 틀(iframe) 안이면 신호가 여러 곳에서 옴: 보낸 곳마다 따로 두고 가장 앞선 상태를 보여 줌
-const lamp = { installed: 0, version: 0, pings: {}, got: 0, zones: 0, rejected: '' };
+const lamp = { installed: 0, version: 0, pings: {}, got: 0, zones: 0, rejected: '', seats: null };  // seats: 스크립트가 마지막으로 센 좌석과 그 결과
 // 보내기 스크립트 최신 판 (fc-anyang-send.user.js 의 @version 과 같게. 자동 시험이 맞춰 봄). 설치된 판이 낮으면 입력 화면 맨 위 버튼을 눈에 띄게
 const SCRIPT_VERSION = 13;
 const hms = t => new Date(t).toTimeString().slice(0, 8);
@@ -1808,14 +1858,28 @@ function drawLamp() {
     : lamp.installed ? ['wait', `보내기 스크립트 켜짐 (${BROWSER}) · 이 ${BROWSER}에서 연 예매 사이트(${SELLER})가 없음. 다른 브라우저에서 열었다면 현황판도 그 브라우저에서 여세요`]
     : ['', `보내기 스크립트 신호 없음 · 이 ${BROWSER}에 Tampermonkey 와 스크립트(${SCRIPT_VERSION}판)가 켜져 있는지 확인`];
   const old = lamp.installed && (lamp.version || 0) < SCRIPT_VERSION;  // 6판까지는 판 번호를 안 보내 0
-  $('lamp').className = 'edit ' + cls;
+  $('lamp').className = 'edit ' + cls + (lamp.more ? ' more' : '');
   $('lamp').lastChild.textContent = msg + (lamp.rejected ? ` · ${lamp.rejected}` : '') + (old ? ` · 새 판(${SCRIPT_VERSION}판) 있음: 위 '보내기 스크립트 업데이트'를 한 번 누르세요` : '')
-    + (p?.shape ? `\n좌석 그림: ${p.shape}` : '');  // 좌석 그림 구조: 구역 총석 자동 세기 검토용
+    + (p?.shape ? `\n좌석 그림: ${p.shape}` : '')  // 좌석 그림 구조: 구역 총석 자동 세기 검토용
+    + (lamp.seats && now - lamp.seats.at < 600e3 ? `\n스크립트 좌석 세기 ${hms(lamp.seats.at)}: 남은 ${fmt(lamp.seats.remain)} / 전체 ${fmt(lamp.seats.total)}` : '');
   // 스크립트 버튼: 최신이면 판 번호만, 낮거나 신호가 없으면 보라색으로 (누르면 Tampermonkey 가 업데이트 화면을 띄움, 거기서 한 번 더 확인)
   const btn = $('scriptBtn');
   btn.classList.toggle('main', !lamp.installed || old);
   btn.textContent = !lamp.installed ? '보내기 스크립트 설치/업데이트' : old ? `보내기 스크립트 업데이트 (${lamp.version ? lamp.version + '판' : '옛 판'} → ${SCRIPT_VERSION}판)` : `보내기 스크립트 ${lamp.version}판 (최신)`;
 }
+// 진단 글: 숫자가 안 들어오거나 이상할 때 개발자에게 보낼 지금 상태 (주소, 브라우저, 스크립트 판, 램프, 예매 탭 신호와 좌석 그림 구조, 스크립트가 센 좌석, 상태 글, 받은 글자)
+const diagText = () => [`FC안양 현황판 진단 ${localISO().replace('T', ' ')} · ${location.search || '(홈)'} ${VENUE} · ${BROWSER}`,
+  `보내기 스크립트: ${lamp.installed ? (lamp.version || '옛 ') + '판' : '신호 없음'} (최신 ${SCRIPT_VERSION}판) · 숫자 받음: ${lamp.got ? `${hms(lamp.got)} 구역 ${lamp.zones}개` : '없음'}${lamp.rejected ? ' · 안 받은 이유: ' + lamp.rejected : ''}`,
+  '램프: ' + $('lamp').innerText.replace(/\n/g, ' / '),
+  ...Object.values(lamp.pings).map(p => `예매 탭 ${p.site || ''} ${p.where || ''} ${hms(p.at)}${p.hidden ? ' (뒤 탭)' : ''}: ${p.state} · 경기장 '${p.venue || ''}' · 구역 줄 ${p.zones ?? '-'} · 화면에 없는 글자 ${(p.need || []).join(', ') || '없음'}\n  좌석 그림: ${p.shape || '-'}`),
+  lamp.seats ? `스크립트 좌석 세기 ${hms(lamp.seats.at)}: 남은 ${lamp.seats.remain} / 전체 ${lamp.seats.total} · 칸 속성의 이름 ${JSON.stringify(lamp.seats.own || [])} · 화면의 이름 ${JSON.stringify((lamp.seats.names || []).slice(0, 15))}\n  결과: ${lamp.seats.msg}` : '스크립트 좌석 세기: 받은 것 없음',
+  '상태 글: ' + $('status').textContent, '받은 글자 (앞 3,000자):', raw.value.slice(0, 3000)].join('\n');
+$('diag').onclick = async () => {
+  const s = diagText();
+  try { await navigator.clipboard.writeText(s); status('진단 글을 복사했습니다. 개발자에게 붙여 보내 주세요.'); } catch { raw.value = s; status('복사하지 못해 아래 글자 칸에 넣었습니다. 전체를 복사해 보내 주세요.'); }
+};
+$('lamp').onclick = () => { lamp.more = !lamp.more; drawLamp(); };
+$('lamp').title = '누르면 자세히 펼치고 접습니다';
 window.fcPing = v => { if (v.state === 'installed') Object.assign(lamp, { installed: v.at, version: +v.version || 0 }); else lamp.pings[v.id || '-'] = v; drawLamp(); };
 addEventListener('paste', e => {
   if (!editing) return;
@@ -1914,6 +1978,7 @@ let editing = !embed && location.hash === '#edit';
 try { if (!embed) { editing ||= localStorage.getItem(EDIT) === '1'; if (editing) localStorage.setItem(EDIT, '1'); } } catch {}
 document.body.classList.toggle('editing', editing);
 document.body.classList.toggle('embed', embed); document.body.classList.toggle('away', AWAY);
+if (SELLER !== '티켓링크') document.querySelector('.foot').textContent = document.querySelector('.foot').textContent.replace('티켓링크', SELLER);  // 바닥 글의 예매처
 if (AWAY) {
   $('markHead').textContent = '매진 / 미판매';
   document.title = nick(`FC안양 원정 예매현황 (${STADIUMS[STADIUM].name})`); $('opp').disabled = true;

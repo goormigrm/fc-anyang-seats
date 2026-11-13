@@ -653,6 +653,78 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   check('홈은 611구역을 E11 로 바꾸지 않음 (E 구역 없음)', r === '{"R10":26}', r);
   await p.context().close();
 
+  // 11/13: 진단 글 복사, 발행 점검, 램프 접기, 구역 글자가 칸 안에, 추이 가로축 두 줄
+  {
+    let pg = await open(b, { url: URL + '?s=gimcheon#edit' });
+    await pg.context().grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
+    r = await pg.evaluate(async () => {
+      const L = document.getElementById('lamp'), out = {};
+      fcPing({ state: 'installed', version: SCRIPT_VERSION, at: Date.now() });
+      fcPing({ id: 'a', site: '티켓링크', state: 'seat', venue: '김천종합운동장', need: [], zones: 2, at: Date.now(), where: 'www.ticketlink.co.kr/reserve', shape: '캔버스 없음 · SVG 도형 0 · 작은 네모 i.seat 30개 [class=seat] 색 rgb(13, 43, 69) 12' });
+      fcIngest('김천상무 vs FC안양\n김천종합운동장 | 2026.11.07(토) 16:30\n등급 선택\nN11구역\n12 석');
+      fcSeats({ own: ['N11구역'], names: ['N11구역', 'N12구역'], remain: 12, total: 30 });
+      out.clamp = getComputedStyle(L.querySelector('span')).webkitLineClamp + '|' + L.offsetHeight; L.click(); out.more = L.classList.contains('more') + '|' + L.offsetHeight + '|' + /스크립트 좌석 세기 .*남은 12 \/ 전체 30/.test(L.textContent);
+      out.pad = getComputedStyle(document.querySelector('main')).paddingTop;
+      document.getElementById('diag').click(); await new Promise(r => setTimeout(r, 200));
+      out.diag = diagText(); out.st = document.getElementById('status').innerText;
+      return out;
+    });
+    await pg.context().close();
+    check('진단 글 복사: 주소와 경기장, 스크립트 판, 램프, 예매 탭 신호와 좌석 그림 구조, 스크립트가 센 좌석과 결과, 받은 글자', /FC안양 현황판 진단 .*\?s=gimcheon#?.* 김천종합운동장/.test(r.diag) && /보내기 스크립트: 13판 \(최신 13판\) · 숫자 받음: .* 구역 1개/.test(r.diag) && /예매 탭 티켓링크 www\.ticketlink\.co\.kr\/reserve .*: seat · 경기장 '김천종합운동장'/.test(r.diag)
+      && /좌석 그림: 캔버스 없음 · SVG 도형 0 · 작은 네모 i\.seat 30개/.test(r.diag) && /스크립트 좌석 세기 .*남은 12 \/ 전체 30 · 칸 속성의 이름 \["N11구역"\]/.test(r.diag) && /결과: 보내기 스크립트가 좌석 그림을 셌습니다: N11/.test(r.diag) && /N11구역\n12 석/.test(r.diag) && /진단 글을 복사했습니다|아래 글자 칸에 넣었습니다/.test(r.st), r.diag + ' / ' + r.st);
+    check('수집 램프: 두 줄로 접혀 있고 누르면 펼침(스크립트 좌석 세기 줄), 입력 화면 맨 위에 램프 자리', r.clamp.startsWith('2|') && r.more.startsWith('true|') && +r.more.split('|')[1] > +r.clamp.split('|')[1] && r.more.endsWith('|true') && r.pad === '76px', JSON.stringify({ clamp: r.clamp, more: r.more, pad: r.pad }));
+    // 발행 점검: 발행하지 않고 토큰(쓰기 권한), 스크립트 판, 바로 발행, 지금 발행본을 알려 줌
+    const chk = async (blob, token) => {
+      const pg = await open(b, { data: { 'latest.json': { app: 'fc-anyang-seats', updatedAt: '2026-11-01T16:30:00+09:00', match: { opponent: '부천FC1995', kickoff: '2026-11-01T16:30:00+09:00' }, sections: [] } } });
+      const calls = [];
+      await pg.context().route(/api\.github\.com\/.*git\//, r => { calls.push(r.request().method() + ' ' + r.request().url().split('/git/')[1]); return r.fulfill({ status: blob, json: { sha: 'x' } }); });
+      const v = await pg.evaluate(async token => { if (token) localStorage.setItem('fc-anyang-gh-token', token); fcPing({ state: 'installed', version: SCRIPT_VERSION - 1, at: Date.now() }); document.getElementById('pubCheck').click();
+        for (let i = 0; i < 50 && !/발행 점검 \(/.test(document.getElementById('pubNote').textContent); i++) await new Promise(r => setTimeout(r, 100)); return document.getElementById('pubNote').textContent; }, token);
+      await pg.context().close();
+      return v + ' || ' + calls.join(',');
+    };
+    const ok = await chk(201, 'ghp_x'), bad = await chk(401, 'ghp_x'), none = await chk(201, '');
+    check('발행 점검: 토큰 쓰기 확인(파일 조각만 올림, 브랜치는 안 건드림), 만료된 토큰, 토큰 없음, 옛 스크립트, 바로 발행, 지금 발행본', /토큰: 발행할 수 있음/.test(ok) && /⚠ 보내기 스크립트: 12판/.test(ok) && /바로 발행: 꺼짐/.test(ok) && /지금 발행본: 부천FC1995 11\.01 16:30 경기, 집계 11\.01 16:30/.test(ok) && ok.endsWith('|| POST blobs')
+      && /⚠ 토큰: 만료됐거나 잘못됐습니다/.test(bad) && /⚠ 토큰: 없음/.test(none) && none.endsWith('|| '), JSON.stringify({ ok, bad, none }));
+    // 구역 글자가 칸 밖으로 나가지 않음: 가로로 쓴 글자(이름, 예매율)의 네 귀(조금 안쪽)가 그 칸 위에 있는지. 모서리가 세모꼴인 수원삼성, 서울, 비스듬한 좁은 칸이 많은 부천
+    for (const sid of ['suwon', 'seoul', 'bucheon']) {
+      pg = await open(b, { url: URL + '?s=' + sid + '#edit' });
+      await pg.setViewportSize({ width: 1280, height: 1300 });
+      r = await pg.evaluate(() => {
+        SECTIONS.forEach((s, i) => { state.rows[s.id].max ||= 500; state.rows[s.id].remain = i % 7 ? 100 + i : 0; }); document.body.classList.remove('editing'); render(); scrollTo(0, 0);
+        const bad = [], zones = [...document.querySelectorAll('#board path[data-z]')];
+        zones.forEach(el => { const id = el.getAttribute('data-z'); let n = 0;
+          for (let t = el.nextElementSibling; t && t.tagName === 'text' && !t.hasAttribute('transform'); t = t.nextElementSibling) { const q = t.getBoundingClientRect();
+            for (const fx of [0.12, 0.88]) for (const fy of [0.25, 0.75]) if (!document.elementsFromPoint(q.x + q.width * fx, q.y + q.height * fy).some(e => e.getAttribute('data-z') === id)) n++; }
+          if (n) bad.push(id + ':' + n); });
+        return { n: zones.length, flat: document.querySelectorAll('#board path[data-z] + text:not([transform])').length, bad };
+      });
+      await pg.context().close();
+      check(`구역 글자가 칸 안에 (${sid}: 칸 ${r.n}개 중 가로 글자 ${r.flat}개)`, r.flat > 10 && !r.bad.length, JSON.stringify(r));
+    }
+    pg = await open(b);
+    await pg.waitForTimeout(300);
+    r = await pg.evaluate(() => {
+      newGame(); Object.assign(state, { opp: '제주SK', date: '2026-11-28T14:00', at: '2026-11-26T14:00' }); state.rows.R10.remain = 26; state.rows.원정석.remain = 1000;
+      history = ['2026-11-20T11:00', '2026-11-22T20:00', '2026-11-24T09:30', '2026-11-25T18:00', '2026-11-26T09:00'].map((at, i) => ({ at: at + ':00+09:00', opponent: '제주SK', kickoff: '2026-11-28T14:00:00+09:00', booked: 8000 + i * 400, cap: 11542, awayBooked: 100 + i * 20, awayCap: 1235, unknown: 0 })); render();
+      // 가로축 글자(날짜 줄)끼리 겹치지 않는지: 같은 높이의 글자 상자가 서로 닿지 않음
+      const days = [...document.querySelectorAll('#trend text')].filter(t => /^\d\d\.\d\d\(.\)$/.test(t.textContent)).map(t => t.getBoundingClientRect()).filter(q => q.x < innerWidth / 2).sort((a, b) => a.x - b.x);
+      return { n: days.length, overlap: days.some((q, i) => i && q.x < days[i - 1].right + 2), txt: document.getElementById('trend').textContent.includes('14:00 경기 시작') };
+    });
+    await pg.context().close();
+    check('추이 그래프 가로축: 날짜와 시각 두 줄, 점 6개 + 예상이어도 옆 글자와 겹치지 않음', r.n === 7 && !r.overlap && r.txt, JSON.stringify(r));
+  }
+  // 원정 구장의 홈 팀 쪽은 구단 상징 색 (강원 주황, 전북 초록, 김천 빨강, 울산은 기본 파랑), 원정 응원 쪽은 보라 그대로
+  {
+    const out = {};
+    for (const [sid, hostZone, ourZone] of [['gangwon', 'E2', 'S2'], ['jeonbuk', 'E1G', 'S1A'], ['gimcheon', 'W12', 'S12'], ['ulsan', 'E5', 'N2']]) {
+      const pg = await open(b, { url: URL + '?s=' + sid + '#edit' });
+      out[sid] = await pg.evaluate(([h, o]) => { [h, o].forEach(id => Object.assign(state.rows[id], { max: 100, remain: 10 })); render();
+        const fill = id => document.querySelector(`#board [data-z="${id}"]`).getAttribute('fill'); return [fill(h), fill(o), (document.getElementById('board').textContent.match(/쪽 \(같은 구간, (..)\)/) || [])[1]].join(); }, [hostZone, ourZone]);
+      await pg.context().close();
+    }
+    check('원정 구장 홈 팀 쪽은 구단 상징 색(90% 예매 칸): 강원 주황, 전북 초록, 김천 빨강, 울산 파랑 / 원정 응원 쪽은 보라', out.gangwon === '#9c4a08,#3e1a78,주황' && out.jeonbuk === '#145f2c,#3e1a78,초록' && out.gimcheon === '#761212,#3e1a78,빨강' && out.ulsan === '#24508f,#3e1a78,파랑', JSON.stringify(out));
+  }
   // 11/12 점검에서 찾은 버그
   {
     // 원정 화면은 FC안양 경기 글자만: 같은 경기장의 다른 팀 경기, 다른 경기장 글자는 넘김 (안양 원정 숫자를 지우지 않음). 'E14구역' 이 등급 'E 1석' 으로 읽히지 않음
@@ -930,7 +1002,9 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     p = await open(b, { live: true });
     for (const [at, v] of [['2026-11-26T12:30', 6000], ['2026-11-26T12:35', 5900], ['2026-11-27T12:00', 5000]])
       await p.evaluate(([at, v, t, B]) => { fcIngest('FC안양 vs 제주SK\n안양종합운동장 | 2026.11.28(토) 14:00\n일반지정석(2층)\n' + v + ' 석'); state.at = at; return publish(t, B); }, [at, v, token, B]);
-    let h = raw('history.json');
+    const sha = f => { try { return execSync(`gh api "repos/goormigrm/fc-anyang-seats/contents/${f}?ref=${B}" --jq .sha`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return ''; } };
+    let h = raw('history.json'), z = raw('zones.json');
+    check('발행: 구역별 잔여 기록(zones.json)도 추이 점과 같이 남김 (2점, 일반지정석 5900 -> 5000)', z?.length === 2 && z[0].r.일반지정석 === 5900 && z[1].r.일반지정석 === 5000 && z[1].opponent === '제주SK' && raw('prev/zones.json')?.length === 1, JSON.stringify(z));
     check('발행: 10분 안 발행은 점 하나 (3번 발행 -> 2점)', h?.map(x => x.at.slice(11, 16)).join() === '12:35,12:00', JSON.stringify(h));
     const paths = () => execSync(`gh api "repos/goormigrm/fc-anyang-seats/git/trees/${B}?recursive=1" --jq "[.tree[].path]|join(\\",\\")"`, { encoding: 'utf8' });
     check('발행: 그보다 앞 발행본 숫자는 prev/old/ 에 (1 = 바로 그 전)', raw('prev/latest.json')?.updatedAt.startsWith('2026-11-26T12:35') && raw('prev/old/1.json')?.updatedAt.startsWith('2026-11-26T12:30'), paths());
@@ -938,6 +1012,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     h = raw('history.json');
     check('마지막 발행 지우기: prev/old/ 는 그대로 남고 맨 위로 옮겨지지 않음', raw('prev/old/1.json')?.updatedAt.startsWith('2026-11-26T12:30') && !/(^|,)old\//.test(paths()), paths());
     check('마지막 발행 지우기 -> 그 전 발행과 그때 추이', raw('latest.json')?.updatedAt.startsWith('2026-11-26T12:35') && h?.length === 1 && /되돌렸습니다/.test(msg), msg + JSON.stringify(h));
+    check('마지막 발행 지우기: 구역별 기록과 미리보기 그림도 그 전 발행으로', raw('zones.json')?.length === 1 && raw('og.json')?.at.startsWith('2026-11-26T12:35') && sha('og.png') && sha('og.png') === sha('latest.png'), JSON.stringify([raw('zones.json')?.length, raw('og.json')]));
     await p.evaluate(([t, B]) => { fcIngest('FC안양 vs 울산HD\n안양종합운동장 | 2026.12.05(토) 14:00\n일반지정석(2층)\n3000 석'); state.at = '2026-12-04T10:00'; return publish(t, B); }, [token, B]);
     const tree = execSync(`gh api "repos/goormigrm/fc-anyang-seats/git/trees/${B}?recursive=1" --jq "[.tree[].path]|join(\\",\\")"`, { encoding: 'utf8' });
     check('경기가 바뀌면 지난 경기를 games/ 에 보관', /games\/2026-11-28_제주SK\.json/.test(tree), tree);
@@ -945,17 +1020,17 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     await ap.evaluate(([t, B]) => { fcIngest('김천상무 vs FC안양\n김천종합운동장 | 2026.11.07(토) 16:30\nS11구역\n50 석'); return publish(t, B); }, [token, B]);
     check('원정 발행은 구장 폴더에, 홈 발행은 그대로', raw('gimcheon/latest.json')?.match.home === '김천상무' && raw('latest.json')?.match.opponent === '울산HD', '');
     // 링크 미리보기(og.png): 가장 늦은 집계(홈 12/04 10:00)의 그림. 그보다 이른 집계(김천 11/07)를 발행해도 그대로, 더 늦은 집계면 그 구장으로
-    const sha = f => { try { return execSync(`gh api "repos/goormigrm/fc-anyang-seats/contents/${f}?ref=${B}" --jq .sha`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return ''; } };
     const og1 = raw('og.json'), same1 = sha('og.png') && sha('og.png') === sha('latest.png');
     await ap.evaluate(([t, B]) => { state.at = '2026-12-06T09:00'; return publish(t, B); }, [token, B]);
     const og2 = raw('og.json'), same2 = sha('og.png') === sha('gimcheon/latest.png');
     check('링크 미리보기: 가장 늦은 집계의 그림(og.png)을 가리킴, 이른 집계를 발행해도 그대로, 더 늦으면 바뀜', og1?.stadium === 'anyang' && og1.at.startsWith('2026-12-04T10:00') && same1 && og2?.stadium === 'gimcheon' && og2.at.startsWith('2026-12-06T09:00') && same2, JSON.stringify({ og1, same1, og2, same2 }));
     await ap.evaluate(([t, B]) => unpublish(t, true, B), [token, B]);
-    check('원정 발행 모두 지우기는 홈 파일을 건드리지 않음', raw('gimcheon/latest.json') === null && raw('latest.json')?.match.opponent === '울산HD', '');
+    check('원정 발행 모두 지우기는 홈 파일을 건드리지 않음, 미리보기는 남은 발행(홈 12/04)으로', raw('gimcheon/latest.json') === null && raw('latest.json')?.match.opponent === '울산HD' && raw('og.json')?.stadium === 'anyang' && raw('og.json').at.startsWith('2026-12-04T10:00') && sha('og.png') === sha('latest.png'), JSON.stringify(raw('og.json')));
     await ap.context().close();
     await p.evaluate(([t, B]) => unpublish(t, true, B), [token, B]);
     h = raw('history.json');
-    check('발행 모두 지우기: 이번 경기만 지우고 보관과 다른 경기 추이는 남김', raw('latest.json') === null && raw('games/2026-11-28_제주SK.json')?.match.opponent === '제주SK' && h?.every(x => x.opponent === '제주SK'), JSON.stringify(h));
+    check('발행 모두 지우기: 이번 경기만 지우고 보관과 다른 경기 추이, 구역별 기록은 남김, 남은 발행이 없으면 미리보기도 없음', raw('latest.json') === null && raw('games/2026-11-28_제주SK.json')?.match.opponent === '제주SK' && h?.every(x => x.opponent === '제주SK')
+      && raw('zones.json')?.every(x => x.opponent === '제주SK') && raw('og.json') === null, JSON.stringify([h, raw('zones.json'), raw('og.json')]));
     try { execSync(`gh api -X DELETE repos/goormigrm/fc-anyang-seats/git/refs/heads/${B}`, { stdio: 'ignore' }); } catch {}
     await p.context().close();
   }
