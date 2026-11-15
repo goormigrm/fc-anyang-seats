@@ -139,7 +139,8 @@
     <div class="box ocr">
       <h2>스크린샷 인식</h2>
       <p class="hint">티켓링크 '등급/좌석 선택' 캡처 여러 장을 한 번에 고르거나, 끌어다 놓거나, 붙여넣으세요(Ctrl+V). PC 화면은 통째로 복사(Ctrl+A, Ctrl+C)해 붙여넣으면 인식 없이 그대로 들어갑니다. 구역 좌석 그림만 잘라 넣으면 칸을 세어 남은 좌석과 총석을 넣습니다.</p>
-      <div class="row"><label class="btn main" for="file">캡처 고르기 (여러 장)</label></div>
+      <div class="row"><label class="btn main" for="file">캡처 고르기 (여러 장)</label>
+        <label class="check" title="다른 팀 경기 날 그 구장 좌석 그림을 캡처해 구역 총석만 미리 모을 때. 이 화면을 다시 열면 꺼집니다"><input type="checkbox" id="maxOnly">총석만 모으기 (다른 팀 경기 캡처: 잔여, 경기 정보, 발행은 그대로)</label></div>
       <input type="file" id="file" accept="image/*" multiple hidden>
       <div id="status"></div>
       <textarea id="raw" placeholder="인식된 글자 (고친 뒤 아래 버튼으로 다시 채움. 예: R8구역 28석)"></textarea>
@@ -1764,32 +1765,45 @@ async function ocrRun(files) {
       } else parts[id] = [l.at(-1)];
     }
     counted = [...counted.filter(m => !m.id), ...Object.values(parts).flat()];
-    let p = parseText(texts.join(''));
-    // 새 경기인지 먼저 판단: 목록 글자의 경기가 표의 경기와 다르면 여기서 지난 숫자를 비움 (그러지 않으면 새 경기 좌석 그림을 지난 경기 잔여와 견줘 버림)
-    const shotAt = localISO(Math.max(...files.map(f => f.lastModified || Date.now()))), early = hasSeats(p) ? newCapture(p, shotAt) : null;
-    const known = m => p.found[m.id] ?? state.rows[m.id].remain;
-    const skipped = counted.filter(m => !m.id), wrong = counted.filter(m => m.id && known(m) != null && Math.abs(known(m) - m.remain) > Math.max(2, known(m) * 0.03));
-    counted = counted.filter(m => m.id && !wrong.includes(m));
-    texts.push(...counted.filter(m => known(m) == null).map(m => `\n${m.id}구역 ${m.remain}석\n`));
-    raw.value = texts.join('');  // 원래 순서대로 (같은 구역이 여러 장이면 나중 장이 우선)
-    p = parseText(raw.value);
-    // 집계 시각 = 가장 늦게 찍은 캡처 (붙여넣기는 지금). 좌석 숫자를 못 찾았으면 경기 판단은 건너뜀 (지난 숫자를 지우지 않게)
-    // 좌석 그림에서 센 전체 좌석 수는 실제로 센 값이라 최대 좌석으로 (모르던 구역, 더 큰 값일 때)
-    // 센 전체 좌석은 총석이 비어 있을 때(또는 추정값일 때)만 최대 좌석으로. 이미 있으면 바꾸지 않음 (옅은 팔린 칸을 못 세거나 옆 구역 칸이 섞이면 틀려서)
-    const differ = counted.filter(m => { const r = state.rows[m.id]; return r.max != null && !r.learned && m.total !== r.max; });
-    const maxNotes = counted.filter(m => { const r = state.rows[m.id]; return r.max == null || r.learned; })
-      .map(m => { Object.assign(state.rows[m.id], { max: m.total }); delete state.rows[m.id].learned; return m; });
-    // 막힌 줄 후보: 한 번에 물어 사람이 확인하면 그 좌석 수를 이번 경기 총석에서 뺌 (같은 구역, 같은 수는 이 화면에서 한 번만 물음. 표의 '−N' 으로 되돌림)
-    const shut = counted.filter(m => m.blocked && !state.rows[m.id].block && m.blocked < (state.rows[m.id].max ?? m.total) && !askedBlock.has(m.id + ':' + m.blocked));
-    shut.forEach(m => askedBlock.add(m.id + ':' + m.blocked));
-    const cutOff = shut.length && confirm(`통째로 회색인 줄이 있습니다: ${shut.map(m => `${nameOf(m.id)} ${m.blocked}석`).join(', ')} (합 ${fmt(shut.reduce((a, m) => a + m.blocked, 0))}석)\n판매 시작 때부터 막아 둔 줄이면 [확인]: 이번 경기 총석에서 뺍니다 (표의 '−N' 을 누르면 되돌림)\n선예매 등으로 실제 팔린 줄이면 [취소]`) ? shut : [];
-    cutOff.forEach(m => { state.rows[m.id].block = m.blocked; });
-    apply(p, [...(bad.length ? [`읽지 못한 캡처: ${bad.join(', ')}`] : []), ...(cutOff.length ? [`막힌 줄로 보고 이번 경기 총석에서 뺌: ${cutOff.map(m => `${nameOf(m.id)} ${m.blocked}석`).join(', ')}`] : []), ...skipped.map(m => `구역 이름을 몰라 넣지 않은 좌석 그림: 남은 ${m.remain} / 전체 ${m.total}`),
-      ...joined.map(([id, n]) => `${id} 좌석 그림 ${n}장을 더했습니다 (겹치는 줄 없이 나눠 찍었을 때만 맞음).`),
-      ...counted.filter(m => m.dropped).map(m => `${m.id} 좌석 그림: 떨어져 있는 칸 ${m.dropped}개는 옆 구역으로 보고 뺐습니다.`),
-      ...differ.map(m => `${m.id} 좌석 그림 전체 ${m.total}석이 표의 최대 ${state.rows[m.id].max}석과 다릅니다 (표 값 그대로, 센 값이 맞으면 표에서 고치세요).`),
-      ...wrong.map(m => `⚠ ${m.id} 좌석 그림의 남은 칸 ${m.remain}석이 잔여 ${known(m)}석과 달라 넣지 않았습니다 (센 전체 ${m.total}석). 옆 구역 칸이 같이 찍혔으면 그 구역만 잘라 다시 넣으세요.`),
-      ...(counted.length ? [`좌석 그림으로 셈: ${counted.map(m => `${m.id} 남은 ${m.remain} / 전체 ${m.total}`).join(', ')}` + (maxNotes.length ? ' (전체를 최대 좌석으로)' : '')] : []), ...(early ?? (hasSeats(p) ? newCapture(p, shotAt) : []))]);
+    // 총석만 모으기(다른 팀 경기 날 미리): 좌석 그림의 전체 칸 수를 총석으로만 넣음. 잔여, 경기 정보, 집계 시각, 비교 기준은 그대로 두고 발행도 하지 않음
+    // 센 남은 칸은 이 캡처의 목록 글자(그 경기 잔여)와만 견줌 (표의 잔여는 안양 경기 숫자라 견주지 않음). 이미 있는 총석은 바꾸지 않음 (캡처 집계와 같은 규칙)
+    if ($('maxOnly').checked) {
+      const found = parseText(texts.join('')).found, off = m => found[m.id] != null && Math.abs(found[m.id] - m.remain) > Math.max(2, found[m.id] * 0.03);
+      const ok = counted.filter(m => m.id && !off(m)), set = ok.filter(m => state.rows[m.id].max == null || state.rows[m.id].learned), same = ok.filter(m => !set.includes(m));
+      set.forEach(m => { state.rows[m.id].max = m.total; delete state.rows[m.id].learned; });
+      fillTable(set.map(m => m.id)); save(); render();
+      status((set.length ? `총석을 넣었습니다 (잔여, 경기 정보는 그대로): ${set.map(m => `${nameOf(m.id)} ${fmt(m.total)}석`).join(', ')}` : '넣은 총석이 없습니다.')
+        + [...same.map(m => `\n${nameOf(m.id)}: 이미 총석 ${fmt(state.rows[m.id].max)}석이 있어 그대로 둠` + (state.rows[m.id].max !== m.total ? ` (센 전체 ${fmt(m.total)}석과 다름. 맞으면 표에서 고치세요)` : '')),
+          ...counted.filter(off).map(m => `\n⚠ ${nameOf(m.id)} 좌석 그림의 남은 칸 ${m.remain}석이 같이 찍힌 목록의 잔여 ${found[m.id]}석과 달라 넣지 않았습니다 (센 전체 ${m.total}석)`),
+          ...counted.filter(m => !m.id).map(m => `\n구역 이름을 몰라 넣지 않은 좌석 그림: 전체 ${m.total}석`), ...(bad.length ? [`\n읽지 못한 캡처: ${bad.join(', ')}`] : [])].join(''));
+    } else {
+      let p = parseText(texts.join(''));
+      // 새 경기인지 먼저 판단: 목록 글자의 경기가 표의 경기와 다르면 여기서 지난 숫자를 비움 (그러지 않으면 새 경기 좌석 그림을 지난 경기 잔여와 견줘 버림)
+      const shotAt = localISO(Math.max(...files.map(f => f.lastModified || Date.now()))), early = hasSeats(p) ? newCapture(p, shotAt) : null;
+      const known = m => p.found[m.id] ?? state.rows[m.id].remain;
+      const skipped = counted.filter(m => !m.id), wrong = counted.filter(m => m.id && known(m) != null && Math.abs(known(m) - m.remain) > Math.max(2, known(m) * 0.03));
+      counted = counted.filter(m => m.id && !wrong.includes(m));
+      texts.push(...counted.filter(m => known(m) == null).map(m => `\n${m.id}구역 ${m.remain}석\n`));
+      raw.value = texts.join('');  // 원래 순서대로 (같은 구역이 여러 장이면 나중 장이 우선)
+      p = parseText(raw.value);
+      // 집계 시각 = 가장 늦게 찍은 캡처 (붙여넣기는 지금). 좌석 숫자를 못 찾았으면 경기 판단은 건너뜀 (지난 숫자를 지우지 않게)
+      // 좌석 그림에서 센 전체 좌석 수는 실제로 센 값이라 최대 좌석으로 (모르던 구역, 더 큰 값일 때)
+      // 센 전체 좌석은 총석이 비어 있을 때(또는 추정값일 때)만 최대 좌석으로. 이미 있으면 바꾸지 않음 (옅은 팔린 칸을 못 세거나 옆 구역 칸이 섞이면 틀려서)
+      const differ = counted.filter(m => { const r = state.rows[m.id]; return r.max != null && !r.learned && m.total !== r.max; });
+      const maxNotes = counted.filter(m => { const r = state.rows[m.id]; return r.max == null || r.learned; })
+        .map(m => { Object.assign(state.rows[m.id], { max: m.total }); delete state.rows[m.id].learned; return m; });
+      // 막힌 줄 후보: 한 번에 물어 사람이 확인하면 그 좌석 수를 이번 경기 총석에서 뺌 (같은 구역, 같은 수는 이 화면에서 한 번만 물음. 표의 '−N' 으로 되돌림)
+      const shut = counted.filter(m => m.blocked && !state.rows[m.id].block && m.blocked < (state.rows[m.id].max ?? m.total) && !askedBlock.has(m.id + ':' + m.blocked));
+      shut.forEach(m => askedBlock.add(m.id + ':' + m.blocked));
+      const cutOff = shut.length && confirm(`통째로 회색인 줄이 있습니다: ${shut.map(m => `${nameOf(m.id)} ${m.blocked}석`).join(', ')} (합 ${fmt(shut.reduce((a, m) => a + m.blocked, 0))}석)\n판매 시작 때부터 막아 둔 줄이면 [확인]: 이번 경기 총석에서 뺍니다 (표의 '−N' 을 누르면 되돌림)\n선예매 등으로 실제 팔린 줄이면 [취소]`) ? shut : [];
+      cutOff.forEach(m => { state.rows[m.id].block = m.blocked; });
+      apply(p, [...(bad.length ? [`읽지 못한 캡처: ${bad.join(', ')}`] : []), ...(cutOff.length ? [`막힌 줄로 보고 이번 경기 총석에서 뺌: ${cutOff.map(m => `${nameOf(m.id)} ${m.blocked}석`).join(', ')}`] : []), ...skipped.map(m => `구역 이름을 몰라 넣지 않은 좌석 그림: 남은 ${m.remain} / 전체 ${m.total}`),
+        ...joined.map(([id, n]) => `${id} 좌석 그림 ${n}장을 더했습니다 (겹치는 줄 없이 나눠 찍었을 때만 맞음).`),
+        ...counted.filter(m => m.dropped).map(m => `${m.id} 좌석 그림: 떨어져 있는 칸 ${m.dropped}개는 옆 구역으로 보고 뺐습니다.`),
+        ...differ.map(m => `${m.id} 좌석 그림 전체 ${m.total}석이 표의 최대 ${state.rows[m.id].max}석과 다릅니다 (표 값 그대로, 센 값이 맞으면 표에서 고치세요).`),
+        ...wrong.map(m => `⚠ ${m.id} 좌석 그림의 남은 칸 ${m.remain}석이 잔여 ${known(m)}석과 달라 넣지 않았습니다 (센 전체 ${m.total}석). 옆 구역 칸이 같이 찍혔으면 그 구역만 잘라 다시 넣으세요.`),
+        ...(counted.length ? [`좌석 그림으로 셈: ${counted.map(m => `${m.id} 남은 ${m.remain} / 전체 ${m.total}`).join(', ')}` + (maxNotes.length ? ' (전체를 최대 좌석으로)' : '')] : []), ...(early ?? (hasSeats(p) ? newCapture(p, shotAt) : []))]);
+    }
   } catch (e) { status('인식 실패: ' + e.message); }
   await Promise.all(pairs.flat().map(w => w.terminate()));
 }

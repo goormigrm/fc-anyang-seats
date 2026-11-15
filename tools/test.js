@@ -824,6 +824,22 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       /통째로 회색인 줄이 있습니다: S12 20석/.test(y.asked) && y.remain === 55 && y.max === 258 && y.block === 20 && y.cap === 238 && y.booked === 183 && y.chip === '−20' && y.rate === '76%' && y.rec === 20 && /막힌 줄로 보고 이번 경기 총석에서 뺌: S12 20석/.test(y.st) && y.after === '0,258' && y.cleared === 0, JSON.stringify(y));
     check('막힌 줄: 취소하면 그대로 (총석 258, 예매 203)', /통째로 회색인 줄/.test(n.asked) && n.block === 0 && n.cap === 258 && n.booked === 203 && n.chip === '' && n.rec === 0, JSON.stringify(n));
   }
+  // 총석만 모으기(다른 팀 경기 날 미리): 인천 E12 좌석 그림(남은 37 / 전체 87)을 넣어도 총석만 들어가고 잔여, 경기 정보, 집계 시각, 비교 기준, 발행은 그대로. 같이 찍힌 목록 잔여와 다르면 안 넣음
+  {
+    const f = await shot('grid_maxonly', grid('E12', 37, 50, '#0d2b45', 14, 0), 30 * 2 + 20 * 14 * 1.5 + 14 * 1.4 + 40, 120 + 5 * 14 * 1.5);
+    p = await open(b, { url: URL + '?s=incheon#edit' });
+    const asked = [];
+    p.on('dialog', d => { asked.push(d.message()); d.type() === 'prompt' ? d.accept('E12') : d.accept(); });
+    const before = await p.evaluate(() => { Object.assign(state, { date: '2026-12-05T14:00', at: '2026-12-01T10:00' }); state.rows.E13.remain = 5; document.getElementById('autoPub').checked = true; document.getElementById('maxOnly').checked = true; save(); return JSON.stringify([state.date, state.at, state.base]); });
+    await p.setInputFiles('#file', f);
+    await p.evaluate(() => window.ocrDone);
+    r = await p.evaluate(() => ({ E12: [state.rows.E12.remain, state.rows.E12.max].join('/'), E13: state.rows.E13.remain, keep: JSON.stringify([state.date, state.at, state.base]), st: document.getElementById('status').innerText, pub: document.getElementById('pubNote').textContent }));
+    await p.context().close();
+    p = await open(b, { url: URL + '?s=incheon#edit' });
+    const off = await p.evaluate(() => document.getElementById('maxOnly').checked);
+    await p.close();
+    check('총석만 모으기: 총석만 넣고(E12 87) 잔여, 경기 정보, 집계 시각, 비교 기준, 발행은 그대로, 다시 열면 꺼짐', r.E12 === '/87' && r.E13 === 5 && r.keep === before && /총석을 넣었습니다 \(잔여, 경기 정보는 그대로\): E12 87석/.test(r.st) && !/발행/.test(r.pub) && !asked.some(m => /회색인 줄/.test(m)) && off === false, JSON.stringify({ r, before, asked, off }));
+  }
   // 남은 칸이 많은 좌석 그림(실제 W23 처럼): 작은 회색 구역 이름, 양쪽 줄 번호, 칸 사이 GATE 상자, 화면 배율 100~150%
   // 통째로는 이름을 못 읽는 경우가 있어 칸 바로 위 이름 자리만 잘라 읽음. 이름이 없으면 사람에게 물음
   {
