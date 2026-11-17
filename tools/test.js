@@ -485,7 +485,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   {
     const H2 = (host, venue) => `${host} vs FC안양\n${venue} | 2026.11.29(일) 14:00\n등급 선택\n`;
     const cases = [
-      ['jeonbuk', 94, 9, H2('전북현대', '전주월드컵경기장') + 'S원정\n500 석\nS-1C구역\n120 석\nE일반2A구역\n30 석\n1A구역\n7 석', { S1C: 120, E2A: 30 }, '1A'],
+      ['jeonbuk', 99, 9, H2('전북현대', '전주월드컵경기장') + 'S원정\n500 석\nS-1C구역\n120 석\nE일반2A구역\n30 석\n1A구역\n7 석', { S1C: 120, E2A: 30 }, '1A'],
       ['pohang', 61, 7, H2('포항스틸러스', '포항스틸야드') + '청암E1구역\n100 석\nA1구역\n50 석\n데크석\n20 석', { E1: 100, A1: 50, 데크석: 20 }, ''],
       ['seoul', 69, 3, H2('FC서울', '서울월드컵경기장') + 'E-A구역\n80 석\nSC구역\n40 석', { EA: 80, SC: 40 }, ''],
       ['ulsan', 106, 11, H2('울산HD', '울산문수축구경기장') + 'N1구역\n120 석\nE13구역\n50 석\n프리미엄 테이블석\n10 석', { N1: 120, E13: 50, 프리미엄테이블석: 10 }, ''],
@@ -746,6 +746,15 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     });
     await pg.context().close();
     check('발행한 총석을 기본 총석으로 받음 (코드 값보다 우선, 사람이 고친 칸은 그대로, 총석 집계 화면에 발행 시각)', r.a === '128,1500,70,1500' && r.b === '128,63' && /발행한 총석 3개 구역 \(11\.16 14:00\)/.test(r.st), JSON.stringify(r));
+  }
+  // 전북(11/17 티켓링크 화면): 구역 줄이 'W-1K 90 석'(하이픈, '구역' 글자 없음). A 테이블과 A 커플이 둘 다 구역 'W-1K'라 앞의 등급 줄로 칸을 가림. W 1층에 H 테이블 1F, A 테이블 1K, W 패밀리 1L, 커플 칸
+  {
+    const pg = await open(b, { url: URL + '?s=jeonbuk#edit' });
+    r = await pg.evaluate(() => { const H = '전북현대 vs FC안양\n전주월드컵경기장 | 2026.12.05(토) 14:00\n등급 선택\n', f = t => JSON.stringify(parseText(H + t).found);
+      return { table: f('S 중립\n3354 석\nA 테이블\n90 석\nW-1K\n90 석\nA 커플\n0 석\nW 패밀리\n8 석'), couple: f('A 테이블 90 석\nA 커플 5 석\nW-1K 5 석\nH 테이블 11 석\nW-1F 11 석\nS-1C 120 석'),
+        ids: ['W1F', 'W1K', 'W1L', 'W1F커플', 'W1K커플'].every(id => state.rows[id]) + '|' + ['W-1K', 'A 커플', 'w1l'].map(zoneId).join() }; });
+    await pg.context().close();
+    check("전북: 'W-1K 90 석' 줄을 받음, 같은 W-1K 도 A 테이블 아래는 테이블 칸, A 커플 아래는 커플 칸, W 1층에 1F, 1K, 1L 과 커플 칸", r.table === '{"W1K":90,"W1K커플":0}' && r.couple === '{"W1K커플":5,"W1F":11,"S1C":120}' && r.ids === 'true|W1K,W1K커플,W1L', JSON.stringify(r));
   }
   // 11/12 점검에서 찾은 버그
   {

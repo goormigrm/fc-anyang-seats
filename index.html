@@ -207,7 +207,8 @@ const STADIUMS = {
       cells(['N4', 'N3', 'N2', 'N1'], -300, -130, 50, 65, true);
       DECOR.push(['기자석', 4, 5, ...T1], ['VIP', 3.96, 5.04, ...T2], ['', 3.92, 5.08, ...T3]);
     } },
-  // 전주월드컵경기장 (전북 좌석도): 층마다 1(아래), 테이블 줄, 2(위). E 1H~1A(1E, 1D 센터), N, S 는 1층 한 줄, 테이블 줄, 2층.
+  // 전주월드컵경기장 (전북 좌석도): 층마다 1(아래), 테이블 줄, 2(위). E 1H~1A(1E, 1D 센터), N, S 는 1층 한 줄, 테이블 줄, 2층. W 1층은 앞뒤 두 줄(아래 설명)
+  // 티켓링크 구역 표기는 'W-1K'(하이픈, '구역' 글자 없음). 테이블, 커플 등급(W 테이블, E 테이블, 코너 테이블, A/H 커플)이 어느 구역 이름으로 나오는지는 아직 모름
   // S 1C~1A, 2F~2B 줄과 2E~2A 가 S원정. 모서리 네 곳은 코너테이블(가~아)
   // 원본은 테이블 줄, 2층 모서리가 비어 있음: 가운데 칸은 원본 자리 그대로 두고 양 끝 칸만 모서리 대각선 통로 앞까지 늘려 회색 빈 곳을 줄임 (스탠드 두께는 원본 비율, 지도 높이 끝까지)
   jeonbuk: { color: 'green', venue: '전주월드컵경기장', host: '전북현대', name: '전북', geo: { kx: 0.95, c0: 5, chamfer: true, r: [12, 168], s: 1.35 },
@@ -219,7 +220,16 @@ const STADIUMS = {
       const ids = (p, s) => s.split(' ').map(x => x === '-' ? null : p + x);
       arc(ids('E', '1H 1G 1F 1E 1D 1C 1B 1A'), 0, 1, T1); row(0, ids('E', '2R 2P 2M 2K 2H 2F 2D 2B'), 1 / 8, 7 / 8, TT); row(0, ids('E', '2S 2Q 2N 2L 2J 2G 2E 2C 2A'), 0, 1, T2);
       arc(ids('S', '1F 1E 1D 1C 1B 1A'), 2, 3, T1, ours); row(2, ids('S', '2M 2K 2H 2F 2D 2B'), 1 / 6, 5 / 6, TT, ours); row(2, ids('S', '2N 2L 2J 2G - 2E 2C 2A'), -0.05, 1.05, T2, ours);
-      arc(ids('W', '1Q 1P 1N 1M 1J 1H 1G 1D 1C 1B 1A'), 4, 5, T1); row(4, ['W2R', 'W2P', [null, 7, 'W테이블'], 'W2D', 'W2B'], 1 / 11, 10 / 11, TT); row(4, ids('W', '2S 2Q 2N 2L - 2G 2E 2C 2A'), 0, 1, T2);
+      // W 1층(원본 좌석도, 11/17 티켓링크 화면): 양 끝 W밸류 1A, 1B 와 W일반 1P, 1Q 는 층 전체. 가운데는 앞줄(벤치 뒤 1C, 1D / 1M, 1N, 그 사이는 선수 통로)과
+      // 뒷줄(H 테이블 1F, W센터 1G~1J, A 테이블 1K, W 패밀리 1L). 테이블 칸 앞쪽 띠는 커플석. f = 화면 왼쪽부터의 위치 0~1 (아래쪽 면은 u 가 오른쪽에서 왼쪽으로 가서 u = 5 - f)
+      // 티켓링크는 A 테이블과 A 커플을 둘 다 구역 'W-1K'로 적음(좌석은 따로): 커플 칸은 of(같은 구역 이름), when(그 줄 앞의 등급 이름)으로 가려 받음. H 쪽(1F)은 원본 좌석도가 A 쪽과 대칭이라 같은 방식으로 둠(티켓링크 화면은 아직 못 봄)
+      const wrow = (list, T) => list.forEach(([id, f0, f1]) => id ? arc([id], 5 - f1, 5 - f0, T) : DECOR.push(['', 5 - f1, 5 - f0, ...T]));
+      wrow([['W1A', 0, 0.125], ['W1B', 0.125, 0.25], ['W1P', 0.75, 0.875], ['W1Q', 0.875, 1]], T1);
+      wrow([['W1C', 0.25, 0.355], ['W1D', 0.355, 0.46], [null, 0.46, 0.54], ['W1M', 0.54, 0.645], ['W1N', 0.645, 0.75]], [14, 28]);
+      wrow([['W1G', 0.4, 0.467], ['W1H', 0.467, 0.533], ['W1J', 0.533, 0.6], ['W1L', 0.7, 0.75]], [31, 66]);
+      wrow([['W1F커플', 0.25, 0.4], ['W1K커플', 0.6, 0.7]], [31, 43]); wrow([['W1F', 0.25, 0.4], ['W1K', 0.6, 0.7]], [46, 66]);
+      SECTIONS.forEach(x => { const m = { W1F커플: ['H 커플', 'W1F'], W1K커플: ['A 커플', 'W1K'] }[x.id]; if (m) Object.assign(x, { name: m[0], of: m[1], when: /커플/ }); });
+      row(4, ['W2R', 'W2P', [null, 7, 'W테이블'], 'W2D', 'W2B'], 1 / 11, 10 / 11, TT); row(4, ids('W', '2S 2Q 2N 2L - 2G 2E 2C 2A'), 0, 1, T2);
       arc(ids('N', '1F 1E 1D 1C 1B 1A'), 6, 7, T1); row(6, ids('N', '2M 2K 2H 2F 2D 2B'), 1 / 6, 5 / 6, TT); row(6, ['N2N', 'N2L', 'N2J', ['N2G', 2], 'N2E', 'N2C', 'N2A'], -0.05, 1.05, T2);
       [['라', '마'], ['바', '사'], ['아', '가'], ['나', '다']].forEach((p, i) => arc(p.map(x => '코너' + x), 7 + i * 2, 8 + i * 2, T1));
       SECTIONS.forEach(x => { if (x.id.startsWith('코너')) Object.assign(x, { name: '코너 ' + x.id.slice(2), alias: ['코너테이블' + x.id.slice(2)] }); });
@@ -486,6 +496,13 @@ function parseText(text) {
     const id = zoneId(n);
     if (id) add(id, +v); else missZones.push(n);
   }
+  // '구역' 글자 없이 '이름 N 석'으로 나오는 구장(전북 'W-1K 90 석', 하이픈 포함): 이름이 현황판 칸과 맞는 줄만
+  // 같은 구역 이름이 등급마다 따로 나오면(전북 'W-1K': A 테이블 아래와 A 커플 아래) 바로 앞 등급 줄의 이름으로 칸을 가림 (칸의 of, when)
+  if (AWAY) { let grade = '';
+    for (const [, raw, v] of t.matchAll(/^[^\n0-9A-Za-z가-힣]*((?:\d*[A-Za-z가-힣·-])[^\n]{0,24}?)[ \t]*\n?[ \t]*(\d+)[ \t]*석/gm)) {
+      const n = raw.trim(), id = /^[0-9A-Za-z가-힣·-]{1,14}$/.test(n) && zoneId(n);
+      if (id) add(SECTIONS.find(x => x.of === id && x.when.test(grade))?.id || id, +v); else grade = n;
+    } }
   // 놀티켓 등급 목록은 구역 범위와 합계만 줌('2층 E석(E15~19)(GATE:3A,3B)' 다음 줄 1191): 그 구역들의 합계로 두고 캡처로 센 구역 합과 맞춰 봄
   if (AWAY) for (const [, n, p, a, z, v] of t.matchAll(/^([^\n]*?\(([A-Z]{1,2})(\d{1,2})\s*~\s*[A-Z]{0,2}(\d{1,2})\)[^\n]*)\n[ \t]*(\d{1,6})[ \t]*$/gm)) {
     const ids = Array.from({ length: Math.max(0, z - a + 1) }, (_, i) => p + (+a + i)).filter(id => state.rows[id]);
@@ -1721,6 +1738,7 @@ async function readShot(f, first, kor, eng, counted = []) {
   const withMap = async text => {
     if (/등급|선택|단계|구\s*역/.test(text)) return text;
     const m = await seatMap(bmp, eng, false);
+    if (m?.id) m.id = SECTIONS.find(x => x.of === m.id && x.when.test(text))?.id || m.id;  // 그림의 이름은 같아도(전북 '커플석A [W1K]') 한글 글자로 칸을 가림
     if (m) counted.push(m);  // 숫자는 인식이 다 끝난 뒤 목록 글자와 맞춰 보고 넣음
     return text;
   };
