@@ -162,7 +162,7 @@
       </table></div>
     </div>
     <details class="box more">
-      <summary>그 밖의 기능 (받은 글자, 진단, 표 지우기, 발행 지우기, 토큰, 저장, 비교)</summary>
+      <summary>그 밖의 기능 (받은 글자, 진단, 표 지우기, 발행 지우기, 토큰, 저장, 비교, 시험 페이지)</summary>
       <h2>받은 글자</h2>
       <textarea id="raw" placeholder="받거나 인식한 글자 (고친 뒤 아래 버튼으로 다시 채움. 예: R8구역 28석)"></textarea>
       <div class="row"><button id="reparse">이 글자로 다시 채우기</button><button id="diag" title="숫자가 안 들어오거나 이상할 때: 램프, 예매 탭 신호, 스크립트가 센 좌석, 받은 글자를 한 번에 복사해 개발자에게 보냅니다">진단 글 복사</button></div>
@@ -176,6 +176,8 @@
       <div class="row"><button id="saveJson">이번 집계 저장</button><button id="loadBtn">저장한 집계 열기</button><input type="file" id="loadJson" accept=".json,application/json" hidden>
         <button id="baseNow">지금 숫자를 기준으로</button><button id="baseLoad">저장한 집계를 기준으로</button><button id="baseClear">비교 끄기</button><input type="file" id="baseFile" accept=".json,application/json" hidden></div>
       <p class="hint">숫자 전체를 파일(JSON)로 저장하고 다시 엽니다. 비교 기준 이후 팔린 좌석 합은 요약 글과 발행 데이터에 나옵니다.</p>
+      <h2>시험 페이지</h2>
+      <p class="hint" id="testPages"></p>
     </details>
   </div>
   <svg id="trend" role="img" aria-label="예매된 좌석 추이" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 280" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif"></svg>
@@ -2176,6 +2178,10 @@ if (AWAY) {
 const toggleEdit = () => { try { localStorage.setItem(EDIT, editing ? '0' : '1'); } catch {} location.replace(location.pathname + location.search); };
 addEventListener('keydown', e => { if (!embed && e.ctrlKey && e.shiftKey && e.code === 'KeyE') { e.preventDefault(); toggleEdit(); } });
 $('viewMode').onclick = toggleEdit;
+// 시험 페이지(안양 경기가 아닌 경기의 시험 집계)로 가는 링크: 보기 화면에는 없고 입력 화면 '그 밖의 기능'에만. 새 시험 페이지를 만들면 여기에 [구장, 원정 팀] 한 줄
+const TEST_PAGES = [['jeonbuk', 'seoul'], ['incheon', 'ulsan'], ['suwon', 'gyeongnam']];
+$('testPages').innerHTML = [...TEST_PAGES.map(([s, t]) => [`?s=${s}&test=${t}`, `${STADIUMS[s].host} vs ${(STADIUMS[t] || GUESTS[t]).host}`]), ['./', 'FC안양 현황판 (시험 아님)']]
+  .map(([q, n]) => `<a href="${q}#edit">${esc(nick(n))}</a>`).join(' · ');
 portrait.addEventListener('change', render);
 if (editing) {
   syncOff(); syncInputs(); fillTable(); render(); loadHistory(); loadMax(); tokenInfo(); checkUnpublished(); drawLamp(); setInterval(drawLamp, 2000);
