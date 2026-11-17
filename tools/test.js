@@ -485,7 +485,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   {
     const H2 = (host, venue) => `${host} vs FC안양\n${venue} | 2026.11.29(일) 14:00\n등급 선택\n`;
     const cases = [
-      ['jeonbuk', 99, 9, H2('전북현대', '전주월드컵경기장') + 'S원정\n500 석\nS-1C구역\n120 석\nE일반2A구역\n30 석\n1A구역\n7 석', { S1C: 120, E2A: 30 }, '1A'],
+      ['jeonbuk', 103, 9, H2('전북현대', '전주월드컵경기장') + 'S원정\n500 석\nS-1C구역\n120 석\nE일반2A구역\n30 석\n1A구역\n7 석', { S1C: 120, E2A: 30 }, '1A'],
       ['pohang', 61, 7, H2('포항스틸러스', '포항스틸야드') + '청암E1구역\n100 석\nA1구역\n50 석\n데크석\n20 석', { E1: 100, A1: 50, 데크석: 20 }, ''],
       ['seoul', 69, 3, H2('FC서울', '서울월드컵경기장') + 'E-A구역\n80 석\nSC구역\n40 석', { EA: 80, SC: 40 }, ''],
       ['ulsan', 106, 11, H2('울산HD', '울산문수축구경기장') + 'N1구역\n120 석\nE13구역\n50 석\n프리미엄 테이블석\n10 석', { N1: 120, E13: 50, 프리미엄테이블석: 10 }, ''],
@@ -775,6 +775,29 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     await pg.context().close();
     check('전북 실제 화면 흐름: 등급 아래 펼친 구역 줄(W-1G 등, 줄 나뉨)을 스크립트가 보내고, W-1K 는 A 테이블 / A 커플 칸으로 가려 넣음, 없는 구역(W-1E)은 알림, 등급 찌꺼기 없음',
       /W-1K\n90 석\nA 커플\n0 석\n✓ W-1K\n0 석/.test(sent) && r.k.ok && r.v === '36,80,50,90,0,8,40' && /현황판에 없는 구역 이름: W-1E/.test(r.st) && !/[^가-힣]K 90석|등급: .*\bK 90/.test(r.st), JSON.stringify({ sent, r }));
+  }
+  // 전북 테이블 줄(11/17): W 테이블 아래 W-2B~W-2R 8개(W2F~W2M 칸 추가). E 2B 처럼 한 구역에 앞줄 테이블석과 뒷줄 일반석이 같은 이름이면 한 칸에서 'E 테이블' 아래 숫자와 'E 일반' 아래 숫자를 더함.
+  // 한쪽만 받으면 알림, 다른 쪽을 받으면 더함, 테이블만 다시 받으면 그쪽만 바뀜, 좌석 그림(블록 전체 'E2B구역 N석')이나 손으로 넣은 잔여는 블록 전체
+  {
+    const pg = await open(b, { url: URL + '?s=jeonbuk#edit' });
+    r = await pg.evaluate(() => { const H = '전북현대 vs FC안양\n전주월드컵경기장 | 2026.12.05(토) 14:00\n등급 선택\n', st = () => document.getElementById('status').innerText, E = () => state.rows.E2B.remain, out = {};
+      fcIngest(H + 'W 테이블\n187 석\nW-2B\n8 석\nW-2D\n19 석\n✓ W-2F\n40 석\nW-2H\n14 석\nW-2K\n24 석\nW-2M\n48 석\nW-2P\n19 석\nW-2R\n15 석'); out.w = ['W2F', 'W2H', 'W2K', 'W2M', 'W2B'].map(id => state.rows[id].remain).join();
+      fcIngest(H + 'E 테이블\n150 석\n✓ E-2B\n13 석'); out.a = E() + '|' + /E2B: 테이블석과 일반석 중 테이블석만 받음/.test(st());
+      fcIngest(H + 'E 일반\n7155 석\nE-2A\n300 석\n✓ E-2B\n40 석'); out.b = E() + '|' + state.rows.E2A.remain + '|' + /테이블석만 받음/.test(st());
+      fcIngest(H + 'E 테이블\n150 석\n✓ E-2B\n10 석'); out.c = E();
+      fcIngest(H + 'E2B구역\n45 석'); out.d = E() + '|' + !!state.rows.E2B.parts;
+      fcIngest(H + 'E 테이블\n150 석\n✓ E-2B\n9 석'); const e = document.querySelector('tr[data-id=E2B] [data-k=remain]'); e.value = 60; e.dispatchEvent(new Event('input', { bubbles: true })); out.e = E() + '|' + !!state.rows.E2B.parts;
+      return out; });
+    await pg.context().close();
+    check('전북 테이블 줄: W-2F~W-2M 칸, E2B 는 E 테이블(13)과 E 일반(40)을 더해 53, 한쪽만이면 알림, 테이블만 다시 받으면 50, 좌석 그림(블록 전체)과 손으로 넣은 잔여는 그대로', r.w === '40,14,24,48,8' && r.a === '13|true' && r.b === '53|300|false' && r.c === 50 && r.d === '45|false' && r.e === '60|false', JSON.stringify(r));
+  }
+  // 전북 코너 테이블 목록(11/17 사용자 화면): '코너 테이블' 아래 '가구역'~'사구역' -> 코너 가~사 칸
+  {
+    const pg = await open(b, { url: URL + '?s=jeonbuk#edit' });
+    r = await pg.evaluate(() => { fcIngest('전북현대 vs FC안양\n전주월드컵경기장 | 2026.12.05(토) 14:00\n등급 선택\n코너 테이블\n368 석\n가구역\n75 석\n나구역\n21 석\n✓ 다구역\n18 석\n라구역\n35 석\n마구역\n64 석\n바구역\n72 석\n사구역\n83 석\n원정석 코너 테이블\n42 석');
+      return ['가', '나', '다', '라', '마', '바', '사'].map(x => state.rows['코너' + x].remain).join() + '|' + /현황판에 없는 구역/.test(document.getElementById('status').innerText) + '|' + ['가구역', '코너 테이블 (다)', '코너 다'].map(zoneId).join(); });
+    await pg.context().close();
+    check("전북 코너 테이블: '가구역'~'사구역' 줄이 코너 가~사 칸으로 (합 368), 좌석 그림 제목 '코너 테이블 (다)'도", r === '75,21,18,35,64,72,83|false|코너가,코너다,코너다', r);
   }
   // 전북 코너 테이블 좌석 그림(11/17): 제목이 한글 '코너 테이블 (아)'라 영문으로 못 읽음 -> 한글 인식 글자의 줄에서 구역을 찾음. 그래도 모르면 묻는 창에 표의 이름 그대로('코너 아') 넣으면 받음, 없는 이름이면 다시 물음
   {
