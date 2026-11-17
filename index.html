@@ -1459,9 +1459,20 @@ const loadMax = () => fetchData('max.json', MAXDATA).then(r => r.ok ? r.json() :
   if (n) { fillTable(); save(); render(); }
 }).catch(() => {});
 // 입력 화면을 열 때: 보기 화면(발행본)보다 늦은 숫자가 이 브라우저에 있으면 알림 (11/17: 입력 화면 7%, 보기 화면 37% — 그 뒤 받은 잔여를 아직 발행하지 않은 것)
-const checkUnpublished = () => fetchData('latest.json').then(r => r.ok ? r.json() : null).then(d => {
+// 입력 화면을 열 때 이 브라우저 숫자와 발행본을 견줌. 이 브라우저가 더 나중이면 발행하지 않은 숫자가 있다고 알림.
+// 이 브라우저에 구역 숫자가 없거나 발행본이 더 나중이면(다른 기기에서 발행) 발행본을 입력 화면으로 불러옴: 미판매, 막힌 줄, 비교 기준까지
+// (11/18 사용자: 다른 노트북에서 발행한 포항전이 입력 화면에서는 비고 미판매도 처음 값. 그대로 집계해 발행하면 찍은 구역만 남은 숫자로 덮어씀)
+// 이 브라우저에 있던 숫자는 '지난 경기 숫자 되살리기'로 되돌릴 수 있게 남기고, 발행본에 없는 총석은 이 브라우저 값을 둠
+const checkUnpublished = () => fetchData('latest.json').then(r => r.ok ? r.json() : null).then(async d => {
   const pub = String(d?.updatedAt || '').slice(0, 16), had = SECTIONS.some(s => state.rows[s.id].remain != null), t = v => v.slice(5).replace('-', '.').replace('T', ' ');
-  if (had && state.at && state.at > pub) note(`발행하지 않은 숫자가 있습니다: 이 화면은 ${t(state.at)} 집계, 보기 화면은 ${pub ? t(pub) + ' 발행본' : '아직 발행 없음'}. 확인한 뒤 "현황 발행"을 누르세요.`);
+  if (had && state.at && state.at > pub) return note(`발행하지 않은 숫자가 있습니다: 이 화면은 ${t(state.at)} 집계, 보기 화면은 ${pub ? t(pub) + ' 발행본' : '아직 발행 없음'}. 확인한 뒤 "현황 발행"을 누르세요.`);
+  if (!pub || had && state.at === pub) return;
+  const mx = Object.fromEntries(SECTIONS.map(s => [s.id, state.rows[s.id].max]));
+  if (had) { try { localStorage.setItem(BACKUP, JSON.stringify(state)); } catch {} $('restore').hidden = false; }
+  await loadPublished();
+  SECTIONS.forEach(s => { if (state.rows[s.id].max == null && mx[s.id] != null) state.rows[s.id].max = mx[s.id]; });
+  saveOff(); save(); syncInputs(); fillTable(); render();
+  note(`발행본(${t(pub)} 집계)을 불러왔습니다: 다른 기기에서 발행한 숫자와 미판매를 이어서 씁니다.` + (had ? ' 이 브라우저에 있던 숫자는 "지난 경기 숫자 되살리기"로 되돌릴 수 있습니다.' : ''));
 }).catch(() => {});
 // 할 일 고르기: 현황 집계(기본) / 총석 집계. 총석 집계 화면에서는 캡처가 총석만 채우고, 잔여 글자(보내기 스크립트, 붙여넣기)는 받지 않음. 화면을 다시 열면 현황 집계
 let maxMode = false;

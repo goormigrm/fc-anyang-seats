@@ -765,6 +765,18 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
         ['E4', 'N3'].forEach(id => Object.assign(state.rows[id], { max: 100, remain: 10 })); render(); const f = id => document.querySelector(`#board [data-z="${id}"]`).getAttribute('fill');
         return [k.ok, state.rows.E3.remain, document.title, f('E4'), f('N3'), /노랑 = 울산 원정석 쪽/.test(document.getElementById('board').textContent)].join(); });
       await pg.context().close(); }
+    // 다른 기기에서 발행(11/18 사용자, 포항): 이 브라우저에 숫자가 없거나 발행본이 더 나중이면 입력 화면이 발행본(미판매 포함)을 불러옴, 이 브라우저가 더 나중이면 그대로
+    { const PUB = { app: 'fc-anyang-seats', version: 1, updatedAt: '2026-11-17T20:12:00+09:00', match: { kickoff: '2026-11-21T14:00:00+09:00' }, sections: [{ id: 'A1', remain: 261, max: 300 }, { id: 'E7', remain: null, unsold: true }] };
+      const pg = await open(b, { url: URL + '?s=pohang#edit', data: { 'pohang/latest.json': PUB } }); await pg.waitForTimeout(800);
+      const f = () => [state.rows.A1.remain, state.rows.A1.max, JSON.parse(localStorage.getItem(OFFKEY)).join(), state.at, !$('restore').hidden].join();
+      out.dev = [await pg.evaluate(f)];
+      await pg.evaluate(() => { const s = JSON.parse(localStorage.getItem(KEY)); Object.assign(s, { at: '2026-11-17T10:00' }); s.rows.A1 = { remain: 5, max: 38 }; localStorage.setItem(KEY, JSON.stringify(s)); localStorage.setItem(OFFKEY, '[]'); });
+      await pg.reload(); await pg.waitForTimeout(800); out.dev.push(await pg.evaluate(f));
+      await pg.evaluate(() => { const s = JSON.parse(localStorage.getItem(KEY)); Object.assign(s, { at: '2026-11-18T09:00' }); s.rows.A1 = { remain: 5, max: 38 }; localStorage.setItem(KEY, JSON.stringify(s)); });
+      await pg.reload(); await pg.waitForTimeout(800); out.dev.push(await pg.evaluate(() => [state.rows.A1.remain, state.rows.A1.max, state.at, /발행하지 않은 숫자/.test(document.getElementById('note').innerText)].join()));
+      await pg.context().close(); }
+    check('다른 기기에서 발행: 입력 화면이 발행본(A1 261/300, 미판매 E7)을 불러옴, 옛 숫자는 되살리기로 남김, 이 브라우저가 더 나중이면 그대로 두고 알림',
+      out.dev.join(' / ') === '261,300,E7,2026-11-17T20:12,false / 261,300,E7,2026-11-17T20:12,true / 5,38,2026-11-18T09:00,true', out.dev.join(' / '));
     // 인천 원정석 N1~N7: N7 은 평소 미판매라 처음 열 때와 새 경기에서 미판매로 시작, 0석이 와도 그대로, 잔여가 보이면 알림, 사람이 끄면 받음
     { const pg = await open(b, { url: URL + '?s=incheon#edit' });
       out.n7 = await pg.evaluate(() => { const H = '인천 유나이티드 vs FC안양\n인천축구전용경기장 | 2026.12.05(토) 14:00\n등급 선택\n원정석\n1142 석\nN1구역\n144 석\nN6구역\n292 석\n', st = () => document.getElementById('status').innerText, o = [state.rows.N7.off];
