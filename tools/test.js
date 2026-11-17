@@ -507,6 +507,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     const H2 = (host, venue) => `${host} vs FC안양\n${venue} | 2026.11.29(일) 14:00\n등급 선택\n`;
     const cases = [
       ['jeonbuk', 104, 11, H2('전북현대', '전주월드컵경기장') + 'S원정\n500 석\nS-1C구역\n120 석\nE일반2A구역\n30 석\n1A구역\n7 석', { S1C: 120, E2A: 30 }, '1A'],
+      ['incheon', 50, 1, H2('인천유나이티드', '인천축구전용경기장') + '원정석\n500 석\nE3구역\n90 석\nV1구역\n10 석', { 원정석: 500, E3: 90, V1: 10 }, ''],
       ['pohang', 61, 7, H2('포항스틸러스', '포항스틸야드') + '청암E1구역\n100 석\nA1구역\n50 석\n데크석\n20 석', { E1: 100, A1: 50, 데크석: 20 }, ''],
       ['seoul', 69, 3, H2('FC서울', '서울월드컵경기장') + 'E-A구역\n80 석\nSC구역\n40 석', { EA: 80, SC: 40 }, ''],
       ['ulsan', 106, 11, H2('울산HD', '울산문수축구경기장') + 'N1구역\n120 석\nE13구역\n50 석\n프리미엄 테이블석\n10 석', { N1: 120, E13: 50, 프리미엄테이블석: 10 }, ''],
@@ -534,7 +535,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   p = await open(b, { url: URL + '?s=gimcheon', data: { 'gimcheon/latest.json': { updatedAt: '2026-11-07T14:06:00+09:00', match: { opponent: '김천상무' }, sections: [] } } });
   await p.waitForTimeout(1200);
   r = await p.evaluate(() => [...document.querySelectorAll('#stadiums a')].map(a => a.textContent + (a.getAttribute('aria-current') ? '*' : '')).join('|'));
-  check('구장 버튼: 안양 홈, 김천(지금, 11.07), 전북, 포항, 북패(서울), 울산, 수원삼성, 수원FC, 부천, 강원, 경기별 기록 (인천은 뺌)', r === '안양 홈|김천11.07*|전북|포항|북패|울산|수원삼성|수원FC|부천|강원|경기별 기록', r);
+  check('구장 버튼: 안양 홈, 김천(지금, 11.07), 전북, 포항, 북패(서울), 울산, 인천, 수원삼성, 수원FC, 부천, 강원, 경기별 기록', r === '안양 홈|김천11.07*|전북|포항|북패|울산|인천|수원삼성|수원FC|부천|강원|경기별 기록', r);
   await p.context().close();
 
   // 사이트 화면에서만 FC서울 = '북패' (저장, 공유 이미지와 요약 글은 '서울', 경기장 이름은 그대로)
@@ -758,6 +759,13 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
         return [fill('E1G'), fill('S1A'), /빨강 = 북패 원정석 쪽/.test(t), document.querySelectorAll('#board image, #stadium image').length].join(); });  // 사이트 화면은 서울 = 북패
       await pg.context().close(); }
     check('시험 페이지(전북 vs 서울): 원정석 쪽은 서울 구단 색 빨강, 전북 쪽은 초록, 안양 앰블럼 없음', out.test === '#145f2c,#761212,true,0', out.test);
+    // 시험 페이지(인천 vs 울산): 티켓링크 머리글 '인천 유나이티드 vs 울산 HD FC', 'E3구역 132 석'을 받음. 둘 다 파랑이라 울산(원정석 쪽)은 둘째 색 노랑
+    { const pg = await open(b, { url: URL + '?s=incheon&test=ulsan#edit' });
+      out.ic = await pg.evaluate(() => { const k = fcIngest('인천 유나이티드 vs 울산 HD FC\n인천축구전용경기장 | 2026.11.21(토) 16:30\n등급 선택\nExciting석\n1495 석\nE3구역\n132 석\n원정석\n500 석');
+        ['E4', '원정석'].forEach(id => Object.assign(state.rows[id], { max: 100, remain: 10 })); render(); const f = id => document.querySelector(`#board [data-z="${id}"]`).getAttribute('fill');
+        return [k.ok, state.rows.E3.remain, document.title, f('E4'), f('원정석'), /노랑 = 울산 원정석 쪽/.test(document.getElementById('board').textContent)].join(); });
+      await pg.context().close(); }
+    check('시험 페이지(인천 vs 울산): 받음(E3 132), 인천 쪽 파랑, 울산 원정석 쪽은 둘째 색 노랑', out.ic === 'true,132,인천유나이티드 vs 울산HD 예매현황 (시험),#24508f,#7d5e00,true', out.ic);
     { const pg = await open(b, { url: URL + '?s=jeonbuk#edit' });
       out.corner = await pg.evaluate(() => [SECTIONS.find(x => x.id === '코너아').ours, SECTIONS.filter(x => x.ours).length].join());
       await pg.context().close(); }
