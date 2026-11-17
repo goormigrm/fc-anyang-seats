@@ -224,10 +224,11 @@ const STADIUMS = {
       // 뒷줄(H 테이블 1F, W센터 1G~1J, A 테이블 1K, W 패밀리 1L). 테이블 칸 앞쪽 띠는 커플석. f = 화면 왼쪽부터의 위치 0~1 (아래쪽 면은 u 가 오른쪽에서 왼쪽으로 가서 u = 5 - f)
       // 티켓링크는 A 테이블과 A 커플을 둘 다 구역 'W-1K'로 적음(좌석은 따로): 커플 칸은 of(같은 구역 이름), when(그 줄 앞의 등급 이름)으로 가려 받음. H 쪽(1F)은 원본 좌석도가 A 쪽과 대칭이라 같은 방식으로 둠(티켓링크 화면은 아직 못 봄)
       const wrow = (list, T) => list.forEach(([id, f0, f1]) => id ? arc([id], 5 - f1, 5 - f0, T) : DECOR.push(['', 5 - f1, 5 - f0, ...T]));
-      wrow([['W1A', 0, 0.125], ['W1B', 0.125, 0.25], ['W1P', 0.75, 0.875], ['W1Q', 0.875, 1]], T1);
-      wrow([['W1C', 0.25, 0.355], ['W1D', 0.355, 0.46], [null, 0.46, 0.54], ['W1M', 0.54, 0.645], ['W1N', 0.645, 0.75]], [14, 28]);
-      wrow([['W1G', 0.4, 0.467], ['W1H', 0.467, 0.533], ['W1J', 0.533, 0.6], ['W1L', 0.7, 0.75]], [31, 66]);
-      wrow([['W1F커플', 0.25, 0.4], ['W1K커플', 0.6, 0.7]], [31, 43]); wrow([['W1F', 0.25, 0.4], ['W1K', 0.6, 0.7]], [46, 66]);
+      // 칸 위치는 11/17 티켓링크 지도 캡처에서 잰 값. 1E(1B 와 1F 사이, 1C 아래)는 일반 판매 등급 목록에 없어(선수단가족석 0석으로 보임) 회색으로만 둠: 'W-1E' 가 잔여와 함께 오면 '현황판에 없는 구역 이름'으로 알림
+      wrow([['W1A', 0, 0.121], ['W1B', 0.121, 0.22], ['W1P', 0.804, 0.903], ['W1Q', 0.903, 1]], T1);
+      wrow([['W1C', 0.22, 0.393], ['W1D', 0.393, 0.487], [null, 0.487, 0.532], ['W1M', 0.532, 0.629], ['W1N', 0.629, 0.804]], [14, 28]);
+      wrow([['W1G', 0.408, 0.477], ['W1H', 0.477, 0.547], ['W1J', 0.547, 0.616], ['W1L', 0.75, 0.804]], [31, 66]); DECOR.push(['1E', 5 - 0.299, 5 - 0.22, 31, 66]);
+      wrow([['W1F커플', 0.299, 0.408], ['W1K커플', 0.616, 0.75]], [31, 43]); wrow([['W1F', 0.299, 0.408], ['W1K', 0.616, 0.75]], [46, 66]);
       SECTIONS.forEach(x => { const m = { W1F커플: ['H 커플', 'W1F'], W1K커플: ['A 커플', 'W1K'] }[x.id]; if (m) Object.assign(x, { name: m[0], of: m[1], when: /커플/ }); if (/^W1[FK]$/.test(x.id)) x.when = /테이블/; });
       row(4, ['W2R', 'W2P', [null, 3.57, '스카이박스'], 'W2D', 'W2B'], 1 / 11, 10 / 11, TT);
       // W 테이블 줄 가운데(11/17 티켓링크 화면 'W 테이블' 아래 W-2B~W-2R 8개): W2F~W2M 은 줄의 바깥쪽 절반, 경기장 쪽 절반은 스카이박스. 폭은 화면에서 잰 비율(2F, 2M 은 2D 와 같고 2H, 2K 는 0.79배)
@@ -1839,6 +1840,8 @@ async function ocrRun(files) {
     if (maxMode) {
       const found = parseText(texts.join('')).found, off = m => found[m.id] != null && Math.abs(found[m.id] - m.remain) > Math.max(2, found[m.id] * 0.03);
       const ok = counted.filter(m => m.id && !off(m)), set = ok.filter(m => state.rows[m.id].max == null || state.rows[m.id].learned), same = ok.filter(m => !set.includes(m));
+      const diff = same.filter(m => state.rows[m.id].max !== m.total);
+      if (diff.length && confirm(`이미 총석이 있는 구역을 다르게 셌습니다:\n${diff.map(m => `${nameOf(m.id)}: 표 ${fmt(state.rows[m.id].max)}석 -> 센 ${fmt(m.total)}석`).join('\n')}\n좌석 그림을 다시 찍어 고치는 것이면 [확인]: 센 값으로 바꿉니다`)) { set.push(...diff); diff.forEach(m => same.splice(same.indexOf(m), 1)); }
       set.forEach(m => { state.rows[m.id].max = m.total; delete state.rows[m.id].learned; });
       fillTable(set.map(m => m.id)); save(); render();
       status((set.length ? `총석을 넣었습니다 (확인한 뒤 "총석 발행"): ${set.map(m => `${nameOf(m.id)} ${fmt(m.total)}석`).join(', ')}` : '넣은 총석이 없습니다.')

@@ -937,6 +937,21 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     }
     check('전북 커플석 좌석 그림: 칸 이름 상자는 좌석 아님(24석), 커플석 제목은 A 커플, 테이블석 제목은 A 테이블, 제목이 없으면 이름이 같은 칸이 여럿이라고 묻고 답한 칸에', out.couple === '/24|' && out.table === '24/|' && /^\/24\|이름이 같은 칸이 여럿입니다 \(W1K, A 커플\)/.test(out.none), JSON.stringify(out));
   }
+  // 총석 집계에서 이미 있는 총석과 다르게 셌으면 묻고, [확인]이면 센 값으로 바꿈 (11/17: 전북 W2K 를 20 으로 발행했는데 잔여가 24 -> 다시 찍어 고칠 때)
+  {
+    const f = await shot('grid_w2k', grid('W2K', 4, 20, '#c06fb0', 14, 0), 30 * 2 + 20 * 14 * 1.5 + 14 * 1.4 + 40, 120 + 2 * 14 * 1.5);
+    const out = {};
+    for (const ok of [true, false]) {
+      p = await open(b, { url: URL + '?s=jeonbuk#edit' });
+      const asked = [];
+      p.on('dialog', d => { asked.push(d.message().split('\n')[1] || ''); if (d.type() === 'prompt') return d.accept('W2K'); return ok ? d.accept() : d.dismiss(); });
+      await p.evaluate(() => { state.rows.W2K.max = 20; document.getElementById('modeMax').click(); });
+      await p.setInputFiles('#file', f); await p.evaluate(() => window.ocrDone);
+      out[ok] = await p.evaluate(() => state.rows.W2K.max) + '|' + asked.join(' / ');
+      await p.context().close();
+    }
+    check('총석 집계: 이미 있는 총석(W2K 20)과 다르게 세면(24) 묻고, 확인하면 바꾸고 취소하면 그대로', /^24\|.*W2K: 표 20석 -> 센 24석/.test(out.true) && /^20\|/.test(out.false), JSON.stringify(out));
+  }
   // 총석 집계 화면(다른 팀 경기 날 미리): 인천 E12 좌석 그림(남은 37 / 전체 87)을 넣어도 총석만 들어가고 잔여, 경기 정보, 집계 시각, 비교 기준, 발행은 그대로. 같이 찍힌 목록 잔여와 다르면 안 넣음
   {
     const f = await shot('grid_maxonly', grid('E12', 37, 50, '#0d2b45', 14, 0), 30 * 2 + 20 * 14 * 1.5 + 14 * 1.4 + 40, 120 + 5 * 14 * 1.5);
