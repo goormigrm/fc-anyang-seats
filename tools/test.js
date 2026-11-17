@@ -680,7 +680,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       return out;
     });
     await pg.context().close();
-    check('진단 글 복사: 주소와 경기장, 스크립트 판, 램프, 예매 탭 신호와 좌석 그림 구조, 스크립트가 센 좌석과 결과, 받은 글자', /FC안양 현황판 진단 .*\?s=gimcheon#?.* 김천종합운동장/.test(r.diag) && /보내기 스크립트: 13판 \(최신 13판\) · 숫자 받음: .* 구역 1개/.test(r.diag) && /예매 탭 티켓링크 www\.ticketlink\.co\.kr\/reserve .*: seat · 경기장 '김천종합운동장'/.test(r.diag)
+    check('진단 글 복사: 주소와 경기장, 스크립트 판, 램프, 예매 탭 신호와 좌석 그림 구조, 스크립트가 센 좌석과 결과, 받은 글자', /FC안양 현황판 진단 .*\?s=gimcheon#?.* 김천종합운동장/.test(r.diag) && /보내기 스크립트: 14판 \(최신 14판\) · 숫자 받음: .* 구역 1개/.test(r.diag) && /예매 탭 티켓링크 www\.ticketlink\.co\.kr\/reserve .*: seat · 경기장 '김천종합운동장'/.test(r.diag)
       && /좌석 그림: 캔버스 없음 · SVG 도형 0 · 작은 네모 i\.seat 30개/.test(r.diag) && /스크립트 좌석 세기 .*남은 12 \/ 전체 30 · 칸 속성의 이름 \["N11구역"\]/.test(r.diag) && /결과: 보내기 스크립트가 좌석 그림을 셌습니다: N11/.test(r.diag) && /N11구역\n12 석/.test(r.diag) && /진단 글을 복사했습니다|아래 글자 칸에 넣었습니다/.test(r.st), r.diag + ' / ' + r.st);
     check('수집 램프: 두 줄로 접혀 있고 누르면 펼침(스크립트 좌석 세기 줄), 입력 화면 맨 위에 램프 자리', r.clamp.startsWith('2|') && r.more.startsWith('true|') && +r.more.split('|')[1] > +r.clamp.split('|')[1] && r.more.endsWith('|true') && r.pad === '76px', JSON.stringify({ clamp: r.clamp, more: r.more, pad: r.pad }));
     // 발행 점검: 발행하지 않고 토큰(쓰기 권한), 스크립트 판, 지금 발행본을 알려 줌
@@ -694,7 +694,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       return v + ' || ' + calls.join(',');
     };
     const ok = await chk(201, 'ghp_x'), bad = await chk(401, 'ghp_x'), none = await chk(201, '');
-    check('발행 점검: 토큰 쓰기 확인(파일 조각만 올림, 브랜치는 안 건드림), 만료된 토큰, 토큰 없음, 옛 스크립트, 지금 발행본', /토큰: 발행할 수 있음/.test(ok) && /⚠ 보내기 스크립트: 12판/.test(ok) && !/바로 발행/.test(ok) && /지금 발행본: 부천FC1995 11\.01 16:30 경기, 집계 11\.01 16:30/.test(ok) && ok.endsWith('|| POST blobs')
+    check('발행 점검: 토큰 쓰기 확인(파일 조각만 올림, 브랜치는 안 건드림), 만료된 토큰, 토큰 없음, 옛 스크립트, 지금 발행본', /토큰: 발행할 수 있음/.test(ok) && /⚠ 보내기 스크립트: 13판/.test(ok) && !/바로 발행/.test(ok) && /지금 발행본: 부천FC1995 11\.01 16:30 경기, 집계 11\.01 16:30/.test(ok) && ok.endsWith('|| POST blobs')
       && /⚠ 토큰: 만료됐거나 잘못됐습니다/.test(bad) && /⚠ 토큰: 없음/.test(none) && none.endsWith('|| '), JSON.stringify({ ok, bad, none }));
     // 구역 글자가 칸 밖으로 나가지 않음: 가로로 쓴 글자(이름, 예매율)의 네 귀(조금 안쪽)가 그 칸 위에 있는지. 모서리가 세모꼴인 수원삼성, 서울, 비스듬한 좁은 칸이 많은 부천
     for (const sid of ['suwon', 'seoul', 'bucheon']) {
@@ -755,6 +755,48 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
         ids: ['W1F', 'W1K', 'W1L', 'W1F커플', 'W1K커플'].every(id => state.rows[id]) + '|' + ['W-1K', 'A 커플', 'w1l'].map(zoneId).join() }; });
     await pg.context().close();
     check("전북: 'W-1K 90 석' 줄을 받음, 같은 W-1K 도 A 테이블 아래는 테이블 칸, A 커플 아래는 커플 칸, W 1층에 1F, 1K, 1L 과 커플 칸", r.table === '{"W1K":90,"W1K커플":0}' && r.couple === '{"W1K커플":5,"W1F":11,"S1C":120}' && r.ids === 'true|W1K,W1K커플,W1L', JSON.stringify(r));
+  }
+  // 전북 티켓링크 PC 화면(11/17 사용자 캡처): 등급을 누르면 아래에 구역 줄이 펼쳐짐('W 센터 166 석' 아래 'W-1G 36 석' ...). 이름과 숫자는 flex 칸이라 줄로 나뉘어 보냄.
+  // A 테이블과 A 커플은 둘 다 구역 'W-1K'(선택한 줄은 ✓). 스크립트 14판이 'W-1K' 줄도 보내고, 현황판은 바로 앞 등급 줄로 칸을 가림. 없는 구역 코드는 알림, 'K 90석' 같은 찌꺼기 없음
+  {
+    const src = fs.readFileSync(path.join(ROOT, 'fc-anyang-send.user.js'), 'utf8');
+    const row = (a, b, sub) => `<div style="display:flex;justify-content:space-between${sub ? ';padding-left:20px' : ''}"><span>${a}</span><span>${b}</span></div>`;
+    const JB = '<div><h2>전북현대 vs FC안양</h2><div>전주월드컵경기장</div><div>2026.12.05(토) 14:00</div><div>홍길동님</div><h3>등급 선택</h3>' + row('전체', '')
+      + row('W 센터', '166 석') + row('W-1G', '36 석', 1) + row('W-1H', '80 석', 1) + row('W-1J', '50 석', 1) + row('A 테이블', '90 석') + row('W-1K', '90 석', 1)
+      + row('A 커플', '0 석') + row('✓ W-1K', '0 석', 1) + row('W 패밀리', '8 석') + row('W-1L', '8 석', 1) + row('H 벤치', '87 석') + row('W-1C', '40 석', 1) + row('W-1E', '5 석', 1) + '</div>';
+    const tk = await b.newPage(); await tk.setContent(JB);
+    await tk.evaluate(([src]) => { window.__set = {}; window.__l = {}; window.GM_setValue = (k, v) => (__set[k] = v); window.GM_getValue = () => undefined; window.GM_addValueChangeListener = (k, f) => (__l[k] = f); window.unsafeWindow = window;
+      const o = Element.prototype.attachShadow; Element.prototype.attachShadow = function (i) { return o.call(this, { ...i, mode: 'open' }); }; (0, eval)(src.replace(/location\.hostname/g, '"www.ticketlink.co.kr"')); }, [src]);
+    await tk.waitForTimeout(2200);
+    const sent = await tk.evaluate(() => __set.text?.s || '');
+    await tk.close();
+    const pg = await open(b, { url: URL + '?s=jeonbuk#edit' });
+    r = await pg.evaluate(s => { const k = fcIngest(s); return { k, v: ['W1G', 'W1H', 'W1J', 'W1K', 'W1K커플', 'W1L', 'W1C'].map(id => state.rows[id].remain).join(), st: document.getElementById('status').innerText }; }, sent);
+    await pg.context().close();
+    check('전북 실제 화면 흐름: 등급 아래 펼친 구역 줄(W-1G 등, 줄 나뉨)을 스크립트가 보내고, W-1K 는 A 테이블 / A 커플 칸으로 가려 넣음, 없는 구역(W-1E)은 알림, 등급 찌꺼기 없음',
+      /W-1K\n90 석\nA 커플\n0 석\n✓ W-1K\n0 석/.test(sent) && r.k.ok && r.v === '36,80,50,90,0,8,40' && /현황판에 없는 구역 이름: W-1E/.test(r.st) && !/[^가-힣]K 90석|등급: .*\bK 90/.test(r.st), JSON.stringify({ sent, r }));
+  }
+  // 전북 코너 테이블 좌석 그림(11/17): 제목이 한글 '코너 테이블 (아)'라 영문으로 못 읽음 -> 한글 인식 글자의 줄에서 구역을 찾음. 그래도 모르면 묻는 창에 표의 이름 그대로('코너 아') 넣으면 받음, 없는 이름이면 다시 물음
+  {
+    const pg = await open(b, { url: URL + '?s=jeonbuk#edit' });
+    const answers = ['코너 테이블', '코너 아'], asked = [];
+    pg.on('dialog', d => { asked.push(d.message().split('\n')[1]); d.accept(answers.shift() ?? ''); });
+    r = await pg.evaluate(async () => {
+      const out = { z: ['코너 아', '코너 테이블 (아)', '코너테이블아', 'W-1K'].map(zoneId).join() };
+      // 글자 인식기와 칸 세기는 흉내: 한글 인식 글자에 제목과 줄 번호(T24 등)만 있고 영문으로는 이름을 못 읽은 좌석 그림
+      const c = Object.assign(document.createElement('canvas'), { width: 200, height: 150 }), g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, 200, 150);
+      const file = new File([await new Promise(r => c.toBlob(r))], 'corner.png', { type: 'image/png' }), counted = [];
+      const kor = { setParameters: async () => {}, recognize: async () => ({ data: { text: '코너 테이블 (아)\nT24\nT23\nT01 T02 T03' } }) }, eng = { setParameters: async () => {}, recognize: async () => ({ data: { text: '', words: [], lines: [] } }) };
+      const keep = seatMap; seatMap = async () => ({ id: null, remain: 30, total: 88, dropped: 0, blocked: 0 });
+      await readShot(file, false, kor, eng, counted); seatMap = keep; out.auto = counted.map(m => m.id).join();
+      document.getElementById('modeMax').click();
+      readShot = async (f, first, kor, eng, counted) => { counted.push({ id: null, remain: 30, total: 88, dropped: 0, blocked: 0 }); return ''; };
+      await ocr([file]); out.asked = [state.rows['코너아'].max, document.getElementById('status').innerText.split('\n')[0]].join('|');
+      return out;
+    });
+    await pg.context().close();
+    check("전북 코너 테이블: '코너 테이블 (아)' 제목으로 구역을 찾음, 묻는 창에 '코너 아'(표의 이름) 넣으면 받음, 없는 이름은 다시 물음", r.z === '코너아,코너아,코너아,W1K' && r.auto === '코너아' && /^88\|총석을 넣었습니다 .*코너 아 88석/.test(r.asked)
+      && asked.length === 2 && /'코너 테이블'은\(는\) 현황판에 없는 구역 이름입니다/.test(asked[1]), JSON.stringify({ r, asked }));
   }
   // 11/12 점검에서 찾은 버그
   {
@@ -854,6 +896,23 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     check('막힌 줄: 통째로 회색인 줄을 묻고, 확인하면 총석에서 뺌(S12 258 - 20, 예매 183, 예매율 76%, 표 −20, 발행 blocked), −20 을 누르면 되돌림, 새 경기에서 지움',
       /통째로 회색인 줄이 있습니다: S12 20석/.test(y.asked) && y.remain === 55 && y.max === 258 && y.block === 20 && y.cap === 238 && y.booked === 183 && y.chip === '−20' && y.rate === '76%' && y.rec === 20 && /막힌 줄로 보고 이번 경기 총석에서 뺌: S12 20석/.test(y.st) && y.after === '0,258' && y.cleared === 0, JSON.stringify(y));
     check('막힌 줄: 취소하면 그대로 (총석 258, 예매 203)', /통째로 회색인 줄/.test(n.asked) && n.block === 0 && n.cap === 258 && n.booked === 203 && n.chip === '' && n.rec === 0, JSON.stringify(n));
+  }
+  // 전북 커플석 좌석 그림(11/17): 'A1'~'A12' 칸 이름 상자(회색 바탕에 흰 글자)를 좌석으로 세지 않음(24석). 제목 '커플석A [W1K]'는 A 커플 칸, '테이블석A'면 A 테이블 칸, 한글 제목이 없으면 묻고 '이름이 같은 칸이 여럿'이라고 알림
+  {
+    const cells = [...Array(12)].map((_, i) => `<span style="display:inline-block;width:22px;margin:0 1px;text-align:center"><b style="display:block;background:#c8c8c8;color:#fff;font:9px sans-serif;margin-bottom:2px">A${i + 1}</b><i style="display:inline-block;width:9px;height:9px;background:#e6e6e6;margin:0 1px"></i><i style="display:inline-block;width:9px;height:9px;background:#e6e6e6;margin:0 1px"></i></span>`).join('');
+    const pic = async (name, title) => shot(name, `<div style="padding:14px 20px"><div style="text-align:center;color:#666;font-weight:700;font-size:15px">${title}</div><div style="text-align:center;color:#888;font-size:10px;margin-bottom:8px">(W1K)</div>${cells}</div>`, 400, 110);
+    const out = {};
+    for (const [key, title] of [['couple', '커플석A'], ['table', '테이블석A'], ['none', '']]) {
+      const f = await pic('w1k_' + key, title);
+      p = await open(b, { url: URL + '?s=jeonbuk#edit' });
+      const asked = [];
+      p.on('dialog', d => { asked.push(d.message().split('\n')[1]); d.accept('A 커플'); });
+      await p.evaluate(() => document.getElementById('modeMax').click());
+      await p.setInputFiles('#file', f); await p.evaluate(() => window.ocrDone);
+      out[key] = await p.evaluate(() => [state.rows.W1K.max, state.rows['W1K커플'].max].join('/')) + '|' + asked.join(' ');
+      await p.context().close();
+    }
+    check('전북 커플석 좌석 그림: 칸 이름 상자는 좌석 아님(24석), 커플석 제목은 A 커플, 테이블석 제목은 A 테이블, 제목이 없으면 이름이 같은 칸이 여럿이라고 묻고 답한 칸에', out.couple === '/24|' && out.table === '24/|' && /^\/24\|이름이 같은 칸이 여럿입니다 \(W1K, A 커플\)/.test(out.none), JSON.stringify(out));
   }
   // 총석 집계 화면(다른 팀 경기 날 미리): 인천 E12 좌석 그림(남은 37 / 전체 87)을 넣어도 총석만 들어가고 잔여, 경기 정보, 집계 시각, 비교 기준, 발행은 그대로. 같이 찍힌 목록 잔여와 다르면 안 넣음
   {

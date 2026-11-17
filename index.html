@@ -228,7 +228,7 @@ const STADIUMS = {
       wrow([['W1C', 0.25, 0.355], ['W1D', 0.355, 0.46], [null, 0.46, 0.54], ['W1M', 0.54, 0.645], ['W1N', 0.645, 0.75]], [14, 28]);
       wrow([['W1G', 0.4, 0.467], ['W1H', 0.467, 0.533], ['W1J', 0.533, 0.6], ['W1L', 0.7, 0.75]], [31, 66]);
       wrow([['W1F커플', 0.25, 0.4], ['W1K커플', 0.6, 0.7]], [31, 43]); wrow([['W1F', 0.25, 0.4], ['W1K', 0.6, 0.7]], [46, 66]);
-      SECTIONS.forEach(x => { const m = { W1F커플: ['H 커플', 'W1F'], W1K커플: ['A 커플', 'W1K'] }[x.id]; if (m) Object.assign(x, { name: m[0], of: m[1], when: /커플/ }); });
+      SECTIONS.forEach(x => { const m = { W1F커플: ['H 커플', 'W1F'], W1K커플: ['A 커플', 'W1K'] }[x.id]; if (m) Object.assign(x, { name: m[0], of: m[1], when: /커플/ }); if (/^W1[FK]$/.test(x.id)) x.when = /테이블/; });
       row(4, ['W2R', 'W2P', [null, 7, 'W테이블'], 'W2D', 'W2B'], 1 / 11, 10 / 11, TT); row(4, ids('W', '2S 2Q 2N 2L - 2G 2E 2C 2A'), 0, 1, T2);
       arc(ids('N', '1F 1E 1D 1C 1B 1A'), 6, 7, T1); row(6, ids('N', '2M 2K 2H 2F 2D 2B'), 1 / 6, 5 / 6, TT); row(6, ['N2N', 'N2L', 'N2J', ['N2G', 2], 'N2E', 'N2C', 'N2A'], -0.05, 1.05, T2);
       [['라', '마'], ['바', '사'], ['아', '가'], ['나', '다']].forEach((p, i) => arc(p.map(x => '코너' + x), 7 + i * 2, 8 + i * 2, T1));
@@ -477,7 +477,7 @@ const zoneId = n => {
   const k = n.toUpperCase().replace(/[\s·_-]/g, ''), b = k.replace(/\([^)]*\)/g, ''), names = {};  // 놀티켓 '프리미엄 패밀리박스(4인)(GATE:PREMIUM)'
   const put = (a, id) => { if (a) names[a.toUpperCase().replace(/[\s·_-]/g, '')] = id; };
   SECTIONS.forEach(x => [x.name, ...(x.alias || [])].forEach(a => put(a, x.id))); SECTIONS.forEach(x => put(x.id, x.id));  // 칸 id 가 이름보다 우선 (수원 'W13' = 2층 테이블, 이름이 W13 인 칸은 미판매 구역)
-  return [...new Set([k, b, b.replace(/구역$/, '')])].flatMap(c => [c, c.replace(/^[가-힣]+/, ''), c.replace(/[가-힣]/g, '')]).map(c => c && names[c]).find(Boolean) || null;
+  return [...new Set([k, b, b.replace(/구역$/, ''), k.replace(/[()]/g, '')])].flatMap(c => [c, c.replace(/^[가-힣]+/, ''), c.replace(/[가-힣]/g, '')]).map(c => c && names[c]).find(Boolean) || null;
 };
 // 화면 글자 해석: 오른쪽 구역 목록 "R8구역 (줄바꿈) 28석", 왼쪽 등급 목록 "가변석 574 석", 상단 "FC안양 vs 상대 / 날짜"
 function parseText(text) {
@@ -501,7 +501,9 @@ function parseText(text) {
   if (AWAY) { let grade = '';
     for (const [, raw, v] of t.matchAll(/^[^\n0-9A-Za-z가-힣]*((?:\d*[A-Za-z가-힣·-])[^\n]{0,24}?)[ \t]*\n?[ \t]*(\d+)[ \t]*석/gm)) {
       const n = raw.trim(), id = /^[0-9A-Za-z가-힣·-]{1,14}$/.test(n) && zoneId(n);
-      if (id) add(SECTIONS.find(x => x.of === id && x.when.test(grade))?.id || id, +v); else grade = n;
+      if (id) add(SECTIONS.find(x => x.of === id && x.when.test(grade))?.id || id, +v);
+      else if (/^[A-Za-z]{1,2}-?\d{1,2}[A-Za-z]?$/.test(n)) missZones.push(n);  // 구역 코드처럼 생겼는데 현황판에 없는 칸 (전북 'W-1E' 같은)
+      else grade = n;
     } }
   // 놀티켓 등급 목록은 구역 범위와 합계만 줌('2층 E석(E15~19)(GATE:3A,3B)' 다음 줄 1191): 그 구역들의 합계로 두고 캡처로 센 구역 합과 맞춰 봄
   if (AWAY) for (const [, n, p, a, z, v] of t.matchAll(/^([^\n]*?\(([A-Z]{1,2})(\d{1,2})\s*~\s*[A-Z]{0,2}(\d{1,2})\)[^\n]*)\n[ \t]*(\d{1,6})[ \t]*$/gm)) {
@@ -519,6 +521,7 @@ function parseText(text) {
   // PC 화면에서 복사한 글자는 등급 이름과 "158 석"이 다음 줄로 나뉘기도 해서 줄바꿈 하나까지 허용
   for (const m of t.matchAll(/([가-힣A-Za-z][가-힣A-Za-z0-9() \t]*?)[ \t]*\n?[ \t]*(\d+)(?:[ \t]*\n?[ \t]*석|4(?=[^\d\n]{0,2}$))/gm)) {
     const [all, name, v] = m;
+    if (/[A-Za-z0-9-]/.test(t[m.index - 1] || '')) continue;  // 'W-1K' 의 'K' 처럼 이름 중간에서 시작한 줄
     if (/구\s*역/.test(name) || /^\s*구\s*역/.test(t.slice(m.index + all.length, m.index + all.length + 6))) continue;  // 구역 줄(깨진 "W12구역 196 4석", 'E14구역' 의 E 1 + 4)은 등급이 아님
     if (!all.endsWith('석') && all.includes('\n')) continue;  // 끝의 4 를 석으로 보는 것은 같은 줄일 때만 (놀티켓 'S4' 다음 줄 '124' 가 12석으로 읽히던 것)
     const g = GRADES.find(g => g.re.test(name)), gid = AWAY && zoneId(name);
@@ -1596,7 +1599,8 @@ async function seatMap(bmp, eng, full) {
   const med = sq.map(o => o.n).sort((a, b) => a - b)[sq.length >> 1], side = Math.sqrt(med);
   // 붙어 버린 칸 몇 개는 넓이로 나눠 셈. 버튼, 테두리처럼 큰 덩어리, 줄 번호 숫자처럼 성긴 덩어리(꽉 찬 정도 80% 아래), 그림 끝에 잘린 옆 칸은 뺌
   // 초록 칸 바로 옆 회색 칸은 테두리가 흐려 꽉 찬 정도가 70%대로 떨어짐(김천 S13 2칸): 정사각형(가로세로 1px 안)이고 보통 칸 크기면 칸으로 봄 (9×12 같은 글자 조각은 뺌)
-  const seat = o => o.n >= med * 0.45 && (o.n / (o.w * o.h) > 0.8 || o.n / (o.w * o.h) > 0.7 && Math.abs(o.w - o.h) <= 1 && Math.abs(o.w - side) <= 1.5 || round(o) && o.n >= med * 0.75 && o.n <= med * 1.3) && Math.max(o.w, o.h) <= side * 3.5 && Math.min(o.w, o.h) <= side * 1.6 && !(o.edge && o.n < med * 0.8) && inMap(o);
+  // 여러 칸으로 셀 큰 덩어리(붙은 칸)는 속이 꽉 차야 함: 칸 이름 상자(전북 커플석 'A1'~'A12', 회색 바탕에 흰 글자)는 글자 구멍 때문에 꽉 찬 정도가 0.85~0.9 (11/17: 커플석 24석을 58석으로 셈)
+  const seat = o => o.n >= med * 0.45 && !(o.n >= med * 1.5 && o.n / (o.w * o.h) < 0.94) && (o.n / (o.w * o.h) > 0.8 || o.n / (o.w * o.h) > 0.7 && Math.abs(o.w - o.h) <= 1 && Math.abs(o.w - side) <= 1.5 || round(o) && o.n >= med * 0.75 && o.n <= med * 1.3) && Math.max(o.w, o.h) <= side * 3.5 && Math.min(o.w, o.h) <= side * 1.6 && !(o.edge && o.n < med * 0.8) && inMap(o);
   // 옆 구역 칸 빼기: 칸 사이 간격(가장 가까운 칸까지 거리의 중앙값)의 3.3배 넘게 떨어진 칸 덩어리는 다른 구역으로 보고 가장 큰 덩어리만 셈
   // (한 구역 안 통로는 칸 2~3개 폭, 구역 사이는 그보다 넓음. 놀티켓은 옆 구역 좌석도 같은 회색으로 그려 잘라 낸 그림에 섞임)
   const all = comps.filter(seat), d2 = (a, b) => Math.hypot(a.cx - b.cx, a.cy - b.cy);
@@ -1738,7 +1742,10 @@ async function readShot(f, first, kor, eng, counted = []) {
   const withMap = async text => {
     if (/등급|선택|단계|구\s*역/.test(text)) return text;
     const m = await seatMap(bmp, eng, false);
-    if (m?.id) m.id = SECTIONS.find(x => x.of === m.id && x.when.test(text))?.id || m.id;  // 그림의 이름은 같아도(전북 '커플석A [W1K]') 한글 글자로 칸을 가림
+    if (m && !m.id) { const c = [...new Set(text.split('\n').map(l => l.trim() && zoneId(l)).filter(Boolean))]; if (c.length === 1) m.id = c[0]; }  // 영문으로 못 읽은 한글 구역 이름(전북 '코너 테이블 (아)')은 한글 인식 글자의 줄에서 (한 구역만 나올 때)
+    // 그림의 구역 이름이 같은 칸이 여럿이면(전북 '테이블석A [W1K]', '커플석A [W1K]') 한글 글자(테이블, 커플)로 가림. 어느 쪽인지 모르면 이름을 모르는 것으로 두고 인식 뒤에 물음
+    const same = m?.id ? SECTIONS.filter(x => x.id === m.id || x.of === m.id).sort((a, b) => !!a.of - !!b.of) : [];  // 그림에 적힌 이름의 칸이 먼저
+    if (same.length > 1) { const hit = same.filter(x => x.when?.test(text)); m.id = hit.length === 1 ? hit[0].id : null; if (!m.id) m.of = same.map(x => x.name || x.id); }
     if (m) counted.push(m);  // 숫자는 인식이 다 끝난 뒤 목록 글자와 맞춰 보고 넣음
     return text;
   };
@@ -1791,8 +1798,12 @@ async function ocrRun(files) {
     }));
     // 구역 이름을 못 읽은 좌석 그림: 센 숫자를 보여 주고 어느 구역인지 물음 (취소하면 넣지 않음)
     for (const m of counted.filter(m => !m.id)) {
-      const id = (prompt(`좌석 그림을 셌습니다: 남은 ${m.remain}석 / 전체 ${m.total}석\n구역 이름을 못 읽었습니다. 어느 구역인가요? (예: W23, 취소하면 넣지 않음)`) || '').trim().toUpperCase();
-      if (state.rows[id]) m.id = id;
+      // 표에 보이는 이름 그대로(예: 코너 아, W-1K, w23)도 받음. 현황판에 없는 이름이면 다시 물음 (취소하면 넣지 않음)
+      for (let ask = m.of ? `이름이 같은 칸이 여럿입니다 (${m.of.join(', ')}). ` : '', v; (v = prompt(`좌석 그림을 셌습니다: 남은 ${m.remain}석 / 전체 ${m.total}석\n${ask}구역 이름을 못 읽었습니다. 어느 구역인가요? 표의 구역 이름 그대로 (예: W23, 코너 아. 취소하면 넣지 않음)`)) !== null;) {
+        const id = state.rows[v.trim().toUpperCase()] ? v.trim().toUpperCase() : zoneId(v.trim());
+        if (id) { m.id = id; break; }
+        ask = `'${v.trim()}'은(는) 현황판에 없는 구역 이름입니다. `;
+      }
     }
     // 좌석 그림으로 센 남은 칸이 이미 아는 잔여(이번 캡처의 목록 글자, 없으면 표)와 다르면 옆 구역 칸이 섞였거나 잘못 센 것: 남은 수도 총석도 넣지 않음
     // 맞으면 총석을 최대 좌석으로 넣고, 잔여를 아직 모르는 구역이면 센 남은 칸을 잔여로
@@ -1897,7 +1908,7 @@ window.fcSeats = v => {
 // 티켓링크 탭이 여럿이거나 예매 화면이 틀(iframe) 안이면 신호가 여러 곳에서 옴: 보낸 곳마다 따로 두고 가장 앞선 상태를 보여 줌
 const lamp = { installed: 0, version: 0, pings: {}, got: 0, zones: 0, rejected: '', seats: null };  // seats: 스크립트가 마지막으로 센 좌석과 그 결과
 // 보내기 스크립트 최신 판 (fc-anyang-send.user.js 의 @version 과 같게. 자동 시험이 맞춰 봄). 설치된 판이 낮으면 입력 화면 맨 위 버튼을 눈에 띄게
-const SCRIPT_VERSION = 13;
+const SCRIPT_VERSION = 14;
 const hms = t => new Date(t).toTimeString().slice(0, 8);
 // Tampermonkey 저장소는 브라우저마다 따로: 티켓링크를 다른 브라우저에서 열면 신호가 안 옴 (램프에 이 브라우저 이름을 보여 줌)
 const BROWSER = (ua => /Whale\//.test(ua) ? '웨일' : /Edg\//.test(ua) ? '엣지' : /Chrome\//.test(ua) ? '크롬' : /Firefox\//.test(ua) ? '파이어폭스' : '이 브라우저')(navigator.userAgent);
@@ -2048,7 +2059,8 @@ if (editing) {
   syncOff(); syncInputs(); fillTable(); render(); loadHistory(); loadMax(); tokenInfo(); drawLamp(); setInterval(drawLamp, 2000);
   // 같은 브라우저의 다른 현황판 탭이 저장하면 이 탭도 바로 맞춤 (오래된 값으로 덮어쓰지 않게)
   addEventListener('storage', e => {
-    if (e.key === KEY && e.newValue) try { Object.assign(state, JSON.parse(e.newValue)); } catch {}
+    // 알림에 실린 값(e.newValue)이 아니라 지금 저장된 값: 알림이 늦게 오면 그 사이 이 탭이 받아 저장한 숫자를 옛 값으로 덮어쓰게 됨 (11/17 시험에서 드물게 보임)
+    if (e.key === KEY && e.newValue) try { Object.assign(state, JSON.parse(localStorage.getItem(KEY))); } catch {}
     if (e.key === KEY || e.key === OFFKEY) { syncOff(); syncInputs(); fillTable(); render(); }
   });
 }
