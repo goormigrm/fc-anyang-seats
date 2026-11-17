@@ -744,6 +744,14 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     });
     await pg.context().close();
     check('추이 그래프 가로축: 날짜와 시각 두 줄, 점 6개 + 예상이어도 옆 글자와 겹치지 않음', r.n === 7 && !r.overlap && r.txt, JSON.stringify(r));
+    // 예상 점선은 줄어든 구간을 늘이지 않음(11/18 인천 vs 울산 원정석 −52석 -> 예상 −268석): 원정석 300 -> 280 -> 235 는 예상 없음, 홈석은 늘어서 예상
+    pg = await open(b); await pg.waitForTimeout(300);
+    r = await pg.evaluate(() => {
+      newGame(); Object.assign(state, { opp: '제주SK', date: '2026-11-28T14:00', at: '2026-11-26T14:00' }); state.rows.R10.remain = 26; state.rows.원정석.remain = 1000;
+      history = ['2026-11-24T09:30', '2026-11-26T09:00'].map((at, i) => ({ at: at + ':00+09:00', opponent: '제주SK', kickoff: '2026-11-28T14:00:00+09:00', booked: 10500, cap: 11542, awayBooked: 300 - i * 20, awayCap: 1235, unknown: 0 })); render();
+      return [...document.querySelectorAll('#trend text')].map(t => t.textContent).filter(t => t.startsWith('예상')).join('/'); });
+    await pg.context().close();
+    check('추이 예상: 줄어든 원정석은 예상 점선 없음, 늘어난 홈석만 예상', r === '예상 +26석', r);
   }
   // 원정 구장의 홈 팀 쪽은 구단 상징 색 (강원 주황, 전북 초록, 김천 빨강, 울산은 기본 파랑), 원정 응원 쪽은 보라 그대로
   {

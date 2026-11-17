@@ -866,10 +866,11 @@ function chart(x0, y0, w, h, k = 1, n = 8, side) {
   const cmp = crowdTxt ? '' : sameTime(side, last);  // 공식 관중이 나오기 전에는 그 자리에 지난 경기 같은 시점 비교
   if (crowdTxt || cmp) out.push(text(x0 + w - z(20), y0 + z(30), crowdTxt || cmp, z(11), crowdTxt ? '#b7791f' : '#6b7280', 700, 'end'));
   if (!pts.length) return out.join('') + text(x0 + w / 2, y0 + h / 2 + z(10), side === 'away' ? '원정석 잔여가 집계되면 증감이 표시됩니다.' : '발행할 때마다 예매 좌석 수가 기록되어 증감이 표시됩니다.', z(13), '#9ca3af');
-  // 예상: 마지막 두 점의 증가 속도로 경기 시작 시각까지
+  // 예상: 마지막 두 점의 증가 속도로 경기 시작 시각까지. 줄어든 구간은 늘이지 않음: 예매는 취소, 풀린 좌석으로 잠깐 줄어도 경기까지 계속 줄지 않음
+  // (11/18 인천 vs 울산 원정석 15시간 −52석이 3일 뒤 예상 −268석으로 나옴). 그때는 첫 점부터의 속도가 0 이상이면 그것으로, 아니면 예상 없음
   let fc = null;
   if (state.crowd == null && prev && state.date.length > 10 && state.date > last.at) {
-    const rate = (last.booked - prev.booked) / (new Date(last.at) - new Date(prev.at));
+    const r = (a, b) => (b.booked - a.booked) / (new Date(b.at) - new Date(a.at)), rate = [r(prev, last), r(pts[0], last)].find(v => v >= 0);
     if (isFinite(rate)) fc = { at: state.date, cap: last.cap, booked: Math.max(0, Math.min(last.cap, Math.round(last.booked + rate * (new Date(state.date) - new Date(last.at))))) };
   }
   const all = fc ? [...pts, fc] : pts, vals = all.map(p => p.booked);
