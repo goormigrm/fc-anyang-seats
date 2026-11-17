@@ -1241,6 +1241,21 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       check(`전북 실제 좌석 그림 ${id}: 전체 ${total}` + (total !== 234 ? ' (떨어진 묶음을 묻고 더함)' : ''), r === total && (total === 234 || asked.some(m => /떨어져 있는 묶음/.test(m))), JSON.stringify({ r, asked }));
     }
   }
+  // 포항 실제 캡처(11/17 사용자, 좌석스크린샷/시험_포항): 원정석 칸 색이 검정에 가까운 짙은 회색(남은 좌석). 전에는 글자로 봐서 A1 을 적게 세고 A21 은 못 읽었음
+  {
+    const PD = path.join(ROOT, '좌석스크린샷', '시험_포항');
+    for (const [file, id, remain, total] of [['좌석그림_A1.png', 'A1', 261, 300], ['좌석그림_A21.png', 'A21', 157, 165]]) {
+      const f = path.join(PD, file);
+      if (!fs.existsSync(f)) { console.log('SKIP  포항 좌석 그림 ' + file); continue; }
+      p = await open(b, { url: URL + '?s=pohang#edit' });
+      p.on('dialog', d => d.type() === 'prompt' ? d.accept(id) : d.accept());
+      await p.evaluate(() => document.getElementById('modeMax').click());
+      await p.setInputFiles('#file', f); await p.evaluate(() => window.ocrDone);
+      r = await p.evaluate(id => state.rows[id].max, id);
+      await p.context().close();
+      check(`포항 실제 좌석 그림 ${id} (짙은 회색 칸): 전체 ${total}`, r === total, JSON.stringify({ r }));
+    }
+  }
   const NOLD = path.join(ROOT, '좌석스크린샷', '시험_놀티켓');
   if (fs.existsSync(NOLD)) {
     // W13(2층 테이블석, 2인 테이블 짝)은 한 화면에 안 들어와 왼쪽, 오른쪽 두 장(가운데 블록이 겹침): 왼쪽 장의 잘린 가운데 블록은 떨어진 칸으로 빠져 122 + 196 = 318 (손으로 센 수)

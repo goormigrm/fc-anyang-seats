@@ -1665,7 +1665,7 @@ async function seatMap(bmp, eng, full) {
   const kind = i => {
     const r = d[i], g = d[i + 1], b = d[i + 2], mx = Math.max(r, g, b), mn = Math.min(r, g, b);
     if (mn > 244) return 0;                    // 바탕
-    if (mx - mn < 16) return mx > 175 ? 1 : 0;  // 밝은 회색 칸 = 팔림 (어두운 회색은 글자)
+    if (mx - mn < 16) return mx > 175 ? 1 : mx < 96 ? 3 : 0;  // 밝은 회색 칸 = 팔림, 아주 짙은 회색(3) = 남음(포항 원정석, 퍼스트클래스석은 등급 색이 검정에 가까움, 11/17), 그 사이 회색은 글자
     return 2;                                  // 색 있는 칸 = 남음
   };
   const lab = new Uint8Array(W0 * H0), comps = [];
@@ -1681,7 +1681,7 @@ async function seatMap(bmp, eng, full) {
       for (const nq of [q - 1, q + 1, q - W0, q + W0])
         if (nq >= 0 && nq < W0 * H0 && !lab[nq] && Math.abs((nq % W0) - x) <= 1 && kind(nq * 4) === k) { lab[nq] = 1; st.push(nq); }
     }
-    comps.push({ k, n, w: x1 - x0 + 1, h: y1 - y0 + 1, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, edge: !x0 || !y0 || x1 === W0 - 1 || y1 === H0 - 1 });
+    comps.push({ k: k === 3 ? 2 : k, dark: k === 3, n, w: x1 - x0 + 1, h: y1 - y0 + 1, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, edge: !x0 || !y0 || x1 === W0 - 1 || y1 === H0 - 1 });
   }
   // 칸 크기: 정사각형에 가깝고 꽉 찬 덩어리 넓이의 중앙값. 화면 전체 캡처면 좌석 그림이 있는 쪽만 (세로: 위 15~60%, 가로: 왼쪽 78%)
   const inMap = o => !full || (H0 > W0 * 1.2 ? o.cy > H0 * 0.15 && o.cy < H0 * 0.6 : o.cx < W0 * 0.78 && o.cy > H0 * 0.12);
@@ -1694,7 +1694,8 @@ async function seatMap(bmp, eng, full) {
   // 붙어 버린 칸 몇 개는 넓이로 나눠 셈. 버튼, 테두리처럼 큰 덩어리, 줄 번호 숫자처럼 성긴 덩어리(꽉 찬 정도 80% 아래), 그림 끝에 잘린 옆 칸은 뺌
   // 초록 칸 바로 옆 회색 칸은 테두리가 흐려 꽉 찬 정도가 70%대로 떨어짐(김천 S13 2칸): 정사각형(가로세로 1px 안)이고 보통 칸 크기면 칸으로 봄 (9×12 같은 글자 조각은 뺌)
   // 여러 칸으로 셀 큰 덩어리(붙은 칸)는 속이 꽉 차야 함: 칸 이름 상자(전북 커플석 'A1'~'A12', 회색 바탕에 흰 글자)는 글자 구멍 때문에 꽉 찬 정도가 0.85~0.9 (11/17: 커플석 24석을 58석으로 셈)
-  const seat = o => o.n >= med * 0.45 && !(o.n >= med * 1.5 && o.n / (o.w * o.h) < 0.94) && (o.n / (o.w * o.h) > 0.8 || o.n / (o.w * o.h) > 0.7 && Math.abs(o.w - o.h) <= 1 && Math.abs(o.w - side) <= 1.5 || round(o) && o.n >= med * 0.75 && o.n <= med * 1.3) && Math.max(o.w, o.h) <= side * 3.5 && Math.min(o.w, o.h) <= side * 1.6 && !(o.edge && o.n < med * 0.8) && inMap(o);
+  // 짙은 회색 칸은 한 칸 크기만 (화면의 짙은 버튼, 아이콘이 붙은 칸 여럿으로 세이지 않게)
+  const seat = o => o.n >= med * 0.45 && !(o.dark && o.n > med * 1.5) && !(o.n >= med * 1.5 && o.n / (o.w * o.h) < 0.94) && (o.n / (o.w * o.h) > 0.8 || o.n / (o.w * o.h) > 0.7 && Math.abs(o.w - o.h) <= 1 && Math.abs(o.w - side) <= 1.5 || round(o) && o.n >= med * 0.75 && o.n <= med * 1.3) && Math.max(o.w, o.h) <= side * 3.5 && Math.min(o.w, o.h) <= side * 1.6 && !(o.edge && o.n < med * 0.8) && inMap(o);
   // 옆 구역 칸 빼기: 칸 사이 간격(가장 가까운 칸까지 거리의 중앙값)의 3.3배 넘게 떨어진 칸 덩어리는 다른 구역으로 보고 가장 큰 덩어리만 셈
   // (한 구역 안 통로는 칸 2~3개 폭, 구역 사이는 그보다 넓음. 놀티켓은 옆 구역 좌석도 같은 회색으로 그려 잘라 낸 그림에 섞임)
   const all = comps.filter(seat), d2 = (a, b) => Math.hypot(a.cx - b.cx, a.cy - b.cy);
@@ -1724,7 +1725,7 @@ async function seatMap(bmp, eng, full) {
     // 같은 이름이 두 번 나오거나, 한 번 나오고 표의 그 구역 잔여가 센 남은 칸과 같으면 씀
     const ink = (x, y) => { const i = (y * W0 + x) * 4, r = d[i], g = d[i + 1], b = d[i + 2]; return Math.max(r, g, b) - Math.min(r, g, b) < 16 && 0.299 * r + 0.587 * g + 0.114 * b < 200; };
     const top = Math.min(...comps.filter(seat).map(o => o.cy - o.h / 2)), span = y => { let a = -1, b = -1; for (let x = 0; x < W0; x++) if (ink(x, y)) { if (a < 0) a = x; b = x; } return a < 0 ? null : [a, b]; };
-    let y1 = Math.floor(top) - 1;
+    let y1 = Math.floor(top) - 3;  // 짙은 칸 테두리의 흐린 회색 줄(1~2px)은 이름 글자가 아님
     while (y1 >= 0 && !span(y1)) y1--;
     let y0 = y1, x0 = W0, x1 = 0;
     while (y0 > 0 && span(y0 - 1)) y0--;
