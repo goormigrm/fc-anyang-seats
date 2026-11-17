@@ -489,7 +489,6 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       ['pohang', 61, 7, H2('포항스틸러스', '포항스틸야드') + '청암E1구역\n100 석\nA1구역\n50 석\n데크석\n20 석', { E1: 100, A1: 50, 데크석: 20 }, ''],
       ['seoul', 69, 3, H2('FC서울', '서울월드컵경기장') + 'E-A구역\n80 석\nSC구역\n40 석', { EA: 80, SC: 40 }, ''],
       ['ulsan', 106, 11, H2('울산HD', '울산문수축구경기장') + 'N1구역\n120 석\nE13구역\n50 석\n프리미엄 테이블석\n10 석', { N1: 120, E13: 50, 프리미엄테이블석: 10 }, ''],
-      ['incheon', 50, 1, H2('인천유나이티드', '인천축구전용경기장') + '원정석\n500 석\nE3구역\n90 석\nV1구역\n10 석', { 원정석: 500, E3: 90, V1: 10 }, ''],
       ['suwon', 62, 13, H2('수원삼성', '수원월드컵경기장') + 'S3구역\n20 석\nE5구역\n40 석', { S3: 20, E5: 40 }, ''],
       ['suwonfc', 38, 13, H2('수원FC', '수원종합운동장') + 'S7구역\n30 석\nVIP석\n5 석', { S7: 30, VIP석: 5 }, ''],
       ['bucheon', 42, 8, H2('부천FC1995', '부천종합운동장') + 'SA구역\n50 석\nGE가구역\n12 석', { SA: 50, GE가: 12 }, ''],
@@ -514,7 +513,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   p = await open(b, { url: URL + '?s=gimcheon', data: { 'gimcheon/latest.json': { updatedAt: '2026-11-07T14:06:00+09:00', match: { opponent: '김천상무' }, sections: [] } } });
   await p.waitForTimeout(1200);
   r = await p.evaluate(() => [...document.querySelectorAll('#stadiums a')].map(a => a.textContent + (a.getAttribute('aria-current') ? '*' : '')).join('|'));
-  check('구장 버튼: 안양 홈, 김천(지금, 11.07), 전북, 포항, 북패(서울), 울산, 인천, 수원삼성, 수원FC, 부천, 강원, 경기별 기록', r === '안양 홈|김천11.07*|전북|포항|북패|울산|인천|수원삼성|수원FC|부천|강원|경기별 기록', r);
+  check('구장 버튼: 안양 홈, 김천(지금, 11.07), 전북, 포항, 북패(서울), 울산, 수원삼성, 수원FC, 부천, 강원, 경기별 기록 (인천은 뺌)', r === '안양 홈|김천11.07*|전북|포항|북패|울산|수원삼성|수원FC|부천|강원|경기별 기록', r);
   await p.context().close();
 
   // 사이트 화면에서만 FC서울 = '북패' (저장, 공유 이미지와 요약 글은 '서울', 경기장 이름은 그대로)
@@ -998,10 +997,10 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     }
     check('총석 집계: 이미 있는 총석(W2K 20)과 다르게 세면(24) 묻고, 확인하면 바꾸고 취소하면 그대로', /^24\|.*W2K: 표 20석 -> 센 24석/.test(out.true) && /^20\|/.test(out.false), JSON.stringify(out));
   }
-  // 총석 집계 화면(다른 팀 경기 날 미리): 인천 E12 좌석 그림(남은 37 / 전체 87)을 넣어도 총석만 들어가고 잔여, 경기 정보, 집계 시각, 비교 기준, 발행은 그대로. 같이 찍힌 목록 잔여와 다르면 안 넣음
+  // 총석 집계 화면(다른 팀 경기 날 미리): 울산 E12 좌석 그림(남은 37 / 전체 87)을 넣어도 총석만 들어가고 잔여, 경기 정보, 집계 시각, 비교 기준, 발행은 그대로. 같이 찍힌 목록 잔여와 다르면 안 넣음
   {
     const f = await shot('grid_maxonly', grid('E12', 37, 50, '#0d2b45', 14, 0), 30 * 2 + 20 * 14 * 1.5 + 14 * 1.4 + 40, 120 + 5 * 14 * 1.5);
-    p = await open(b, { url: URL + '?s=incheon#edit' });
+    p = await open(b, { url: URL + '?s=ulsan#edit' });
     const asked = [];
     p.on('dialog', d => { asked.push(d.message()); d.type() === 'prompt' ? d.accept('E12') : d.accept(); });
     const before = await p.evaluate(() => { Object.assign(state, { date: '2026-12-05T14:00', at: '2026-12-01T10:00' }); state.rows.E13.remain = 5; save(); document.getElementById('modeMax').click(); return JSON.stringify([state.date, state.at, state.base]); });
@@ -1009,7 +1008,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     await p.evaluate(() => window.ocrDone);
     r = await p.evaluate(() => ({ E12: [state.rows.E12.remain, state.rows.E12.max].join('/'), E13: state.rows.E13.remain, keep: JSON.stringify([state.date, state.at, state.base]), st: document.getElementById('status').innerText, pub: document.getElementById('pubNote').textContent }));
     await p.context().close();
-    p = await open(b, { url: URL + '?s=incheon#edit' });
+    p = await open(b, { url: URL + '?s=ulsan#edit' });
     const off = await p.evaluate(() => document.body.classList.contains('maxmode'));
     await p.close();
     check('총석 집계 화면: 캡처는 총석만 넣고(E12 87) 잔여, 경기 정보, 집계 시각, 비교 기준은 그대로, 다시 열면 현황 집계', r.E12 === '/87' && r.E13 === 5 && r.keep === before && /총석을 넣었습니다 \(확인한 뒤 "총석 발행"\): E12 87석/.test(r.st) && !asked.some(m => /회색인 줄/.test(m)) && off === false, JSON.stringify({ r, before, asked, off }));
