@@ -733,6 +733,11 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
         const fill = id => document.querySelector(`#board [data-z="${id}"]`).getAttribute('fill'); return [fill(h), fill(o), (document.getElementById('board').textContent.match(/쪽 \(같은 구간, (..)\)/) || [])[1]].join(); }, [hostZone, ourZone]);
       await pg.context().close();
     }
+    { const pg = await open(b, { url: URL + '?s=jeonbuk&test=seoul#edit' });
+      out.test = await pg.evaluate(() => { ['E1G', 'S1A'].forEach(id => Object.assign(state.rows[id], { max: 100, remain: 10 })); render(); const fill = id => document.querySelector(`#board [data-z="${id}"]`).getAttribute('fill'), t = document.getElementById('board').textContent;
+        return [fill('E1G'), fill('S1A'), /빨강 = 북패 원정석 쪽/.test(t), document.querySelectorAll('#board image, #stadium image').length].join(); });  // 사이트 화면은 서울 = 북패
+      await pg.context().close(); }
+    check('시험 페이지(전북 vs 서울): 원정석 쪽은 서울 구단 색 빨강, 전북 쪽은 초록, 안양 앰블럼 없음', out.test === '#145f2c,#761212,true,0', out.test);
     check('원정 구장 홈 팀 쪽은 구단 상징 색(90% 예매 칸): 강원 주황, 전북 초록, 김천 빨강, 울산 파랑 / 원정 응원 쪽은 보라', out.gangwon === '#9c4a08,#3e1a78,주황' && out.jeonbuk === '#145f2c,#3e1a78,초록' && out.gimcheon === '#761212,#3e1a78,빨강' && out.ulsan === '#24508f,#3e1a78,파랑', JSON.stringify(out));
   }
   // 발행한 총석(max.json)은 입력 화면을 열 때 기본 총석이 됨: 코드 기본값(R10 126)보다 우선, 모르던 구역(일반지정석)도 채움, 이 브라우저에서 사람이 고친 칸은 그대로

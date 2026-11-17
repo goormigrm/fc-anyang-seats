@@ -389,7 +389,10 @@ const RED = ['#e58b8b', '#d24a4a', '#a82020', '#761212'];
 const BLUE = ['#c6d6ec', '#8fb0d9', '#4f7fbf', '#24508f'], GREEN = ['#bfe0c4', '#7fc08b', '#2e9550', '#145f2c'], ORANGE = ['#fbd5ac', '#f5a65b', '#e2761b', '#9c4a08'];
 // 원정 경기의 홈 팀 쪽은 그 구단 상징 색으로 [4단계 색, 옅은 칸의 글자색, 범례에 쓰는 이름]. STADIUMS.<구장>.color (11/13 사용자 요청)
 // 빨강: 김천상무, 포항, FC서울, 부천 / 초록: 전북 / 주황: 강원 / 파랑(기본): 울산, 인천, 수원삼성, 수원FC(상징색이 청색, 적색 둘이라 먼저 적힌 청색으로)
-const HOSTPAL = { red: [RED, '#4a0e0e', '빨강'], green: [GREEN, '#0f3d1e', '초록'], orange: [ORANGE, '#5a2a04', '주황'] }[STADIUMS[STADIUM]?.color] || [BLUE, '#1e3a5f', '파랑'];
+const PALS = { red: [RED, '#4a0e0e', '빨강'], green: [GREEN, '#0f3d1e', '초록'], orange: [ORANGE, '#5a2a04', '주황'], blue: [BLUE, '#1e3a5f', '파랑'] };
+const HOSTPAL = PALS[STADIUMS[STADIUM]?.color] || PALS.blue;
+// 원정 응원 쪽: 안양은 보라. 시험 페이지는 그 원정 팀의 구단 색 (11/17: 전북 vs 서울 시험은 서울 빨강)
+const GUESTPAL = TEST ? PALS[STADIUMS[TESTKEY].color] || PALS.blue : [PURPLE, '#2b1450', '보라'];
 const Rs = (a, b, p = 'R') => Array.from({ length: b - a + 1 }, (_, i) => p + (a + i));
 
 // ring: 스탠드 위치 [u0, u1, 안쪽 반지름, 바깥 반지름]. u 0~1 위 직선 왼→오, 1~2 오른쪽 곡선, 2~3 아래 직선 오→왼, 3~4 왼쪽 곡선 아래→위
@@ -714,7 +717,7 @@ function look(s, r, est) {
   const rem = r.remain ?? (est == null ? null : Math.round(est)), cap = capOf(r);
   if (rem == null) return { fill: '#fff', ink: '#9aa4b1', sub: [], empty: true };
   if (r.remain === 0) return { fill: '#b4b1a7', ink: '#2f2f2f', sub: ['매진'] };
-  const pal = s.away ? RED : AWAY && !s.ours ? HOSTPAL[0] : PURPLE, ink0 = s.away ? '#4a0e0e' : AWAY && !s.ours ? HOSTPAL[1] : '#2b1450';
+  const pal = s.away ? RED : AWAY && !s.ours ? HOSTPAL[0] : GUESTPAL[0], ink0 = s.away ? '#4a0e0e' : AWAY && !s.ours ? HOSTPAL[1] : GUESTPAL[1];
   if (!cap) return { fill: '#857d96', ink: '#fff', sub: ['잔여 ' + rem], noMax: true };
   // 예매율(총석 대비 팔린 좌석): 많이 팔릴수록 진하게. 1석이라도 남으면 100% 로 보이지 않게 내림
   const b = 1 - Math.min(rem, cap) / cap, i = b >= 0.75 ? 3 : b >= 0.5 ? 2 : b >= 0.25 ? 1 : 0;
@@ -792,7 +795,7 @@ function sameTime(side, cur) {
 // k: 글자와 여백 배율 (휴대폰 세로판은 크게), n: 보여 줄 최근 집계 수, side: 'home' 홈석, 'away' 원정석 (원정석 숫자를 모르는 점은 빠짐), 없으면 전체
 function chart(x0, y0, w, h, k = 1, n = 8, side) {
   const pts = trendPoints().map(p => p.ac && (side === 'away' ? { at: p.at, booked: p.ab, cap: p.ac } : { at: p.at, booked: p.booked - p.ab, cap: p.cap - p.ac })).filter(Boolean).slice(-n);
-  const last = pts.at(-1), ink = side === 'away' ? (AWAY ? '#6a40ad' : '#a82020') : '#3e1a78', z = v => v * k, two = k > 1 || w < 800;  // two: 설명을 다음 줄로
+  const last = pts.at(-1), ink = side === 'away' ? (AWAY ? GUESTPAL[0][2] : '#a82020') : '#3e1a78', z = v => v * k, two = k > 1 || w < 800;  // two: 설명을 다음 줄로
   const prev = [...pts].reverse().find(p => new Date(last?.at) - new Date(p.at) >= 3600e3);  // 예상은 1시간 넘게 떨어진 점과 비교 (몇 분 차이로 늘리면 크게 틀림)
   const title = side === 'away' ? '원정석 예매 추이' : '홈석 예매 추이';
   const out = [`<rect x="${x0}" y="${y0}" width="${w}" height="${h}" rx="${z(12)}" fill="#fff" stroke="#eceff3"/>`,
@@ -892,7 +895,7 @@ function build(story) {
     + `<text x="24" y="114" font-size="46" font-weight="700" fill="#111827">${esc(big)}<tspan font-size="22" font-weight="600" fill="#4b5563">${esc(small)}</tspan></text>`
     + text(24, 154, short, 20, '#9ca3af', 400, 'start') + '</g>';
 
-  const items = [[PURPLE[3], '75% 이상'], [PURPLE[2], '50~74%'], [PURPLE[1], '25~49%'], [PURPLE[0], '0~24%'],
+  const items = [[GUESTPAL[0][3], '75% 이상'], [GUESTPAL[0][2], '50~74%'], [GUESTPAL[0][1], '25~49%'], [GUESTPAL[0][0], '0~24%'],
     AWAY ? [HOSTPAL[0], `${STADIUMS[STADIUM].name} 쪽 (같은 구간, ${HOSTPAL[2]})`] : [RED, '원정석 (같은 구간, 빨강)'], ['#b4b1a7', '매진']];
   if (offN) items.push(['url(#hatch)', '미판매']);
   if (emptyN) items.push(['#fff', '정보 없음', 'stroke="#b9c2ce" stroke-dasharray="3 2"']);
@@ -922,19 +925,19 @@ function build(story) {
     + `<line x1="${CX}" y1="${fy}" x2="${CX}" y2="${fy + 284}"/><circle cx="${CX}" cy="${CY}" r="40"/>`
     + `<rect x="${fx}" y="${CY - 80}" width="66" height="160"/><rect x="${fx + 374}" y="${CY - 80}" width="66" height="160"/>`
     + `<rect x="${fx}" y="${CY - 35}" width="22" height="70"/><rect x="${fx + 418}" y="${CY - 35}" width="22" height="70"/></g>`
-    + `<image href="${emb}" x="${CX - 78}" y="${CY - 79}" width="156" height="157"/>`
+    + (TEST ? '' : `<image href="${emb}" x="${CX - 78}" y="${CY - 79}" width="156" height="157"/>`)  // 시험 페이지(안양 경기가 아님)는 안양 앰블럼 없이
     + DECOR.map(([n, a, b, ri, ro]) => `<path d="${ring(a, b, ri, ro)}" fill="#c9ced6" stroke="#fff" stroke-width="3"/>` + arcText(a, b, ri, ro, n, '#4b5563')).join('')
     + (GEO ? '' : `<g fill="#cfd6df" font-size="30" font-weight="700" text-anchor="middle"><text x="${CX}" y="${CY - 152}">${AWAY ? 'E' : 'W'}</text>`  // 위, 아래, 왼쪽, 오른쪽
     + `<text x="${CX}" y="${CY + 178}">${AWAY ? 'W' : 'E'}</text><text x="${AWAY ? CX - 400 : CX - 262}" y="${CY + 11}">${AWAY ? 'N' : 'S'}</text><text x="${CX + 300}" y="${CY + 11}">${AWAY ? 'S' : 'N'}</text></g>`)
     + parts.join('');
   const title = matchTitle(), when = state.date ? fmtDate(state.date) : '';
   const at = state.at ? `집계 ${state.at.replace(/-/g, '.').replace('T', ' ')} (KST)` : '';
-  const foot = '구역 안 % = 예매율 (총석 대비 팔린 좌석)' + (Object.keys(est).length ? ` · ≈ = ${SELLER} 등급 묶음 잔여를 구역 총석 비율로 나눈 추정` : '') + (AWAY ? ' · 보라 = 원정 응원 쪽(실제 원정석 구역은 경기마다 다를 수 있음)' : '');
+  const foot = '구역 안 % = 예매율 (총석 대비 팔린 좌석)' + (Object.keys(est).length ? ` · ≈ = ${SELLER} 등급 묶음 잔여를 구역 총석 비율로 나눈 추정` : '') + (AWAY ? ` · ${GUESTPAL[2]} = ${TEST ? STADIUMS[TESTKEY].name + ' 원정석' : '원정 응원'} 쪽(실제 원정석 구역은 경기마다 다를 수 있음)` : '');
 
   if (!story) return defs + `<rect width="${W}" height="${H}" fill="#fff"/><rect width="${W}" height="170" fill="#3e1a78"/>`
-    + `<image href="${emb}" x="30" y="16" width="92" height="93"/>`
-    + text(140, 60, title + ' 예매 현황', 28, '#fff', 700, 'start')
-    + text(140, 92, [when, VENUE, TEST ? 'K리그1 · 시험 집계' : AWAY ? 'K리그1 · 원정' : 'K리그1'].filter(Boolean).join(' · '), 14, '#e4dcf5', 400, 'start')
+    + (TEST ? '' : `<image href="${emb}" x="30" y="16" width="92" height="93"/>`)
+    + text(TEST ? 40 : 140, 60, title + ' 예매 현황', 28, '#fff', 700, 'start')
+    + text(TEST ? 40 : 140, 92, [when, VENUE, TEST ? 'K리그1 · 시험 집계' : AWAY ? 'K리그1 · 원정' : 'K리그1'].filter(Boolean).join(' · '), 14, '#e4dcf5', 400, 'start')
     + text(1250, 56, at, 13, '#fff', 600, 'end')
     + text(1250, 80, state.crowd != null ? `관중은 연맹 공식 발표 · 구역 색은 ${SELLER} 마지막 집계 기준` : `${SELLER} 등급/좌석 선택 화면 잔여석 기준`, 12, '#c3b1e6', 400, 'end')
     + text(1250, 104, phase(), 14, '#fde68a', 700, 'end')
@@ -947,7 +950,7 @@ function build(story) {
   // 스토리: 맨 위·아래는 인스타 화면(프로필, 답장 칸)에 가려서 내용은 y 200~1660 사이에 둠
   const S = 1000 / 1224;  // 지도 전체 폭(관중석 바깥 포함 1224)을 1000에 맞춤
   const st = `<rect width="1080" height="1920" fill="#fff"/><rect width="1080" height="640" fill="#3e1a78"/>`
-    + `<image href="${emb}" x="490" y="200" width="100" height="101"/>`
+    + (TEST ? '' : `<image href="${emb}" x="490" y="200" width="100" height="101"/>`)
     + text(540, 385, title, 58, '#fff', 700)
     + text(540, 440, [when, VENUE].filter(Boolean).join(' · '), 28, '#e4dcf5')
     + text(540, 486, [TEST ? 'K리그1 예매 현황 (시험)' : AWAY ? 'K리그1 원정 예매 현황' : 'K리그1 예매 현황', at].filter(Boolean).join(' · '), 24, '#c3b1e6')
@@ -1159,7 +1162,7 @@ const fileBase = () => `${AWAY ? HOST + '_안양원정' : '안양_' + (state.opp
 function trendStory() {
   const pts = trendPoints(), last = pts.at(-1), prev = pts.at(-2), d = last && prev ? last.booked - prev.booked : null;
   return `<rect width="1080" height="1920" fill="#fff"/><rect width="1080" height="700" fill="#3e1a78"/>`
-    + `<image href="${exporting ? EMBLEM : 'emblem.png'}" x="490" y="200" width="100" height="101"/>`
+    + (TEST ? '' : `<image href="${exporting ? EMBLEM : 'emblem.png'}" x="490" y="200" width="100" height="101"/>`)
     + text(540, 385, matchTitle(), 58, '#fff', 700)
     + text(540, 440, [state.date && fmtDate(state.date), '예매 추이'].filter(Boolean).join(' · '), 28, '#e4dcf5')
     + (last ? text(540, 560, `예매 ${fmt(last.booked)}석 (${(last.booked / last.cap * 100).toFixed(1)}%)`, 60, '#fff', 700) : '')
