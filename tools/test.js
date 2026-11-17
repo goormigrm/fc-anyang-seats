@@ -506,7 +506,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   {
     const H2 = (host, venue) => `${host} vs FC안양\n${venue} | 2026.11.29(일) 14:00\n등급 선택\n`;
     const cases = [
-      ['jeonbuk', 103, 10, H2('전북현대', '전주월드컵경기장') + 'S원정\n500 석\nS-1C구역\n120 석\nE일반2A구역\n30 석\n1A구역\n7 석', { S1C: 120, E2A: 30 }, '1A'],
+      ['jeonbuk', 104, 11, H2('전북현대', '전주월드컵경기장') + 'S원정\n500 석\nS-1C구역\n120 석\nE일반2A구역\n30 석\n1A구역\n7 석', { S1C: 120, E2A: 30 }, '1A'],
       ['pohang', 61, 7, H2('포항스틸러스', '포항스틸야드') + '청암E1구역\n100 석\nA1구역\n50 석\n데크석\n20 석', { E1: 100, A1: 50, 데크석: 20 }, ''],
       ['seoul', 69, 3, H2('FC서울', '서울월드컵경기장') + 'E-A구역\n80 석\nSC구역\n40 석', { EA: 80, SC: 40 }, ''],
       ['ulsan', 106, 11, H2('울산HD', '울산문수축구경기장') + 'N1구역\n120 석\nE13구역\n50 석\n프리미엄 테이블석\n10 석', { N1: 120, E13: 50, 프리미엄테이블석: 10 }, ''],
@@ -761,7 +761,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     { const pg = await open(b, { url: URL + '?s=jeonbuk#edit' });
       out.corner = await pg.evaluate(() => [SECTIONS.find(x => x.id === '코너아').ours, SECTIONS.filter(x => x.ours).length].join());
       await pg.context().close(); }
-    check("전북 코너 아(원정석 코너 테이블)는 원정석 쪽", out.corner === 'true,10', out.corner);
+    check("전북 코너 아(원정석 코너 테이블)는 원정석 쪽", out.corner === 'true,11', out.corner);
     check('원정 구장 홈 팀 쪽은 구단 상징 색(90% 예매 칸): 강원 주황, 전북 초록, 김천 빨강, 울산 파랑 / 원정 응원 쪽은 보라', out.gangwon === '#9c4a08,#3e1a78,주황' && out.jeonbuk === '#145f2c,#3e1a78,초록' && out.gimcheon === '#761212,#3e1a78,빨강' && out.ulsan === '#24508f,#3e1a78,파랑', JSON.stringify(out));
   }
   // 발행한 총석(max.json)은 입력 화면을 열 때 기본 총석이 됨: 코드 기본값(R10 126)보다 우선, 모르던 구역(일반지정석)도 채움, 이 브라우저에서 사람이 고친 칸은 그대로
@@ -844,6 +844,15 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       await tk.waitForTimeout(2200); const v = await tk.evaluate(() => [__set.ping?.state, !!__set.text].join()); await tk.close(); return v; };
     const withTest = await send({ board: { at: Date.now(), page: '?s=jeonbuk&test=seoul', want: '서울' } }), normal = await send({});
     check("보내기 스크립트 15판: 시험 페이지가 알린 팀('서울') 경기는 보내고, 보통은 안양 경기만", withTest === 'seat,true' && normal === 'idle,false', JSON.stringify({ withTest, normal }));
+  }
+  // 전북 S-2G(11/17 사용자 화면): 'S 중립' 아래 S-2G 164(위 큰 칸)와 'S 원정' 아래 S-2G 115(아래 작은 칸)는 다른 칸. 원정 쪽이 중립 쪽을 덮어쓰던 것(발행본 S2G 111 -> 37%)
+  {
+    const pg = await open(b, { url: URL + '?s=jeonbuk#edit' });
+    r = await pg.evaluate(() => { const H = '전북현대 vs FC안양\n전주 월드컵경기장 | 2026.12.05(토) 14:00\n등급 선택\n';
+      fcIngest(H + 'S 원정\n2425 석\nS-1A\n199 석\nS-2F\n78 석\nS-2G\n115 석'); fcIngest(H + 'S 중립\n3351 석\nS-1D\n609 석\n✓ S-2G\n164 석\nS-2H\n114 석');
+      return [state.rows.S2G.remain, state.rows['S2G원정'].remain, !!SECTIONS.find(x => x.id === 'S2G원정').ours, !!SECTIONS.find(x => x.id === 'S2G').ours].join(); });
+    await pg.context().close();
+    check("전북 S-2G: 'S 중립' 아래는 S2G(164, 전북 쪽), 'S 원정' 아래는 S2G 원정(115, 원정석 쪽)", r === '164,115,true,false', r);
   }
   // 전북 코너 테이블 목록(11/17 사용자 화면): '코너 테이블' 아래 '가구역'~'사구역' -> 코너 가~사 칸
   {

@@ -213,13 +213,13 @@ const STADIUMS = {
   // 원본은 테이블 줄, 2층 모서리가 비어 있음: 가운데 칸은 원본 자리 그대로 두고 양 끝 칸만 모서리 대각선 통로 앞까지 늘려 회색 빈 곳을 줄임 (스탠드 두께는 원본 비율, 지도 높이 끝까지)
   jeonbuk: { color: 'green', venue: '전주월드컵경기장', host: '전북현대', name: '전북', geo: { kx: 0.95, c0: 5, chamfer: true, r: [12, 168], s: 1.35 },
     layout: () => {
-      const T1 = [14, 66], TT = [70, 90], T2 = [93, 168], ours = ['S1C', 'S1B', 'S1A', 'S2F', 'S2D', 'S2B', 'S2E', 'S2C', 'S2A'];
+      const T1 = [14, 66], TT = [70, 90], T2 = [93, 168], ours = ['S1C', 'S1B', 'S1A', 'S2F', 'S2D', 'S2B', 'S2G원정', 'S2E', 'S2C', 'S2A'];
       // seq: 칸 [id, 폭 배율, 빈자리 글자], id 가 null 이면 빈자리. row: 면 k 의 가운데 칸은 u k+a~k+b, 양 끝 칸은 모서리 통로(k-e, k+1+e)까지 비스듬히
       const seq = (u0, u1, list, T, o) => { const n = list.reduce((a, [, k = 1]) => a + k, 0); let u = u0; list.forEach(([id, k = 1, t = '']) => { const v = u + (u1 - u0) * k / n; if (id) arc([id], u, v, T, o); else DECOR.push([t, u, v, ...T]); u = v; }); };
       const row = (k, list, a, b, T, o, e = 0.42) => { const [f, ...m] = list.map(x => [x].flat()), l = m.pop(); seq(k - e, k + a, [f], T, o); seq(k + a, k + b, m, T, o); seq(k + b, k + 1 + e, [l], T, o); };
       const ids = (p, s) => s.split(' ').map(x => x === '-' ? null : p + x);
       arc(ids('E', '1H 1G 1F 1E 1D 1C 1B 1A'), 0, 1, T1); row(0, ids('E', '2R 2P 2M 2K 2H 2F 2D 2B'), 1 / 8, 7 / 8, TT); row(0, ids('E', '2S 2Q 2N 2L 2J 2G 2E 2C 2A'), 0, 1, T2);
-      arc(ids('S', '1F 1E 1D 1C 1B 1A'), 2, 3, T1, ours); row(2, ids('S', '2M 2K 2H 2F 2D 2B'), 1 / 6, 5 / 6, TT, ours); row(2, ids('S', '2N 2L 2J 2G - 2E 2C 2A'), -0.05, 1.05, T2, ours);
+      arc(ids('S', '1F 1E 1D 1C 1B 1A'), 2, 3, T1, ours); row(2, ids('S', '2M 2K 2H 2F 2D 2B'), 1 / 6, 5 / 6, TT, ours); row(2, ['S2N', 'S2L', 'S2J', 'S2G', ['S2G원정', 0.6], 'S2E', 'S2C', 'S2A'], -0.05, 1.05, T2, ours);
       // W 1층(원본 좌석도, 11/17 티켓링크 화면): 양 끝 W밸류 1A, 1B 와 W일반 1P, 1Q 는 층 전체. 가운데는 앞줄(벤치 뒤 1C, 1D / 1M, 1N, 그 사이는 선수 통로)과
       // 뒷줄(H 테이블 1F, W센터 1G~1J, A 테이블 1K, W 패밀리 1L). 테이블 칸 앞쪽 띠는 커플석. f = 화면 왼쪽부터의 위치 0~1 (아래쪽 면은 u 가 오른쪽에서 왼쪽으로 가서 u = 5 - f)
       // 티켓링크는 A 테이블과 A 커플을 둘 다 구역 'W-1K'로 적음(좌석은 따로): 커플 칸은 of(같은 구역 이름), when(그 줄 앞의 등급 이름)으로 가려 받음. H 쪽(1F)은 원본 좌석도가 A 쪽과 대칭이라 같은 방식으로 둠(티켓링크 화면은 아직 못 봄)
@@ -237,7 +237,9 @@ const STADIUMS = {
       [['라', '마'], ['바', '사'], ['아', '가'], ['나', '다']].forEach((p, i) => arc(p.map(x => '코너' + x), 7 + i * 2, 8 + i * 2, T1));
       // 코너 테이블: 티켓링크 등급 목록은 '코너 테이블' 아래 '가구역'~'사구역'('원정석 코너 테이블'은 따로), 좌석 그림 제목은 '코너 테이블 (다)' (11/17 사용자 화면)
       SECTIONS.forEach(x => { if (x.id.startsWith('코너')) Object.assign(x, { name: '코너 ' + x.id.slice(2), alias: ['코너테이블' + x.id.slice(2), x.id.slice(2)] }); });
-      SECTIONS.find(x => x.id === '코너아').ours = true;  // 코너 아 = '원정석 코너 테이블'(11/17 사용자 화면: 그 등급 아래 '아구역') -> 원정석 쪽
+      SECTIONS.find(x => x.id === '코너아').ours = true;
+      // S2G 는 위쪽 큰 칸이 'S 중립', 아래 작은 칸이 'S 원정'인데 티켓링크 구역 이름은 둘 다 'S-2G'(11/17 사용자 화면): 칸을 나누고 앞의 등급 줄(중립 / 원정)로 가림
+      Object.assign(SECTIONS.find(x => x.id === 'S2G원정'), { name: 'S2G 원정', of: 'S2G', when: /원정/ }); SECTIONS.find(x => x.id === 'S2G').when = /중립/;  // 코너 아 = '원정석 코너 테이블'(11/17 사용자 화면: 그 등급 아래 '아구역') -> 원정석 쪽
       // 테이블 줄의 E2B~E2R 과 W2B, W2D, W2P, W2R 은 한 구역 안에 앞줄 테이블석과 뒷줄 일반석이 같은 이름으로 있음(11/17 사용자: E 2B 좌석 그림의 1, 2열이 테이블 T1~T6, 3~5열은 일반).
       // 좌석 그림 한 장에 둘 다 찍혀 총석은 블록 전체로 세고, 잔여는 'E 테이블' 아래 E-2B 와 그 밖의 등급(E 일반) 아래 E-2B 를 따로 기억해 더함 (mix, rows[id].parts)
       SECTIONS.forEach(x => { if (/^E2[BDFHKMPR]$|^W2[BDPR]$/.test(x.id)) x.mix = true; });
