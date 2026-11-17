@@ -399,9 +399,11 @@ const STADIUMS = {
 const STADIUM = STADIUMS[new URLSearchParams(location.search).get('s')] ? new URLSearchParams(location.search).get('s') : 'anyang', AWAY = STADIUM !== 'anyang';
 // 시험 페이지(11/17): ?s=<구장>&test=<원정 팀의 구장 키> (예: ?s=jeonbuk&test=seoul = 전북현대 vs FC서울). 안양 경기가 아닌 경기를 시험으로 집계, 발행, 공유하는 숨은 주소(사이트 어디에도 링크 없음)
 // 입력값(이 브라우저), 발행 데이터(data 브랜치 test/<구장>/)가 안양 현황판과 따로이고, 기본 주소의 최근 구장 따라가기, 경기별 기록, 링크 미리보기(og)에 들어가지 않음. 구장 총석(max.json)은 실제 구장 것을 같이 씀
-const TESTKEY = AWAY && STADIUMS[new URLSearchParams(location.search).get('test')] ? new URLSearchParams(location.search).get('test') : '', TEST = TESTKEY && STADIUMS[TESTKEY].host;
+// 시험 페이지의 원정 팀: 원정 구장 팀(STADIUMS) 또는 구장이 없는 팀(GUESTS: 11/17 수원삼성 vs 경남FC 시험 ?s=suwon&test=gyeongnam)
+const GUESTS = { gyeongnam: { host: '경남FC', name: '경남', color: 'red' } };
+const TESTKEY = AWAY && (STADIUMS[new URLSearchParams(location.search).get('test')] || GUESTS[new URLSearchParams(location.search).get('test')]) ? new URLSearchParams(location.search).get('test') : '', TG = TESTKEY && (STADIUMS[TESTKEY] || GUESTS[TESTKEY]), TEST = TG && TG.host;
 const VENUE = AWAY ? STADIUMS[STADIUM].venue : '안양종합운동장', HOST = AWAY ? STADIUMS[STADIUM].host : 'FC안양', DATA = (TEST ? 'test/' : '') + (AWAY ? STADIUM + '/' : ''), MAXDATA = AWAY ? STADIUM + '/' : '';
-const GUEST = TEST || 'FC안양', WANT = TEST ? STADIUMS[TESTKEY].name : '안양';  // 원정 팀, 받은 글자에 있어야 할 원정 팀 이름
+const GUEST = TEST || 'FC안양', WANT = TEST ? TG.name : '안양';  // 원정 팀, 받은 글자에 있어야 할 원정 팀 이름
 const KEY = 'fc-anyang-seat-status' + (AWAY ? '-' + STADIUM : '') + (TEST ? '-test' : ''), FULL = AWAY ? 0 : 11542, W = 1280, H = 1062, FONT = "'Malgun Gothic','Apple SD Gothic Neo',sans-serif";
 // 지도: 경기장 중심 (CX, CY), 직선 반길이 L, 스탠드 안쪽/바깥 반지름 RI/RO
 const CX = 600, CY = 375, L = 240, RI = 285, RO = AWAY ? 372 : 360;
@@ -414,7 +416,7 @@ const PALS = { red: [RED, '#4a0e0e', '빨강'], green: [GREEN, '#0f3d1e', '초�
   yellow: [['#fbeeb0', '#f3d34f', '#c99a0e', '#7d5e00'], '#4a3800', '노랑'] };
 const HOSTPAL = PALS[STADIUMS[STADIUM]?.color] || PALS.blue;
 // 원정 응원 쪽: 안양은 보라. 시험 페이지는 그 원정 팀의 구단 색 (11/17: 전북 vs 서울 시험은 서울 빨강)
-const GUESTPAL = TEST ? PALS[(STADIUMS[TESTKEY].color || 'blue') === (STADIUMS[STADIUM].color || 'blue') && STADIUMS[TESTKEY].color2 || STADIUMS[TESTKEY].color] || PALS.blue : [PURPLE, '#2b1450', '보라'];  // 홈 팀과 같은 색이면 둘째 색
+const GUESTPAL = TEST ? PALS[(TG.color || 'blue') === (STADIUMS[STADIUM].color || 'blue') && TG.color2 || TG.color] || PALS.blue : [PURPLE, '#2b1450', '보라'];  // 홈 팀과 같은 색이면 둘째 색
 const Rs = (a, b, p = 'R') => Array.from({ length: b - a + 1 }, (_, i) => p + (a + i));
 
 // ring: 스탠드 위치 [u0, u1, 안쪽 반지름, 바깥 반지름]. u 0~1 위 직선 왼→오, 1~2 오른쪽 곡선, 2~3 아래 직선 오→왼, 3~4 왼쪽 곡선 아래→위
@@ -992,7 +994,7 @@ function build(story) {
     + parts.join('');
   const title = matchTitle(), when = state.date ? fmtDate(state.date) : '';
   const at = state.at ? `집계 ${state.at.replace(/-/g, '.').replace('T', ' ')} (KST)` : '';
-  const foot = '구역의 % = 예매율 (총석 대비 판매 좌석)' + (Object.keys(est).length ? ` · ≈ = ${SELLER} 등급 묶음 잔여를 구역 총석 비율로 나눈 추정` : '') + (AWAY ? ` · ${GUESTPAL[2]} = ${TEST ? STADIUMS[TESTKEY].name + ' 원정석' : '원정석'} 쪽(실제 원정석 구역은 경기마다 다를 수 있음)` : '');
+  const foot = '구역의 % = 예매율 (총석 대비 판매 좌석)' + (Object.keys(est).length ? ` · ≈ = ${SELLER} 등급 묶음 잔여를 구역 총석 비율로 나눈 추정` : '') + (AWAY ? ` · ${GUESTPAL[2]} = ${TEST ? TG.name + ' 원정석' : '원정석'} 쪽(실제 원정석 구역은 경기마다 다를 수 있음)` : '');
 
   if (!story) return defs + `<rect width="${W}" height="${H}" fill="#fff"/><rect width="${W}" height="170" fill="#3e1a78"/>`
     + (TEST ? '' : `<image href="${emb}" x="30" y="16" width="92" height="93"/>`)
