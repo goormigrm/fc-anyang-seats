@@ -937,6 +937,22 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     }
     check('전북 커플석 좌석 그림: 칸 이름 상자는 좌석 아님(24석), 커플석 제목은 A 커플, 테이블석 제목은 A 테이블, 제목이 없으면 이름이 같은 칸이 여럿이라고 묻고 답한 칸에', out.couple === '/24|' && out.table === '24/|' && /^\/24\|이름이 같은 칸이 여럿입니다 \(W1K, A 커플\)/.test(out.none), JSON.stringify(out));
   }
+  // 떨어진 묶음(한 줄 + 오른쪽 작은 묶음): 현황 집계에서 표의 잔여가 두 묶음의 남은 칸 합과 맞으면 같은 구역으로 더하고, 큰 묶음만과 맞으면 옆 구역으로 뺌 (묻지 않음)
+  {
+    const seatsHtml = (n, m) => `<span style="display:inline-block;width:${n * 14}px">${[...Array(n)].map((_, i) => `<i style="display:inline-block;width:9px;height:9px;margin:2.5px;background:${i >= 4 && i < 4 + m ? '#c06fb0' : '#e6e6e6'}"></i>`).join('')}</span>`;
+    const pic = await shot('grid_twogroups', `<div style="padding:20px 30px;white-space:nowrap"><div style="text-align:center;color:#777;font-weight:700;font-size:16px;margin-bottom:10px">W2K</div>`
+      + `<div style="display:inline-block;vertical-align:top">${seatsHtml(20, 12)}</div><div style="display:inline-block;margin-left:60px">${seatsHtml(6, 0).replace(/#e6e6e6/g, '#c06fb0')}<br>${seatsHtml(6, 0).replace(/#e6e6e6/, '#c06fb0').replace(/#e6e6e6/, '#c06fb0').replace(/#e6e6e6/, '#c06fb0').replace(/#e6e6e6/, '#c06fb0')}</div></div>`, 480, 110);
+    const out = {};
+    for (const known of [22, 12]) {
+      p = await open(b, { url: URL + '?s=jeonbuk#edit' });
+      p.on('dialog', d => d.type() === 'prompt' ? d.accept('W2K') : d.accept());
+      await p.evaluate(k => { state.rows.W2K.max = null; state.rows.W2K.remain = k; }, known);
+      await p.setInputFiles('#file', pic); await p.evaluate(() => window.ocrDone);
+      out[known] = await p.evaluate(() => [state.rows.W2K.remain, state.rows.W2K.max].join('/') + '|' + document.getElementById('status').innerText.split('\n').filter(l => /떨어져/.test(l)).join(' '));
+      await p.context().close();
+    }
+    check('떨어진 묶음: 표 잔여 22 = 두 묶음 남은 칸 합이면 같은 구역(전체 32), 잔여 12 = 큰 묶음과 맞으면 옆 구역으로 뺌(전체 20)', /^22\/32\|.*같은 구역으로 더했습니다/.test(out[22]) && /^12\/20\|.*떨어져 있는 칸 12개는 옆 구역으로/.test(out[12]), JSON.stringify(out));
+  }
   // 총석 집계에서 이미 있는 총석과 다르게 셌으면 묻고, [확인]이면 센 값으로 바꿈 (11/17: 전북 W2K 를 20 으로 발행했는데 잔여가 24 -> 다시 찍어 고칠 때)
   {
     const f = await shot('grid_w2k', grid('W2K', 4, 20, '#c06fb0', 14, 0), 30 * 2 + 20 * 14 * 1.5 + 14 * 1.4 + 40, 120 + 2 * 14 * 1.5);
@@ -1107,6 +1123,22 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   }
 
   // 놀티켓 실제 캡처 (11/07 수원삼성 vs 용인, 동그란 점, 색 있는 점 = 남은 좌석): 남은 좌석은 사진에서 직접 센 수, 전체는 줄별로 맞춘 수
+  // 전북 실제 캡처(11/17 사용자, 좌석스크린샷/시험_전북): 한 구역 안에 떨어진 묶음이 있는 그림(코너 테이블 오른쪽 기둥, W2K 오른쪽 작은 묶음)은 총석 집계에서 묻고 더함. 칸 이름 상자(T01~, A1~)는 좌석 아님
+  {
+    const JD = path.join(ROOT, '좌석스크린샷', '시험_전북');
+    for (const [file, id, total, ask] of [['좌석그림_W1K_테이블석A.png', 'W1K', 234, ''], ['좌석그림_W2K.png', 'W2K', 32, '코너'], ['좌석그림_코너가.png', '코너가', 85, '코너 가'], ['좌석그림_코너사.png', '코너사', 85, '코너 사']]) {
+      const f = path.join(JD, file);
+      if (!fs.existsSync(f)) { console.log('SKIP  전북 좌석 그림 ' + file); continue; }
+      p = await open(b, { url: URL + '?s=jeonbuk#edit' });
+      const asked = [];
+      p.on('dialog', d => { asked.push(d.message().split('\n')[0]); d.type() === 'prompt' ? d.accept(ask || id) : d.accept(); });
+      await p.evaluate(() => document.getElementById('modeMax').click());
+      await p.setInputFiles('#file', f); await p.evaluate(() => window.ocrDone);
+      r = await p.evaluate(id => state.rows[id].max, id);
+      await p.context().close();
+      check(`전북 실제 좌석 그림 ${id}: 전체 ${total}` + (total !== 234 ? ' (떨어진 묶음을 묻고 더함)' : ''), r === total && (total === 234 || asked.some(m => /떨어져 있는 묶음/.test(m))), JSON.stringify({ r, asked }));
+    }
+  }
   const NOLD = path.join(ROOT, '좌석스크린샷', '시험_놀티켓');
   if (fs.existsSync(NOLD)) {
     // W13(2층 테이블석, 2인 테이블 짝)은 한 화면에 안 들어와 왼쪽, 오른쪽 두 장(가운데 블록이 겹침): 왼쪽 장의 잘린 가운데 블록은 떨어진 칸으로 빠져 122 + 196 = 318 (손으로 센 수)
