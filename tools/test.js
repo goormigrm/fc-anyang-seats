@@ -476,14 +476,14 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     state.base = { at: '2026-11-07T08:00', rows: { W12: 200 } }; render();
     const svg = document.getElementById('board').innerHTML, tr = document.getElementById('trend'), t = stats();
     note('발행했습니다.');
-    return { cap: t.cap, booked: t.booked, svg1: svg.includes('예매된 좌석') && svg.includes('>265<') && svg.includes(' / 762석') && svg.includes('원정석 포함 판매 구역 전체'), rate: svg.includes('34.8<tspan'), s: svg.includes('원정석 예매') && svg.includes(' / 451석') && svg.includes('원정석 33.3% 예매'),
+    return { cap: t.cap, booked: t.booked, svg1: svg.includes('예매된 좌석') && svg.includes('>265<') && svg.includes(' / 홈 115 / 762석') && svg.includes('전체 / 홈석(원정석 뺌) / 총석') && build(true).includes('홈 115 / 총 762석'), rate: svg.includes('34.8<tspan'), s: svg.includes('원정석 예매') && svg.includes(' / 451석') && svg.includes('원정석 33.3% 예매'),
       zone: svg.includes('W12 36%'), diff: /% [+−]\d/.test(svg), since: svg.includes('+4'), legend: svg.includes('>예매율<') && svg.includes('0~24%'),
       trend: getComputedStyle(tr).display !== 'none' && tr.innerHTML.includes('홈석 예매 추이') && tr.innerHTML.includes('원정석 예매 추이') && tr.innerHTML.includes('>115<') && tr.innerHTML.includes('37.0%') && tr.innerHTML.includes('>150<') && tr.innerHTML.includes('33.3%'),
       away: (r => [r.awayBooked, r.awayCapacity].join())(record()),
       head: document.querySelector('thead th:last-child').textContent, cell: document.querySelector('tr[data-id="W12"]').cells[4].textContent, pub: document.getElementById('pubNote').textContent,
       sum: summaryText(), rec: (r => [r.capacity, r.booked])(record()) };
   });
-  check('예매 현황: 예매된 좌석, 예매율, 원정석 예매 카드, 구역 예매율, 증감 표시 없음(구역, 카드), 추이는 홈석(115, 37.0%)/원정석(150, 33.3%) 두 그래프, 표 예매율, 요약 글, 발행 JSON, 발행 칸 알림',
+  check('예매 현황: 예매된 좌석(전체 265 / 홈 115 / 총석 762, 휴대폰은 홈 / 총 아랫줄), 예매율, 원정석 예매 카드, 구역 예매율, 증감 표시 없음(구역, 카드), 추이는 홈석(115, 37.0%)/원정석(150, 33.3%) 두 그래프, 표 예매율, 요약 글, 발행 JSON, 발행 칸 알림',
     r.cap === 762 && r.booked === 265 && r.svg1 && r.rate && r.s && r.zone && !r.diff && !r.since && r.legend && r.trend && r.head === '예매율' && r.cell === '36%' && r.pub === '발행했습니다.'
     && /예매 265석 \/ 762석 \(34\.8%\), 원정석 예매 150석 \/ 451석 \(33\.3%\)/.test(r.sum) && r.rec.join() === '762,265' && r.away === '150,451', JSON.stringify(r));
   // 공식 관중을 전체, 원정으로 나눠 넣기 (월·화 발표): 홈석 그래프는 홈 관중(전체 - 원정), 원정석 그래프는 원정 관중, 머리글, 요약 글, 발행 JSON, 새로 열어도 남음
@@ -762,6 +762,10 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       out.corner = await pg.evaluate(() => [SECTIONS.find(x => x.id === '코너아').ours, SECTIONS.filter(x => x.ours).length].join());
       await pg.context().close(); }
     check("전북 코너 아(원정석 코너 테이블)는 원정석 쪽", out.corner === 'true,11', out.corner);
+    { const pg = await open(b, { url: URL + '?s=jeonbuk#edit' });
+      out.ink = await pg.evaluate(() => [look({}, { remain: 60, max: 100 }).ink, look({ ours: true }, { remain: 60, max: 100 }).ink, look({}, { remain: 10, max: 100 }).ink].join());
+      await pg.context().close(); }
+    check('칸 글자색: 연한 초록 칸(전북 25~49%)은 진한 글자, 보라(원정석 25~49%)와 진한 초록(75% 이상)은 흰 글자', out.ink === '#0f3d1e,#fff,#fff', out.ink);
     check('원정 구장 홈 팀 쪽은 구단 상징 색(90% 예매 칸): 강원 주황, 전북 초록, 김천 빨강, 울산 파랑 / 원정 응원 쪽은 보라', out.gangwon === '#9c4a08,#3e1a78,주황' && out.jeonbuk === '#145f2c,#3e1a78,초록' && out.gimcheon === '#761212,#3e1a78,빨강' && out.ulsan === '#24508f,#3e1a78,파랑', JSON.stringify(out));
   }
   // 발행한 총석(max.json)은 입력 화면을 열 때 기본 총석이 됨: 코드 기본값(R10 126)보다 우선, 모르던 구역(일반지정석)도 채움, 이 브라우저에서 사람이 고친 칸은 그대로

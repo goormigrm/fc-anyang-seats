@@ -700,6 +700,8 @@ const groupOver = (name, g) => {
   const ids = (g.ids || []).filter(id => state.rows[id] && !state.rows[id].off), cap = ids.reduce((a, id) => a + (capOf(state.rows[id]) || 0), 0);
   return ids.length && ids.every(id => capOf(state.rows[id])) && g.remain > cap ? `⚠ ${name} 잔여 ${fmt(g.remain)}석이 그 구역 총석 합 ${fmt(cap)}석보다 많습니다. 묶음 구역을 확인하세요.` : '';
 };
+// 색의 밝기(상대 휘도 0~1): 칸 글자를 흰색으로 쓸지 진한 색으로 쓸지
+const lum = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255).map(c => c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4).reduce((a, c, i) => a + c * [0.2126, 0.7152, 0.0722][i], 0);
 // est: 묶음에서 나눈 추정 잔여 (자기 잔여가 없을 때만 씀, 예매율 앞에 ≈)
 function look(s, r, est) {
   if (r.off) return { fill: 'url(#hatch)', ink: '#857f70', sub: ['미판매'] };  // 원정 구장: 이번 경기에 팔지 않는 구역
@@ -710,7 +712,7 @@ function look(s, r, est) {
   if (!cap) return { fill: '#857d96', ink: '#fff', sub: ['잔여 ' + rem], noMax: true };
   // 예매율(총석 대비 팔린 좌석): 많이 팔릴수록 진하게. 1석이라도 남으면 100% 로 보이지 않게 내림
   const b = 1 - Math.min(rem, cap) / cap, i = b >= 0.75 ? 3 : b >= 0.5 ? 2 : b >= 0.25 ? 1 : 0;
-  return { fill: pal[i], ink: i ? '#fff' : ink0, sub: [(r.remain == null ? '≈' : '') + Math.floor(b * 100) + '%'] };
+  return { fill: pal[i], ink: lum(pal[i]) > 0.3 ? ink0 : '#fff', sub: [(r.remain == null ? '≈' : '') + Math.floor(b * 100) + '%'] };  // 밝은 칸은 진한 글자 (연한 초록, 파랑 칸에 흰 글자가 흐리게 보이던 것)
 }
 // 비교 기준 이후 팔린 좌석 (+: 팔림, −: 취소 등으로 남은 좌석이 늘어남)
 const sold = id => { const b = state.base?.rows?.[id], r = state.rows[id]; return b == null || r.remain == null ? 0 : b - r.remain; };
@@ -863,9 +865,11 @@ function build(story) {
   const miss = [emptyN && !none ? `정보 없는 구역 ${emptyN}개` : '', !FULL && capMiss.length ? `총석 정보 없는 구역 ${capMiss.length}개` : ''].filter(Boolean).join(', ');
   const missTxt = miss ? ` · ${miss} 제외` : '';
   const oPc = oCap ? (oBooked / oCap * 100).toFixed(1) : '';  // 원정석 쪽 (원정 경기는 안양 응원 쪽, 홈 경기는 원정석 칸)
+  // 예매된 좌석 카드: 전체 / 홈석(원정석을 뺀 예매) / 총석 (11/17 피드백). 휴대폰, 스토리 카드는 폭이 좁아 홈석을 아랫줄에 (마지막 칸 = 스토리용 뒤 글자)
+  const home = oCap && !none ? fmt(booked - oBooked) : '';
   const sums = [
-    ['예매된 좌석', num(booked), ` / ${fmt(cap)}석`, (FULL ? '만석 기준 (선택 중 좌석 포함)' : '원정석 포함 판매 구역 전체' + (offN ? ` · 미판매 ${offN}개 구역 제외` : '')) + missTxt,
-      FULL ? '만석 기준' : '원정석 포함 전체'],  // 증감은 추이 그래프에서만
+    ['예매된 좌석', num(booked), home ? ` / 홈 ${home} / ${fmt(cap)}석` : ` / ${fmt(cap)}석`, (home ? '전체 / 홈석(원정석 뺌) / ' + (FULL ? '만석 · 선택 중 좌석 포함' : '총석') : FULL ? '만석 기준 (선택 중 좌석 포함)' : '원정석 포함 판매 구역 전체')
+      + (!FULL && offN ? ` · 미판매 ${offN}개 구역 제외` : '') + missTxt, (home ? `홈 ${home} / ` : '') + `${FULL ? '만석' : '총'} ${fmt(cap)}석`, '석'],  // 증감은 추이 그래프에서만. 스토리(휴대폰)는 큰 숫자 옆에 '석', 아랫줄에 홈 / 총석
     ['예매율', rate(booked), '%', `잔여석 ${num(avail)}석` + (AWAY ? ` · 매진 ${soldN}개${offN ? `, 미판매 ${offN}개` : ''} 구역` : ''), `잔여 ${num(avail)}석`],
     AWAY ? ['원정석 예매', oCap ? fmt(oBooked) : '-', oCap ? ` / ${fmt(oCap)}석` : '', oCap ? `원정석 ${oPc}% 예매 · 잔여 ${fmt(oCap - oBooked)}석` : '원정석 총석 정보 없음', oCap ? `${oPc}% 예매` : '']
       : ['매진 구역', String(soldN), ' 개', `전체 ${SECTIONS.length}개 구역 중`, `${SECTIONS.length}개 구역 중`],
@@ -875,14 +879,15 @@ function build(story) {
   if (cw != null) sums.splice(0, 2, ['공식 관중', fmt(cw), '명', `연맹 발표 · 마지막 집계 예매 ${num(booked)}석`, '연맹 발표'],
     ['좌석 대비 관중', cap ? (cw / cap * 100).toFixed(1) : '-', '%', `${FULL ? '만석' : '판매 구역 총석'} ${fmt(cap)}석 대비 · 집계 예매율 ${rate(booked)}%`, `집계 예매율 ${rate(booked)}%`]);
   if (ca != null) sums[2] = ['원정 관중', fmt(ca), '명', '연맹 발표' + (ab != null ? ` · 원정석 집계 예매 ${fmt(ab)}석` : ''), '연맹 발표'];
+  // 카드 글자: 제목과 설명 줄이 작고 흐려 알아보기 어렵다는 피드백(11/17)으로 크게, 진하게
   const card = (x, title, big, small, note) => `<g transform="translate(${x},122)"><rect width="400" height="88" rx="10" fill="#fff" stroke="#e5e7eb"/>`
-    + text(18, 26, title, 12, '#6b7280', 400, 'start')
-    + `<text x="18" y="61" font-size="28" font-weight="700" fill="#111827">${esc(big)}<tspan font-size="14" font-weight="600" fill="#4b5563">${esc(small)}</tspan></text>`
-    + text(18, 79, note, +Math.min(11, 364 / tw(note, 1)).toFixed(1), '#9ca3af', 400, 'start') + '</g>';  // 긴 설명(미판매, 정보 없는 구역 안내)은 카드 폭에 맞게 줄임
-  const scard = (x, [title, big, small, , short]) => `<g transform="translate(${x},540)"><rect width="330" height="180" rx="20" fill="#fff" stroke="#e5e7eb"/>`
-    + text(24, 48, title, 24, '#6b7280', 600, 'start')
-    + `<text x="24" y="114" font-size="46" font-weight="700" fill="#111827">${esc(big)}<tspan font-size="22" font-weight="600" fill="#4b5563">${esc(small)}</tspan></text>`
-    + text(24, 154, short, 20, '#9ca3af', 400, 'start') + '</g>';
+    + text(18, 26, title, 13, '#374151', 600, 'start')
+    + `<text x="18" y="61" font-size="28" font-weight="700" fill="#111827">${esc(big)}<tspan font-size="${+Math.min(22, (364 - tw(big, 28)) / tw(small, 1)).toFixed(1)}" font-weight="700" fill="#374151">${esc(small)}</tspan></text>`  // '/' 뒤 글자도 크게 (카드 폭 안에서)
+    + text(18, 79, note, +Math.min(12, 364 / tw(note, 1)).toFixed(1), '#4b5563', 400, 'start') + '</g>';  // 긴 설명(미판매, 정보 없는 구역 안내)은 카드 폭에 맞게 줄임
+  const scard = (x, [title, big, small, , short, small2 = small]) => `<g transform="translate(${x},540)"><rect width="330" height="180" rx="20" fill="#fff" stroke="#e5e7eb"/>`
+    + text(24, 48, title, 27, '#374151', 700, 'start')
+    + `<text x="24" y="114" font-size="46" font-weight="700" fill="#111827">${esc(big)}<tspan font-size="${+Math.min(32, (282 - tw(big, 46)) / tw(small2, 1)).toFixed(1)}" font-weight="700" fill="#374151">${esc(small2)}</tspan></text>`
+    + text(24, 156, short, +Math.min(25, 282 / tw(short, 1)).toFixed(1), '#374151', 600, 'start') + '</g>';
 
   const items = [[GUESTPAL[0][3], '75% 이상'], [GUESTPAL[0][2], '50~74%'], [GUESTPAL[0][1], '25~49%'], [GUESTPAL[0][0], '0~24%'],
     AWAY ? [HOSTPAL[0], `${STADIUMS[STADIUM].name} 홈 쪽 (같은 구간, ${HOSTPAL[2]})`] : [RED, '원정석 (같은 구간, 빨강)'], ['#b4b1a7', '매진']];
@@ -926,30 +931,30 @@ function build(story) {
   if (!story) return defs + `<rect width="${W}" height="${H}" fill="#fff"/><rect width="${W}" height="170" fill="#3e1a78"/>`
     + (TEST ? '' : `<image href="${emb}" x="30" y="16" width="92" height="93"/>`)
     + text(TEST ? 40 : 140, 60, title + ' 예매 현황', 28, '#fff', 700, 'start')
-    + text(TEST ? 40 : 140, 92, [when, VENUE, TEST ? 'K리그1 · 시험 집계' : AWAY ? 'K리그1 · 원정' : 'K리그1'].filter(Boolean).join(' · '), 14, '#e4dcf5', 400, 'start')
+    + text(TEST ? 40 : 140, 92, [when, VENUE, TEST ? 'K리그1 · 시험 집계' : AWAY ? 'K리그1 · 원정' : 'K리그1'].filter(Boolean).join(' · '), 15, '#f1ecfa', 400, 'start')
     + text(1250, 56, at, 13, '#fff', 600, 'end')
-    + text(1250, 80, state.crowd != null ? `관중은 연맹 공식 발표 · 구역 색은 ${SELLER} 마지막 집계 기준` : `${SELLER} 등급/좌석 선택 화면 잔여석 기준`, 12, '#c3b1e6', 400, 'end')
+    + text(1250, 80, state.crowd != null ? `관중은 연맹 공식 발표 · 구역 색은 ${SELLER} 마지막 집계 기준` : `${SELLER} 등급/좌석 선택 화면 잔여석 기준`, 13, '#e4dcf5', 400, 'end')
     + text(1250, 104, phase(), 14, '#fde68a', 700, 'end')
     + sums.map((c, i) => card(30 + i * 410, ...c)).join('')
     + `<rect x="20" y="222" width="1240" height="828" rx="12" fill="#f7f8fa" stroke="#eceff3"/>`
     + `<g transform="translate(40,234)">${map}</g>`
     + legend(40, 1018, 12, 1240)
-    + text(40, 1040, foot, 11, '#9ca3af', 400, 'start');
+    + text(40, 1040, foot, 12, '#6b7280', 400, 'start');
 
   // 스토리: 맨 위·아래는 인스타 화면(프로필, 답장 칸)에 가려서 내용은 y 200~1660 사이에 둠
   const S = 1000 / 1224;  // 지도 전체 폭(관중석 바깥 포함 1224)을 1000에 맞춤
   const st = `<rect width="1080" height="1920" fill="#fff"/><rect width="1080" height="640" fill="#3e1a78"/>`
     + (TEST ? '' : `<image href="${emb}" x="490" y="200" width="100" height="101"/>`)
     + text(540, 385, title, 58, '#fff', 700)
-    + text(540, 440, [when, VENUE].filter(Boolean).join(' · '), 28, '#e4dcf5')
-    + text(540, 486, [TEST ? 'K리그1 예매 현황 (시험)' : AWAY ? 'K리그1 원정 예매 현황' : 'K리그1 예매 현황', at].filter(Boolean).join(' · '), 24, '#c3b1e6')
+    + text(540, 440, [when, VENUE].filter(Boolean).join(' · '), 30, '#f1ecfa')
+    + text(540, 486, [TEST ? 'K리그1 예매 현황 (시험)' : AWAY ? 'K리그1 원정 예매 현황' : 'K리그1 예매 현황', at].filter(Boolean).join(' · '), 26, '#e4dcf5')
     + text(540, 526, phase(), 24, '#fde68a', 700)
     + sums.map((c, i) => scard(30 + i * 345, c)).join('')
     + `<rect x="20" y="760" width="1040" height="660" rx="24" fill="#f7f8fa" stroke="#eceff3"/>`
     + `<g transform="translate(${40 + 12 * S},${780 - 3 * S}) scale(${S})">${map}</g>`
     + legend(40, 1490, 22, 1040)
-    + text(540, 1640, foot, 20, '#9ca3af')
-    + text(540, 1672, `${SELLER} 잔여석 기준`, 18, '#b0b5bf');
+    + text(540, 1640, foot, +Math.min(22, 1000 / tw(foot, 1)).toFixed(1), '#4b5563')
+    + text(540, 1672, `${SELLER} 잔여석 기준`, 20, '#6b7280');
   return defs + st;
 }
 
