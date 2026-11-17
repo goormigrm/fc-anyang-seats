@@ -257,12 +257,20 @@ const STADIUMS = {
       arc(['S3', 'S4', 'S5', 'A1', 'A2', 'A3'], 2 + n0, 3, T1, ours);
       arc(['S22'], 1.5, 2 + n0, T2); arc(['S23', 'S24', 'S25', 'A21', 'A22'], 2 + n0, 2 + n0 + 5 * h, T2, ours); arc(['A23'], 2 + n0 + 5 * h, 3.5, T2, ours);  // 안쪽 칸과 경계를 맞춤
       arc(['원정테이블'], 3, 3.5, T1, ours); arc(['T5'], 3.5, 4 + e0, T1); arc(['S26'], 3.5, 4 + e0, T2);
-      arc(['W1', 'W2', '프리미엄테이블1', null, '프리미엄테이블2', 'W3', 'W4'], 4 + e0, 4 + e1, T1); DECOR.push(['VIP', 4 + e0 + 3 * w, 4 + e0 + 4 * w, ...T1]);
-      arc(['W21', 'W22', null, null, null, 'W23', 'W24'], 4 + e0, 4 + e1, T2); DECOR.push(['스카이박스', 4 + e0 + 2 * w, 4 + e0 + 5 * w, ...T2]);
+      // W 안쪽 칸 경계: VIP 블록은 다른 칸의 2배 폭(원본 좌석도는 1.5배, 안의 다섯 칸 글자가 들어가게 조금 넓힘). 바깥 스카이박스는 프리미엄테이블2 왼쪽 끝부터 프리미엄테이블1 오른쪽 끝까지
+      const wb = [0, 1, 2, 3, 5, 6, 7, 8].map(k => 4 + e0 + (e1 - e0) * k / 8);
+      ['W1', 'W2', '프리미엄테이블1', null, '프리미엄테이블2', 'W3', 'W4'].forEach((id, i) => id && arc([id], wb[i], wb[i + 1], T1));
+      // VIP 블록(11/17 티켓링크 좌석 그림): 경기장 쪽 줄 프레스티지 테이블, 가운데 줄 VIP A(오른쪽)·퍼스트클래스석·VIP B, 뒷줄 VVIP.
+      // 등급 목록에는 퍼스트클래스석('퍼스트클래스 구역')과 프레스티지 테이블(1인), (2인)만 있어 VIP A, VIP B, VVIP 는 회색(파는 등급이 보이면 칸으로)
+      { const v0 = wb[3], vw = wb[4] - wb[3];
+        arc(['프레스티지테이블'], v0, v0 + vw, [14, 35]); arc(['퍼스트클래스석'], v0 + 0.24 * vw, v0 + 0.76 * vw, [35, 71]);
+        DECOR.push(['VIP A', v0, v0 + 0.24 * vw, 35, 71], ['VIP B', v0 + 0.76 * vw, v0 + vw, 35, 71], ['VVIP', v0, v0 + vw, 71, 90]); }
+      arc(['W21', 'W22'], wb[0], wb[2], T2); DECOR.push(['스카이박스', wb[2], wb[5], ...T2]); arc(['W23', 'W24'], wb[5], wb[7], T2);
       arc(['T1'], 4 + e1, 5.5, T1); arc(['N21'], 4 + e1, 5.5, T2);
       arc(['T2'], 5.5, 6 + n0, T1); arc(Rs(1, 5, 'N'), 6 + n0, 6 + n1, T1); arc(['T3'], 6 + n1, 7.5, T1);
       arc(['N22'], 5.5, 6 + n0, T2); arc(['N23', 'N24', null, 'N25', 'N26'], 6 + n0, 6 + n1, T2); arc(['N27'], 6 + n1, 7.5, T2);
-      SECTIONS.forEach(x => { const n = { 원정테이블: '원정T', 프리미엄테이블1: '프리미엄1', 프리미엄테이블2: '프리미엄2' }[x.id]; if (n) x.name = n; });
+      SECTIONS.forEach(x => { const n = { 원정테이블: '원정T', 프리미엄테이블1: '프리미엄1', 프리미엄테이블2: '프리미엄2', 프레스티지테이블: '프레스티지', 퍼스트클래스석: '퍼스트' }[x.id]; if (n) x.name = n; });
+      SECTIONS.find(x => x.id === '퍼스트클래스석').alias = ['퍼스트클래스'];  // 등급 '퍼스트클래스석' 아래 구역 이름 '퍼스트클래스 구역'
     } },
   // 서울월드컵경기장 (서울 좌석도, 팔각형): 구역 = 방향 + 글자. E 안쪽 H(모서리)·G~B·A(모서리)와 앞줄 E 피치석, 바깥 T·S~K·J,
   // S 안쪽 F·E·D·C·B·A(C, B, A 가 원정석), 바깥 P·N~H·G, W 앞줄 B~G(피치석, 센터석), 뒷줄 J~M, 모서리 A·H, 바깥 N·P~W·X, N 안쪽 A·B~E·F, 바깥 G·H~N·P
@@ -527,10 +535,13 @@ function parseText(text) {
       const z = n && zoneId(n), x = z && SECTIONS.find(s => s.id === z);
       if (!n || !(/구\s*역/.test(n) || z && !n.includes('('))) {  // 등급 줄 (또는 숫자 없는 줄)
         if (n) { g = n; gv = v; used = 0; if (v === 0) SECTIONS.forEach(s => { const k = Array.isArray(s.mix) && s.mix.find(k => n.includes(k)); if (k) (zero[s.id] ||= {})[k] = 0; }); }
+        // 괄호 붙은 등급이 칸 하나(포항 '프레스티지 테이블(1인)' 7석과 '(2인)' 26석, 'T2 테이블(1인)', '(2인)'): 마지막 하나만 남지 않게 등급마다 기억해 더함
+        if (z && !(/휠체어|장애인/.test(n))) { (mix[z] ||= {})[n.replace(/\s/g, '')] = v; if (two) i++; continue; }
         out.push(L[i]); continue;
       }
       if (/휠체어|장애인/.test(g) && !(gv > 0 && used >= gv)) { used += v; if (two) i++; continue; }  // 구역 합이 등급 숫자에 닿으면 그 아래는 다른 등급
       if (g && Array.isArray(x?.mix)) { (mix[z] ||= {})[x.mix.find(k => g.includes(k)) || g] = v; if (two) i++; continue; }
+      if (g && z === zoneId(g)) { (mix[z] ||= {})[g.replace(/\s/g, '')] = v; if (two) i++; continue; }  // 그 등급 아래 같은 칸 줄(인천 '피크닉 테이블석(2인)' 아래 '피크닉 테이블석')은 같은 몫
       out.push(L[i]);
     }
     t = out.join('\n');
