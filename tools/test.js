@@ -490,7 +490,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   const crowdOf = () => p.evaluate(() => {
     const tr = document.getElementById('trend').innerHTML, rec = record();
     return { tr: /홈 관중 260명 \(홈석 예매 115석 대비 \+145\)/.test(tr) && /원정 관중 140명 \(원정석 예매 150석 대비 [−-]10\)/.test(tr) && !tr.includes('전체 예매'),
-      head: (h => ['>공식 관중<', '400<tspan', '>좌석 대비 관중<', '52.5<tspan', '마지막 집계 예매 265석', '>원정 관중<', '140<tspan', '원정석 집계 예매 150석', '관중은 연맹 공식 발표'].every(x => h.includes(x)))(document.getElementById('board').innerHTML),
+      head: (h => ['>공식 관중<', '400<tspan', '>좌석 대비 관중<', '52.5<tspan', '집계 예매 265석', '명 / 홈 260명 / 총 762석', '명 / 총 451석', '>원정 관중<', '140<tspan', '원정석 집계 예매 150석', '관중은 연맹 공식 발표'].every(x => h.includes(x)))(document.getElementById('board').innerHTML),
       sum: /^[^\n]+\n공식 관중 400명 \(원정 140명, 원정석 예매 150석 대비 [−-]10\)\n마지막 집계 예매 265석/.test(summaryText()),
       rec: [rec.match.attendance, rec.match.awayAttendance].join(), input: [document.getElementById('crowd').value, document.getElementById('crowdAway').value].join() };
   });

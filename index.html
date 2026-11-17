@@ -876,9 +876,13 @@ function build(story) {
   ];
   // 공식 관중(연맹 발표)이 나오면 카드는 실제 관중으로. 구역 색과 예매율 범례는 마지막 집계 그대로, 집계 숫자는 설명 줄에
   const cw = state.crowd, ca = state.crowdAway, ab = oCap ? oBooked : null;
-  if (cw != null) sums.splice(0, 2, ['공식 관중', fmt(cw), '명', `연맹 발표 · 마지막 집계 예매 ${num(booked)}석`, '연맹 발표'],
+  // 공식 관중 카드도 예매된 좌석 카드처럼 전체 / 홈(원정 관중을 뺌) / 총석 (11/17 사용자 요청. 총석은 집계 때와 같음)
+  const capTxt = cap ? `${FULL ? '만석' : '총'} ${fmt(cap)}석` : '', homeCrowd = ca != null ? `홈 ${fmt(cw - ca)}명` : '';
+  if (cw != null) sums.splice(0, 2, ['공식 관중', fmt(cw), ['명', homeCrowd ? homeCrowd : '', capTxt].filter(Boolean).join(' / '),
+      '연맹 발표' + (homeCrowd ? ' · 홈 = 원정 관중 뺌' : '') + ` · 집계 예매 ${num(booked)}석`, [homeCrowd, capTxt].filter(Boolean).join(' / ') || '연맹 발표', '명'],
     ['좌석 대비 관중', cap ? (cw / cap * 100).toFixed(1) : '-', '%', `${FULL ? '만석' : '판매 구역 총석'} ${fmt(cap)}석 대비 · 집계 예매율 ${rate(booked)}%`, `집계 예매율 ${rate(booked)}%`]);
-  if (ca != null) sums[2] = ['원정 관중', fmt(ca), '명', '연맹 발표' + (ab != null ? ` · 원정석 집계 예매 ${fmt(ab)}석` : ''), '연맹 발표'];
+  // 원정 관중 카드도 집계 때 원정석 카드처럼 원정석 총석을 같이
+  if (ca != null) sums[2] = ['원정 관중', fmt(ca), oCap ? `명 / 총 ${fmt(oCap)}석` : '명', '연맹 발표' + (ab != null ? ` · 원정석 집계 예매 ${fmt(ab)}석` : ''), oCap ? `원정석 총 ${fmt(oCap)}석` : '연맹 발표', '명'];
   // 카드 글자: 제목과 설명 줄이 작고 흐려 알아보기 어렵다는 피드백(11/17)으로 크게, 진하게
   const card = (x, title, big, small, note) => `<g transform="translate(${x},122)"><rect width="400" height="88" rx="10" fill="#fff" stroke="#e5e7eb"/>`
     + text(18, 26, title, 13, '#374151', 600, 'start')
