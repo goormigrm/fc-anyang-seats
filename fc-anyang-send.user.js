@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         FC안양 예매현황 보내기
 // @namespace    https://goormigrm.github.io/fc-anyang-seats/
-// @version      14
+// @version      15
 // @description  티켓링크, 놀티켓 좌석 선택 화면에 보이는 잔여석 글자와 사람이 연 구역의 좌석 칸 수를 열려 있는 현황판 탭으로 보냄. 읽기만 하고 클릭, 새로고침, 요청은 하지 않음
 // @match        https://ticketlink.co.kr/*
 // @match        https://*.ticketlink.co.kr/*
@@ -28,8 +28,10 @@ if (site) {
     return ls.filter((l, i) => /석|구역|안양|등급|운동장|경기장|스타디움|구장|야드|\svs\s|\d{4}\.\d{2}\.\d{2}|^[\d,]+$/i.test(l) || /^[\d,]+(\s*석)?$/.test(ls[i + 1] || '')).join('\n');
   };
   const look = () => {
-    const s = pick(), need = [['안양', /안양/], ['등급 선택', /(등급|좌석)\s*선택|좌석\s*등급|잔여\s*석|관람\s*구역/], ['N석', /\d\s*석|\n[\d,]+(\n|$)/]].filter(([, re]) => !re.test(s)).map(([n]) => n);
-    return { s, seat: !need.length, need, venue: (s.match(/[가-힣]+(?:운동장|경기장|스타디움|구장|야드)/) || [''])[0], zones: (s.match(/구\s*역/g) || []).length };
+    // 받을 경기: 보통은 FC안양 경기. 현황판 시험 페이지(?test=)가 열려 있으면 그 페이지가 알려 준 원정 팀 이름(예: '서울') 경기 (15판)
+    const b = GM_getValue('board'), want = b && Date.now() - b.at < 90e3 && b.want || '안양';
+    const s = pick(), need = [[want, new RegExp(want)], ['등급 선택', /(등급|좌석)\s*선택|좌석\s*등급|잔여\s*석|관람\s*구역/], ['N석', /\d\s*석|\n[\d,]+(\n|$)/]].filter(([, re]) => !re.test(s)).map(([n]) => n);
+    return { s, seat: !need.length, need, want, venue: (s.match(/[가-힣]+(?:운동장|경기장|스타디움|구장|야드)/) || [''])[0], zones: (s.match(/구\s*역/g) || []).length };
   };
   const me = Math.random().toString(36).slice(2, 8);  // 탭, 틀(iframe)마다 다른 이름 (현황판이 보낸 곳을 구분)
   const hms = t => new Date(t).toTimeString().slice(0, 8);
@@ -90,7 +92,7 @@ if (site) {
   const send = () => { sentAt = Date.now(); acked = null; GM_setValue('text', { s: last, at: sentAt }); };
   const check = () => {
     const v = ping(), b = GM_getValue('board'), board = b && Date.now() - b.at < 90e3;  // 현황판 입력 화면이 5초마다 남기는 신호 (뒤 탭은 1분까지 늦음)
-    if (!v.seat) return v.need.includes('안양') || show(`대기 · 등급/좌석 선택 화면이 아님 (화면에 없는 글자: ${v.need.join(', ')})`, '#555');  // FC안양 경기 화면이 아니면 표시도 안 함
+    if (!v.seat) return v.need.includes(v.want) || show(`대기 · 등급/좌석 선택 화면이 아님 (화면에 없는 글자: ${v.need.join(', ')})`, '#555');  // FC안양 경기 화면이 아니면 표시도 안 함
     const pr = probe(), seats = count(pr), key = JSON.stringify(seats);
     shape = pr.text;
     if (seats && key !== lastSeats) { lastSeats = key; setTimeout(() => GM_setValue('seats', { ...seats, at: Date.now() }), 1500); }  // 글자(잔여)가 먼저 가게 조금 뒤에
@@ -112,8 +114,8 @@ if (site) {
   GM_addValueChangeListener('text', (key, old, v, remote) => { const r = remote && editing() && unsafeWindow.fcIngest?.(v.s); if (r) GM_setValue('ack', { ...r, at: Date.now(), page: location.search }); });
   GM_addValueChangeListener('ping', (key, old, v, remote) => { if (remote) unsafeWindow.fcPing?.(v); });
   GM_addValueChangeListener('seats', (key, old, v, remote) => { if (remote && editing()) unsafeWindow.fcSeats?.(v); });  // 스크립트가 센 좌석 칸 (13판)
-  unsafeWindow.fcPing?.({ state: 'installed', version: 14, at: Date.now() });
-  const beat = () => { if (editing()) GM_setValue('board', { at: Date.now(), page: location.search }); };
+  unsafeWindow.fcPing?.({ state: 'installed', version: 15, at: Date.now() });
+  const beat = () => { if (editing()) GM_setValue('board', { at: Date.now(), page: location.search, want: document.body.dataset.want || '안양' }); };  // want: 시험 페이지면 그 원정 팀
   beat();
   setInterval(beat, 5000);
 }

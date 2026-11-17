@@ -376,8 +376,12 @@ const STADIUMS = {
     } },
 };
 const STADIUM = STADIUMS[new URLSearchParams(location.search).get('s')] ? new URLSearchParams(location.search).get('s') : 'anyang', AWAY = STADIUM !== 'anyang';
-const VENUE = AWAY ? STADIUMS[STADIUM].venue : '안양종합운동장', HOST = AWAY ? STADIUMS[STADIUM].host : 'FC안양', DATA = AWAY ? STADIUM + '/' : '';
-const KEY = 'fc-anyang-seat-status' + (AWAY ? '-' + STADIUM : ''), FULL = AWAY ? 0 : 11542, W = 1280, H = 1062, FONT = "'Malgun Gothic','Apple SD Gothic Neo',sans-serif";
+// 시험 페이지(11/17): ?s=<구장>&test=<원정 팀의 구장 키> (예: ?s=jeonbuk&test=seoul = 전북현대 vs FC서울). 안양 경기가 아닌 경기를 시험으로 집계, 발행, 공유하는 숨은 주소(사이트 어디에도 링크 없음)
+// 입력값(이 브라우저), 발행 데이터(data 브랜치 test/<구장>/)가 안양 현황판과 따로이고, 기본 주소의 최근 구장 따라가기, 경기별 기록, 링크 미리보기(og)에 들어가지 않음. 구장 총석(max.json)은 실제 구장 것을 같이 씀
+const TESTKEY = AWAY && STADIUMS[new URLSearchParams(location.search).get('test')] ? new URLSearchParams(location.search).get('test') : '', TEST = TESTKEY && STADIUMS[TESTKEY].host;
+const VENUE = AWAY ? STADIUMS[STADIUM].venue : '안양종합운동장', HOST = AWAY ? STADIUMS[STADIUM].host : 'FC안양', DATA = (TEST ? 'test/' : '') + (AWAY ? STADIUM + '/' : ''), MAXDATA = AWAY ? STADIUM + '/' : '';
+const GUEST = TEST || 'FC안양', WANT = TEST ? STADIUMS[TESTKEY].name : '안양';  // 원정 팀, 받은 글자에 있어야 할 원정 팀 이름
+const KEY = 'fc-anyang-seat-status' + (AWAY ? '-' + STADIUM : '') + (TEST ? '-test' : ''), FULL = AWAY ? 0 : 11542, W = 1280, H = 1062, FONT = "'Malgun Gothic','Apple SD Gothic Neo',sans-serif";
 // 지도: 경기장 중심 (CX, CY), 직선 반길이 L, 스탠드 안쪽/바깥 반지름 RI/RO
 const CX = 600, CY = 375, L = 240, RI = 285, RO = AWAY ? 372 : 360;
 const PURPLE = ['#c3b1e6', '#9572cf', '#6a40ad', '#3e1a78'];  // 잔여율 1~24 / 25~49 / 50~74 / 75%+
@@ -601,7 +605,7 @@ if (!/^\d{4}-\d{2}-\d{2}/.test(state.date)) state.date = '';
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} };
 // 사람이 누른 미판매는 따로 저장: 미판매·매진 버튼, 잔여 직접 입력으로만 바뀜. 현황판 탭이 여럿이거나 오래 열린 탭이 숫자를 받아 저장해도
 // 지워지지 않게 숫자를 받을 때마다 이 목록을 새로 읽어 지킴 (11/07: 먼저 열어 둔 탭이 0석을 매진으로 저장해 미판매가 사라진 일)
-const OFFKEY = 'fc-anyang-unsold' + (AWAY ? '-' + STADIUM : '');
+const OFFKEY = 'fc-anyang-unsold' + (AWAY ? '-' + STADIUM : '') + (TEST ? '-test' : '');
 const saveOff = () => { try { localStorage.setItem(OFFKEY, JSON.stringify(SECTIONS.filter(s => state.rows[s.id].off).map(s => s.id))); } catch {} };
 const syncOff = () => {
   let v = null;
@@ -722,7 +726,7 @@ const signed = d => (d > 0 ? '+' : d < 0 ? '−' : '') + fmt(Math.abs(d));
 const snap = () => ({ at: state.at, rows: Object.fromEntries(SECTIONS.map(s => [s.id, state.rows[s.id].remain])) });
 // 경기 전후: 시작 뒤 3시간까지는 '경기 중', 그 뒤는 '지난 경기'
 const phase = () => { const k = state.date.length > 10 ? new Date(state.date) : null, now = Date.now(); return !k || now < k ? '' : now < +k + 3 * 3600e3 ? '경기 중 (예매 마감)' : '지난 경기'; };
-const matchTitle = () => AWAY ? `${HOST} vs FC안양` : `FC안양 vs ${state.opp || '상대팀'}`;
+const matchTitle = () => AWAY ? `${HOST} vs ${GUEST}` : `FC안양 vs ${state.opp || '상대팀'}`;
 const baseLabel = () => state.base ? state.base.at ? state.base.at.slice(5).replace('-', '.').replace('T', ' ') : '비교 기준' : '';  // "11.25 12:00"
 const nameOf = id => SECTIONS.find(s => s.id === id).name || id;
 // 카드, 요약 글, 발행 JSON 이 같이 쓰는 합계
@@ -930,7 +934,7 @@ function build(story) {
   if (!story) return defs + `<rect width="${W}" height="${H}" fill="#fff"/><rect width="${W}" height="170" fill="#3e1a78"/>`
     + `<image href="${emb}" x="30" y="16" width="92" height="93"/>`
     + text(140, 60, title + ' 예매 현황', 28, '#fff', 700, 'start')
-    + text(140, 92, [when, VENUE, AWAY ? 'K리그1 · 원정' : 'K리그1'].filter(Boolean).join(' · '), 14, '#e4dcf5', 400, 'start')
+    + text(140, 92, [when, VENUE, TEST ? 'K리그1 · 시험 집계' : AWAY ? 'K리그1 · 원정' : 'K리그1'].filter(Boolean).join(' · '), 14, '#e4dcf5', 400, 'start')
     + text(1250, 56, at, 13, '#fff', 600, 'end')
     + text(1250, 80, state.crowd != null ? `관중은 연맹 공식 발표 · 구역 색은 ${SELLER} 마지막 집계 기준` : `${SELLER} 등급/좌석 선택 화면 잔여석 기준`, 12, '#c3b1e6', 400, 'end')
     + text(1250, 104, phase(), 14, '#fde68a', 700, 'end')
@@ -946,7 +950,7 @@ function build(story) {
     + `<image href="${emb}" x="490" y="200" width="100" height="101"/>`
     + text(540, 385, title, 58, '#fff', 700)
     + text(540, 440, [when, VENUE].filter(Boolean).join(' · '), 28, '#e4dcf5')
-    + text(540, 486, [AWAY ? 'K리그1 원정 예매 현황' : 'K리그1 예매 현황', at].filter(Boolean).join(' · '), 24, '#c3b1e6')
+    + text(540, 486, [TEST ? 'K리그1 예매 현황 (시험)' : AWAY ? 'K리그1 원정 예매 현황' : 'K리그1 예매 현황', at].filter(Boolean).join(' · '), 24, '#c3b1e6')
     + text(540, 526, phase(), 24, '#fde68a', 700)
     + sums.map((c, i) => scard(30 + i * 345, c)).join('')
     + `<rect x="20" y="760" width="1040" height="660" rx="24" fill="#f7f8fa" stroke="#eceff3"/>`
@@ -1118,7 +1122,7 @@ $('clear').onclick = () => {
   newGame(); fillTable([]); save(); render();
 };
 // 다른 경기로 지운 숫자 되살리기 (마지막 한 번)
-const BACKUP = 'fc-anyang-backup' + (AWAY ? '-' + STADIUM : '');
+const BACKUP = 'fc-anyang-backup' + (AWAY ? '-' + STADIUM : '') + (TEST ? '-test' : '');
 $('restore').onclick = () => {
   let d = null;
   try { d = JSON.parse(localStorage.getItem(BACKUP)); } catch {}
@@ -1192,7 +1196,7 @@ function summaryText() {
   const t = stats(), b = baseLabel(), none = t.empty.length + t.off.length >= SECTIONS.length;  // none: 구역 숫자가 하나도 없음 (예매를 모름)
   if (AWAY) {
     const oCap = t.awayCap, oBooked = t.awayBooked, pc = (x, c) => (x / c * 100).toFixed(1) + '%';
-    return [`${matchTitle()}${state.date ? ' ' + fmtDate(state.date) : ''} 원정 예매 현황 (${state.at.slice(5).replace('-', '.').replace('T', ' ')} 기준)`,
+    return [`${matchTitle()}${state.date ? ' ' + fmtDate(state.date) : ''} ${TEST ? '예매 현황 (시험 집계)' : '원정 예매 현황'} (${state.at.slice(5).replace('-', '.').replace('T', ' ')} 기준)`,
       state.crowd != null ? `공식 관중 ${fmt(state.crowd)}명` + (state.crowdAway != null ? ` (원정 ${fmt(state.crowdAway)}명${oCap ? `, 원정석 예매 ${fmt(oBooked)}석 대비 ${signed(state.crowdAway - oBooked)}` : ''})` : '') : '',
       none ? '' : (state.crowd != null ? '마지막 집계 ' : '') + (t.cap ? `예매 ${fmt(t.booked)}석 / ${fmt(t.cap)}석 (${pc(t.booked, t.cap)})` : `남은 좌석 ${fmt(t.avail)}석`)
         + (oCap ? `, 원정석 예매 ${fmt(oBooked)}석 / ${fmt(oCap)}석 (${pc(oBooked, oCap)})` : '') + (b ? `, ${b} 이후 ${signed(t.soldSum)}석` : ''),
@@ -1208,7 +1212,7 @@ function summaryText() {
     none ? '(구역 숫자가 아직 없습니다)' : t.empty.length ? `(정보 없는 구역 ${t.empty.length}개 빠짐)` : ''].filter(Boolean).join('\n');
 }
 // 다른 사이트에 붙여 넣는 iframe 코드: 어느 화면에서 눌러도 홈, 원정 중 가장 최근 경기를 따라가는 ?embed (경기마다 코드를 바꾸지 않게)
-const embedCode = () => `<iframe src="${location.origin + location.pathname}?embed" title="FC안양 예매 현황" style="width:100%;aspect-ratio:1280/1062;border:0" loading="lazy"></iframe>`;
+const embedCode = () => `<iframe src="${location.origin + location.pathname}${TEST ? `?s=${STADIUM}&test=${TESTKEY}&embed` : '?embed'}" title="FC안양 예매 현황" style="width:100%;aspect-ratio:1280/1062;border:0" loading="lazy"></iframe>`;
 $('embedCode').onclick = async () => {
   const code = embedCode();
   try { await navigator.clipboard.writeText(code); note(`퍼가기 코드(iframe)를 복사했습니다. 다른 사이트 HTML 에 붙여 넣으면 홈, 원정 중 가장 최근 경기 현황판이 보이고 5분마다 새 발행을 받아 옵니다. 링크로 걸 때는 ${location.origin + location.pathname} (휴대폰 화면에 맞음).`); }
@@ -1225,7 +1229,7 @@ function record() {
   const t = stats(), kst = s => s ? (s.length > 10 ? s + ':00+09:00' : s) : null, none = t.empty.length + t.off.length >= SECTIONS.length;  // none: 구역 숫자가 하나도 없음 (예매를 모름)
   return {
     app: 'fc-anyang-seats', version: 1, updatedAt: kst(state.at),
-    match: { opponent: state.opp || null, kickoff: kst(state.date), venue: VENUE, home: HOST, away: AWAY ? 'FC안양' : state.opp || null, competition: 'K리그1', attendance: state.crowd ?? null, awayAttendance: state.crowdAway ?? null },
+    match: { opponent: state.opp || null, kickoff: kst(state.date), venue: VENUE, home: HOST, away: AWAY ? GUEST : state.opp || null, ...(TEST && { test: true }), competition: 'K리그1', attendance: state.crowd ?? null, awayAttendance: state.crowdAway ?? null },
     capacity: t.cap || null, available: none ? null : t.avail, booked: t.cap && !none ? t.booked : null,  // 원정 구장은 판매 구역 총석 합 (총석을 모르면 null)
     awayCapacity: t.awayCap || null, awayBooked: t.awayCap ? t.awayBooked : null,  // 원정석 쪽 (홈 경기 원정석, 원정 경기 안양 응원 쪽). 홈석 = 전체 - 원정석
     ...(AWAY && { awayRemain: state.awayGrade ?? null, groups: Object.entries(state.groups).map(([name, g]) => ({ name, ids: g.ids, remain: g.remain })) }),  // groups: 놀티켓 등급 묶음 (묶음 잔여만 아는 구역은 sections[].remainGuess)
@@ -1288,7 +1292,7 @@ const blobs = cur => (cur?.tree || []).filter(f => f.type === 'blob');
 // 맨 위 og.png, og.json 은 링크 미리보기용(홈, 원정 중 가장 최근 집계 그림)이라 어느 구장 것도 아님
 const og = f => /^og\.(png|json)$/.test(f.path);
 // 구장마다 max.json 은 총석 발행본: 현황 발행과 지우기는 그대로 둠 (publishMax 만 바꿈)
-const mine = f => !og(f) && !/(^|\/)max\.json$/.test(f.path) && (AWAY ? f.path.startsWith(DATA) : !f.path.includes('/') || /^(prev|games)\//.test(f.path));
+const mine = f => !og(f) && !/(^|\/)max\.json$/.test(f.path) && (TEST ? f.path.startsWith(DATA) : !f.path.startsWith('test/')) && (AWAY ? f.path.startsWith(DATA) : !f.path.includes('/') || /^(prev|games)\//.test(f.path));
 const rel = f => f.path.slice(DATA.length);
 const sameMatch = (a, b) => (a?.opponent || '') === (b?.opponent || '') && String(a?.kickoff || '').slice(0, 10) === String(b?.kickoff || '').slice(0, 10);
 // 발행: data 브랜치를 최신 집계로 덮어씀
@@ -1314,7 +1318,7 @@ function publish(token, branch = 'data') {
     const olds = [find('prev/latest.json'), ...[1, 2, 3, 4].map(i => find(`prev/old/${i}.json`))].filter(Boolean).map((f, i) => ({ path: DATA + `prev/old/${i + 1}.json`, sha: f.sha }));
     // 링크 미리보기(og:image): 이번 집계가 지금 미리보기의 집계보다 늦거나 같을 때만 이번 그림으로 (올린 그림을 가리키기만).
     // 지난 경기에 공식 관중만 넣어 다시 발행해도 더 새 집계(다른 구장)의 미리보기는 그대로
-    const boardPng = await png(false), newer = (rec.updatedAt || '') >= ((await readJson(gh, tree.find(f => f.path === 'og.json')))?.at || '');
+    const boardPng = await png(false), newer = !TEST && (rec.updatedAt || '') >= ((await readJson(gh, tree.find(f => f.path === 'og.json')))?.at || '');  // 시험 발행은 링크 미리보기를 바꾸지 않음
     await writeTree(gh, branch, [...others.filter(f => !newer || !og(f)), ...(newer ? [{ path: 'og.png', ...boardPng }, { path: 'og.json', content: JSON.stringify({ at: rec.updatedAt, stadium: STADIUM }) }] : []),
       ...files.filter(f => rel(f).startsWith('games/') && !archive.some(a => a.path === f.path)), ...archive,
       ...files.filter(f => rel(f).startsWith('latest') || ['history.json', 'zones.json'].includes(rel(f))).map(f => ({ path: DATA + 'prev/' + rel(f), sha: f.sha })), ...olds,
@@ -1369,14 +1373,14 @@ function publishMax(token, branch = 'data') {
     const max = Object.fromEntries(SECTIONS.filter(s => state.rows[s.id].max != null && !state.rows[s.id].learned).map(s => [s.id, state.rows[s.id].max]));
     if (!Object.keys(max).length) throw new Error('표에 확정된 총석이 없습니다.');
     const body = { app: 'fc-anyang-seats', venue: VENUE, updatedAt: localISO() + ':00+09:00', max };
-    await writeTree(gh, branch, [...tree.filter(f => f.path !== DATA + 'max.json'), { path: DATA + 'max.json', content: JSON.stringify(body, null, 1) }], `총석 ${AWAY ? STADIUM + ' ' : ''}${localISO()}`, ref?.object.sha ?? null);
+    await writeTree(gh, branch, [...tree.filter(f => f.path !== MAXDATA + 'max.json'), { path: MAXDATA + 'max.json', content: JSON.stringify(body, null, 1) }], `총석 ${AWAY ? STADIUM + ' ' : ''}${localISO()}`, ref?.object.sha ?? null);
     Object.assign(KNOWN_MAX, max); maxPub = body;
     return Object.keys(max).length;
   });
 }
 // 발행한 총석을 기본 총석으로: 코드에 넣어 둔 값보다 우선, 이 브라우저에서 사람이 고친 칸(fixed)은 그대로
 let maxPub = null;
-const loadMax = () => fetchData('max.json').then(r => r.ok ? r.json() : null).then(d => {
+const loadMax = () => fetchData('max.json', MAXDATA).then(r => r.ok ? r.json() : null).then(d => {
   const max = Object.fromEntries(Object.entries(d?.max || {}).filter(([id, v]) => state.rows[id] && Number.isInteger(v) && v > 0));
   if (!Object.keys(max).length) return;
   Object.assign(KNOWN_MAX, max); maxPub = { ...d, max };
@@ -1899,9 +1903,9 @@ function ingest(text) {
   // 경기장 이름으로 확인. 놀티켓 화면엔 경기장 이름이 없어 원정은 '홈 팀 이름 + 안양'이어도 받음 (안양 홈 경기 글자는 넘김)
   // 원정 화면은 FC안양 경기 글자만 (같은 경기장의 다른 팀 경기 글자가 안양 원정 숫자를 지우지 않게). 놀티켓은 경기장 이름이 아예 없을 때만 홈 팀 이름으로 확인 (다른 경기장 이름이 적혀 있으면 넘김)
   const venues = text.match(/[가-힣]+(?:운동장|경기장|스타디움|구장|야드)/g) || [];
-  const venueOk = text.includes(VENUE) || SELLER === '놀티켓' && !venues.length && text.includes(STADIUMS[STADIUM].name);
+  const flat = v => v.replace(/\s/g, ''), venueOk = flat(text).includes(flat(VENUE)) || SELLER === '놀티켓' && !venues.length && text.includes(STADIUMS[STADIUM].name);
   if (!venueOk) { status(`받은 글자에 '${VENUE}'가 없어 넘겼습니다 (다른 구장, 다른 화면). 받은 내용은 맨 아래 '그 밖의 기능'의 받은 글자에 있습니다.`); return { why: `받은 글자에 ${VENUE} 없음` }; }
-  if (AWAY && !/안양/.test(text.replace(/안양종합운동장/g, ''))) { status(`받은 글자가 FC안양 경기가 아니라 넘겼습니다 (${VENUE}의 다른 경기). 받은 내용은 맨 아래 '그 밖의 기능'의 받은 글자에 있습니다.`); return { why: '받은 글자가 FC안양 경기가 아님' }; }
+  if (AWAY && !text.replace(/안양종합운동장/g, '').includes(WANT)) { status(`받은 글자가 ${GUEST} 경기가 아니라 넘겼습니다 (${VENUE}의 다른 경기). 받은 내용은 맨 아래 '그 밖의 기능'의 받은 글자에 있습니다.`); return { why: `받은 글자가 ${GUEST} 경기가 아님` }; }
   const p = parseText(text), fresh = !state.at || Math.abs(Date.now() - new Date(state.at)) > 600e3;  // 손으로 바꾼 집계 시각이 미래여도
   raw.value = text;
   apply(p, hasSeats(p) ? newCapture(p, localISO(), fresh) : []);
@@ -1938,7 +1942,7 @@ window.fcSeats = v => {
 // 티켓링크 탭이 여럿이거나 예매 화면이 틀(iframe) 안이면 신호가 여러 곳에서 옴: 보낸 곳마다 따로 두고 가장 앞선 상태를 보여 줌
 const lamp = { installed: 0, version: 0, pings: {}, got: 0, zones: 0, rejected: '', seats: null };  // seats: 스크립트가 마지막으로 센 좌석과 그 결과
 // 보내기 스크립트 최신 판 (fc-anyang-send.user.js 의 @version 과 같게. 자동 시험이 맞춰 봄). 설치된 판이 낮으면 입력 화면 맨 위 버튼을 눈에 띄게
-const SCRIPT_VERSION = 14;
+const SCRIPT_VERSION = 15;
 const hms = t => new Date(t).toTimeString().slice(0, 8);
 // Tampermonkey 저장소는 브라우저마다 따로: 티켓링크를 다른 브라우저에서 열면 신호가 안 옴 (램프에 이 브라우저 이름을 보여 줌)
 const BROWSER = (ua => /Whale\//.test(ua) ? '웨일' : /Edg\//.test(ua) ? '엣지' : /Chrome\//.test(ua) ? '크롬' : /Firefox\//.test(ua) ? '파이어폭스' : '이 브라우저')(navigator.userAgent);
@@ -2019,7 +2023,7 @@ addEventListener('drop', e => {
   if (imgs.length) window.ocrDone = ocr(imgs);
 });
 $('link').onclick = async () => {
-  const url = location.origin + location.pathname + (AWAY && !FOLLOW ? '?s=' + STADIUM : '');  // 고른 원정 화면은 그 구장, 나머지는 기본 주소(가장 최근 집계)
+  const url = location.origin + location.pathname + (TEST ? `?s=${STADIUM}&test=${TESTKEY}` : AWAY && !FOLLOW ? '?s=' + STADIUM : '');  // 고른 원정 화면은 그 구장, 나머지는 기본 주소(가장 최근 집계)
   try { if (navigator.share) return await navigator.share({ url, title: document.title }); } catch (e) { if (e.name === 'AbortError') return; }
   try { await navigator.clipboard.writeText(url); note('링크를 복사했습니다.'); } catch { note(url); }
 };
@@ -2078,7 +2082,8 @@ document.body.classList.toggle('embed', embed); document.body.classList.toggle('
 if (SELLER !== '티켓링크') document.querySelector('.foot').textContent = document.querySelector('.foot').textContent.replace('티켓링크', SELLER);  // 바닥 글의 예매처
 if (AWAY) {
   $('markHead').textContent = '매진 / 미판매';
-  document.title = nick(`FC안양 원정 예매현황 (${STADIUMS[STADIUM].name})`); $('opp').disabled = true;
+  document.title = nick(TEST ? `${HOST} vs ${TEST} 예매현황 (시험)` : `FC안양 원정 예매현황 (${STADIUMS[STADIUM].name})`); $('opp').disabled = true;
+  if (TEST) { $('stadiums').hidden = true; document.body.dataset.want = WANT; }  // 시험 페이지: 안양 구장 버튼은 숨기고, 보내기 스크립트에 받을 원정 팀 이름을 알림
   $('seatHint').textContent = `빈칸 = 정보 없음, 0 = 매진, 미판매 = 이번 경기에 팔지 않는 구역(빗금). 최대 = 구역 총석 (${STADIUMS[STADIUM].max ? '넣어 둠, ' : '아직 없음: '}구역 좌석 그림을 잘라 넣으면 셈). 총석을 모르는 구역은 예매율을 못 냅니다.`;
 } document.body.classList.toggle('embed-trend', params.get('embed') === 'trend');
 const toggleEdit = () => { try { localStorage.setItem(EDIT, editing ? '0' : '1'); } catch {} location.replace(location.pathname + location.search); };

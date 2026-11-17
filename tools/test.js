@@ -680,7 +680,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       return out;
     });
     await pg.context().close();
-    check('진단 글 복사: 주소와 경기장, 스크립트 판, 램프, 예매 탭 신호와 좌석 그림 구조, 스크립트가 센 좌석과 결과, 받은 글자', /FC안양 현황판 진단 .*\?s=gimcheon#?.* 김천종합운동장/.test(r.diag) && /보내기 스크립트: 14판 \(최신 14판\) · 숫자 받음: .* 구역 1개/.test(r.diag) && /예매 탭 티켓링크 www\.ticketlink\.co\.kr\/reserve .*: seat · 경기장 '김천종합운동장'/.test(r.diag)
+    check('진단 글 복사: 주소와 경기장, 스크립트 판, 램프, 예매 탭 신호와 좌석 그림 구조, 스크립트가 센 좌석과 결과, 받은 글자', /FC안양 현황판 진단 .*\?s=gimcheon#?.* 김천종합운동장/.test(r.diag) && /보내기 스크립트: 15판 \(최신 15판\) · 숫자 받음: .* 구역 1개/.test(r.diag) && /예매 탭 티켓링크 www\.ticketlink\.co\.kr\/reserve .*: seat · 경기장 '김천종합운동장'/.test(r.diag)
       && /좌석 그림: 캔버스 없음 · SVG 도형 0 · 작은 네모 i\.seat 30개/.test(r.diag) && /스크립트 좌석 세기 .*남은 12 \/ 전체 30 · 칸 속성의 이름 \["N11구역"\]/.test(r.diag) && /결과: 보내기 스크립트가 좌석 그림을 셌습니다: N11/.test(r.diag) && /N11구역\n12 석/.test(r.diag) && /진단 글을 복사했습니다|아래 글자 칸에 넣었습니다/.test(r.st), r.diag + ' / ' + r.st);
     check('수집 램프: 두 줄로 접혀 있고 누르면 펼침(스크립트 좌석 세기 줄), 입력 화면 맨 위에 램프 자리', r.clamp.startsWith('2|') && r.more.startsWith('true|') && +r.more.split('|')[1] > +r.clamp.split('|')[1] && r.more.endsWith('|true') && r.pad === '76px', JSON.stringify({ clamp: r.clamp, more: r.more, pad: r.pad }));
     // 발행 점검: 발행하지 않고 토큰(쓰기 권한), 스크립트 판, 지금 발행본을 알려 줌
@@ -694,7 +694,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       return v + ' || ' + calls.join(',');
     };
     const ok = await chk(201, 'ghp_x'), bad = await chk(401, 'ghp_x'), none = await chk(201, '');
-    check('발행 점검: 토큰 쓰기 확인(파일 조각만 올림, 브랜치는 안 건드림), 만료된 토큰, 토큰 없음, 옛 스크립트, 지금 발행본', /토큰: 발행할 수 있음/.test(ok) && /⚠ 보내기 스크립트: 13판/.test(ok) && !/바로 발행/.test(ok) && /지금 발행본: 부천FC1995 11\.01 16:30 경기, 집계 11\.01 16:30/.test(ok) && ok.endsWith('|| POST blobs')
+    check('발행 점검: 토큰 쓰기 확인(파일 조각만 올림, 브랜치는 안 건드림), 만료된 토큰, 토큰 없음, 옛 스크립트, 지금 발행본', /토큰: 발행할 수 있음/.test(ok) && /⚠ 보내기 스크립트: 14판/.test(ok) && !/바로 발행/.test(ok) && /지금 발행본: 부천FC1995 11\.01 16:30 경기, 집계 11\.01 16:30/.test(ok) && ok.endsWith('|| POST blobs')
       && /⚠ 토큰: 만료됐거나 잘못됐습니다/.test(bad) && /⚠ 토큰: 없음/.test(none) && none.endsWith('|| '), JSON.stringify({ ok, bad, none }));
     // 구역 글자가 칸 밖으로 나가지 않음: 가로로 쓴 글자(이름, 예매율)의 네 귀(조금 안쪽)가 그 칸 위에 있는지. 모서리가 세모꼴인 수원삼성, 서울, 비스듬한 좁은 칸이 많은 부천
     for (const sid of ['suwon', 'seoul', 'bucheon']) {
@@ -790,6 +790,31 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       return out; });
     await pg.context().close();
     check('전북 테이블 줄: W-2F~W-2M 칸, E2B 는 E 테이블(13)과 E 일반(40)을 더해 53, 한쪽만이면 알림, 테이블만 다시 받으면 50, 좌석 그림(블록 전체)과 손으로 넣은 잔여는 그대로', r.w === '40,14,24,48,8' && r.a === '13|true' && r.b === '53|300|false' && r.c === 50 && r.d === '45|false' && r.e === '60|false', JSON.stringify(r));
+  }
+  // 시험 페이지(?s=jeonbuk&test=seoul): 전북현대 vs FC서울 글자를 받고, 안양 전북 원정 현황판과 입력값, 발행 폴더(test/jeonbuk/)가 따로, 구장 버튼 숨김, 링크와 퍼가기 코드는 시험 주소.
+  // 티켓링크 머리글의 '전주 월드컵경기장'(빈칸)도 받음. 안양 전북 원정 현황판은 전북 vs 서울 글자를 넘김. 보내기 스크립트는 시험 페이지가 알려 준 팀 이름('서울') 경기를 보냄
+  {
+    const JS = '전북현대모터스 vs FC서울\n전주 월드컵경기장 | 2026.11.21(토) 14:00\n등급 선택\nE 일반\n7145 석\nE-1A\n296 석\nE-2B\n59 석';
+    let pg = await open(b, { url: URL + '?s=jeonbuk&test=seoul#edit' });
+    r = await pg.evaluate(t => { const k = fcIngest(t), rec = record();
+      return { k: k.ok, E1A: state.rows.E1A.remain, key: KEY, title: document.title, away: rec.match.away + '|' + rec.match.test, img: rec.images.board, nav: document.getElementById('stadiums').hidden, want: document.body.dataset.want, emb: embedCode(),
+        anyang: fcIngest('전북현대 vs FC안양\n전주 월드컵경기장 | 2026.12.05(토) 14:00\n등급 선택\nE-1A\n10 석').why, board: document.getElementById('board').textContent.includes('전북현대 vs 북패 예매 현황') }; }, JS);
+    const main = await pg.evaluate(() => localStorage.getItem('fc-anyang-seat-status-jeonbuk'));
+    await pg.context().close();
+    pg = await open(b, { url: URL + '?s=jeonbuk#edit' });
+    const r2 = await pg.evaluate(t => [fcIngest(t).why, fcIngest('전북현대 vs FC안양\n전주 월드컵경기장 | 2026.12.05(토) 14:00\n등급 선택\nE-1A\n10 석').ok, state.rows.E1A.remain].join('|'), JS);
+    await pg.context().close();
+    check('시험 페이지(전북 vs 서울): 받음, 입력값과 발행 폴더 따로, 제목과 현황판 머리글, 구장 버튼 숨김, 퍼가기 코드는 시험 주소, 안양 경기 글자는 넘김', r.k && r.E1A === 296 && r.key === 'fc-anyang-seat-status-jeonbuk-test' && r.title === '전북현대 vs 북패 예매현황 (시험)' && r.away === 'FC서울|true'
+      && r.img.endsWith('/data/test/jeonbuk/latest.png') && r.nav && r.want === '서울' && /\?s=jeonbuk&test=seoul&embed/.test(r.emb) && r.anyang === '받은 글자가 FC서울 경기가 아님' && r.board && main === null, JSON.stringify(r));
+    check("안양 전북 원정 현황판: 전북 vs 서울 글자는 넘기고, '전주 월드컵경기장'(빈칸) 안양 경기 글자는 받음", r2 === '받은 글자가 FC안양 경기가 아님|true|10', r2);
+    // 보내기 스크립트: 시험 페이지가 '서울'을 알리면 전북 vs 서울 예매 화면을 보내고, 신호가 없으면(보통) 안양 경기가 아니라 보내지 않음
+    const src = fs.readFileSync(path.join(ROOT, 'fc-anyang-send.user.js'), 'utf8');
+    const send = async store => { const tk = await b.newPage(); await tk.setContent('<div><h2>전북현대모터스 vs FC서울</h2><div>전주 월드컵경기장 | 2026.11.21(토) 14:00</div><h3>등급 선택</h3><div style="display:flex"><span>E-1A</span><span>296 석</span></div></div>');
+      await tk.evaluate(([src, store]) => { window.__set = {}; window.GM_setValue = (k, v) => (__set[k] = v); window.GM_getValue = k => store[k]; window.GM_addValueChangeListener = () => {}; window.unsafeWindow = window;
+        const o = Element.prototype.attachShadow; Element.prototype.attachShadow = function (i) { return o.call(this, { ...i, mode: 'open' }); }; (0, eval)(src.replace(/location\.hostname/g, '"www.ticketlink.co.kr"')); }, [src, store]);
+      await tk.waitForTimeout(2200); const v = await tk.evaluate(() => [__set.ping?.state, !!__set.text].join()); await tk.close(); return v; };
+    const withTest = await send({ board: { at: Date.now(), page: '?s=jeonbuk&test=seoul', want: '서울' } }), normal = await send({});
+    check("보내기 스크립트 15판: 시험 페이지가 알린 팀('서울') 경기는 보내고, 보통은 안양 경기만", withTest === 'seat,true' && normal === 'idle,false', JSON.stringify({ withTest, normal }));
   }
   // 전북 코너 테이블 목록(11/17 사용자 화면): '코너 테이블' 아래 '가구역'~'사구역' -> 코너 가~사 칸
   {
@@ -1198,6 +1223,15 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     const latestSha = sha('latest.json');
     await ap.evaluate(([t, B]) => { state.rows.S11.max = 200; return publishMax(t, B); }, [token, B]);
     check('총석 발행: 구장마다 max.json, 현황 발행본(latest.json)은 그대로', mx.endsWith('|128') && raw('max.json')?.max.R10 === 128 && raw('gimcheon/max.json')?.max.S11 === 200 && raw('gimcheon/max.json').venue === '김천종합운동장' && sha('latest.json') === latestSha && raw('latest.json')?.match.opponent === '울산HD', mx);
+    {
+      const tp = await open(b, { url: URL + '?s=jeonbuk&test=seoul#edit', live: true }), og0 = raw('og.json'), home0 = sha('latest.json');
+      await tp.evaluate(([t, B]) => { fcIngest('전북현대모터스 vs FC서울\n전주 월드컵경기장 | 2026.11.21(토) 14:00\n등급 선택\nE-1A\n296 석'); state.at = '2026-12-31T09:00'; return publish(t, B); }, [token, B]);
+      const tj = raw('test/jeonbuk/latest.json'), og1 = raw('og.json');
+      await tp.evaluate(([t, B]) => unpublish(t, true, B), [token, B]);
+      const gone = raw('test/jeonbuk/latest.json');
+      await tp.context().close();
+      check('시험 페이지 발행: test/jeonbuk/ 에만, 늦은 집계여도 링크 미리보기와 안양 발행본은 그대로, 지우면 시험 것만', tj?.match.away === 'FC서울' && tj.match.test === true && JSON.stringify(og1) === JSON.stringify(og0) && sha('latest.json') === home0 && gone === null && raw('latest.json')?.match, JSON.stringify({ tj: tj?.match, og0, og1 }));
+    }
     check('원정 발행은 구장 폴더에, 홈 발행은 그대로', raw('gimcheon/latest.json')?.match.home === '김천상무' && raw('latest.json')?.match.opponent === '울산HD', '');
     // 링크 미리보기(og.png): 가장 늦은 집계(홈 12/04 10:00)의 그림. 그보다 이른 집계(김천 11/07)를 발행해도 그대로, 더 늦은 집계면 그 구장으로
     const og1 = raw('og.json'), same1 = sha('og.png') && sha('og.png') === sha('latest.png');
