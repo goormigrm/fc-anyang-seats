@@ -299,21 +299,29 @@ const STADIUMS = {
         [['N31'], 5.5, 5.93], [['N32'], 5.93, 6.2], [['N33'], 6.2, 6.5], [['N34'], 6.5, 6.8], [['N35'], 6.8, 7.08], [['N36'], 7.08, 7.5]], ours);
       SECTIONS.forEach(x => { const n = { 밤겔피크닉존: '밤겔', 게이밍체어존: '게이밍', 프리미엄테이블석: '프리미엄', '2층테이블석': '2층 테이블', '3층테이블석': '3층 테이블' }[x.id]; if (n) x.name = n; });
     } },
-  // 인천축구전용경기장 (인천 좌석도): E 안쪽 1인 테이블(양 끝)·E3~E8, 모서리 피크닉 테이블·하이네켄 테이블, 바깥 E11~E19,
-  // S 안쪽 S2~S6(스탠딩), 바깥 S8~S12, 아래 모서리 라탄 테라스 존, W 안쪽 W2·W3~W5·V1~V3·W6~W9·W10, 바깥 W11·W12~W14·W15~W17·W18, N = 원정석
-  // 좌석도는 둥근 모서리에 바깥 층 모서리가 비어 있음: 오른쪽 모서리는 E19·S8, S12·W11 사이 작은 틈만, 왼쪽 위 모서리는 좌석도처럼 비움.
-  // N 은 원정석 한 층뿐(좌석도는 그 바깥이 통로)이라 원정석을 두 층 두께로 아래 모서리 대각선부터 피크닉 아래(경기장 위 끝에서 0.15)까지
-  // 11/17 잠깐 뺐다가 되살림: 홈 좌석은 인천 구단 홈페이지에 로그인해야 보임(들어가면 티켓링크와 같은 예매 화면: 등급 'Exciting석' 아래 'E3구역 132 석')
-  incheon: { venue: '인천축구전용경기장', host: '인천유나이티드', name: '인천', geo: { kx: 1.1, c0: 20, r: [12, 160], s: 1.36 },
+  // 인천축구전용경기장 (11/17 티켓링크 좌석 화면): 위 E 안쪽 E2·E3~E8·E9, 바깥 E11~E19. 오른쪽 S 안쪽 S2~S6(스탠딩), 바깥 S8~S12. 아래 W 안쪽 W2~W5·V1~V3·W6~W10,
+  // 그 바깥 BOX1~11(스카이박스, 목록에 없어 회색), 맨 바깥 W11~W14·(회색)·W15~W18. 왼쪽 N = 원정석 N1(아래 모서리)~N7, 한 층이라 두 층 두께.
+  // 모서리: 왼쪽 위 안쪽 N8·E1(1인 테이블석) 바깥 피크닉 테이블석, 오른쪽 위 안쪽 E10·S1 바깥 하이네켄 테이블석, 오른쪽 아래 라탄석 1·2. 바깥 층 모서리는 비어 있음
+  // 칸 폭은 좌석 화면에서 잰 비율 (W5, V1~V3, W6 은 좁은 칸). N7 은 평소 미판매였다가 원정석이 다 차면 여는 구역이라 새 경기마다 미판매로 시작(unsold, 판매를 열면 표에서 미판매를 끔)
+  // 티켓링크 등급 목록(11/17 사용자 화면): Exciting석 E3~E8, Expert석 E11~E19, S석 'S 8구역'~S12, 스탠딩석 S2~S6, World class석 W2~W5, With석 W6~W10, Wide view석 W11~W18,
+  // 1인 테이블석(EG1) E1·E2·N8, (EG4) E9·E10·S1, 피크닉/하이네켄 테이블석(2인) 아래 같은 이름 한 줄, 원정석 N1~N7.
+  // V1~V3 은 프리미엄 골드, 프리미엄 클래식, 프리미엄석 하프 아래에 같은 이름으로, 라탄석1·2구역은 라탄 테라스 존 등급마다 나옴: 등급마다 따로 기억해 더함(mix 낱말 목록)
+  // 휠체어석(E석), (W석) 아래 구역(E3, W4, 라탄석1 등)은 일반 구역과 이름이 같아 읽지 않음 (parseText)
+  incheon: { unsold: ['N7'], venue: '인천축구전용경기장', host: '인천유나이티드', name: '인천', geo: { kx: 1.1, c0: 30, r: [12, 160], s: 1.36 },
     layout: () => {
-      const T1 = [14, 80], T2 = [84, 160];
-      SECTIONS.push({ id: '1인테이블석', name: '1인', ring: [[-0.12, 0.1, ...T1], [0.9, 1.12, ...T1]] });
-      arc(Rs(3, 8, 'E'), 0.1, 0.9, T1); arc(['피크닉테이블석'], 7.05, 7.88, T1); arc(['하이네켄테이블석'], 1.12, 2, T1); arc(Rs(11, 19, 'E'), -0.2, 1.2, T2);
-      arc(Rs(2, 6, 'S'), 2, 3, T1); arc(Rs(8, 12, 'S'), 1.4, 3.6, T2);
-      arc(['라탄테라스존'], 3, 3.85, T1); arc(['W2'], 3.85, 4.05, T1); arc(['W3', 'W4', 'W5', 'V1', 'V2', 'V3', 'W6', 'W7', 'W8', 'W9'], 4.05, 4.98, T1); arc(['W10'], 4.98, 5.5, T1);
-      arc(['W11'], 3.8, 4.04, T2); arc(['W12', 'W13', 'W14', null, 'W15', 'W16', 'W17'], 4.04, 4.96, T2); DECOR.push(['', 4.04 + 3 * 0.92 / 7, 4.04 + 4 * 0.92 / 7, ...T2]); arc(['W18'], 4.96, 5.2, T2);
-      arc(['원정석'], 5.5, 6.85, [T1[0], T2[1]], true);
-      SECTIONS.forEach(x => { const n = { 피크닉테이블석: '피크닉', 하이네켄테이블석: '하이네켄', 라탄테라스존: '라탄' }[x.id]; if (n) x.name = n; });
+      const T1 = [14, 80], T2 = [84, 160], A = [14, 46], B = [48, 80], WB = [83, 99], W2 = [102, 160];
+      const seq = (u0, u1, list, T) => { const n = list.reduce((a, [, k = 1]) => a + k, 0); let u = u0; list.forEach(([id, k = 1]) => { const v = u + (u1 - u0) * k / n; if (id) arc([id], u, v, T); else DECOR.push(['', u, v, ...T]); u = v; }); };
+      arc(['N8', 'E1'], 7, 8, A); arc(['피크닉테이블석'], 7, 8, B); arc(['E10', 'S1'], 1, 2, A); arc(['하이네켄테이블석'], 1, 2, B);
+      arc(Rs(2, 9, 'E'), 0, 1, T1); arc(Rs(11, 19, 'E'), -0.08, 1.08, T2);
+      arc(Rs(2, 6, 'S'), 2, 3, T1); arc(Rs(8, 12, 'S'), 1.9, 3.1, T2);
+      arc(['라탄석1', '라탄석2'], 3, 4.02, T1);
+      seq(4.02, 4.95, [['W2'], ['W3'], ['W4', 1.1], ['W5', 0.6], ['V1', 0.6], ['V2', 0.6], ['V3', 0.6], ['W6', 0.6], ['W7'], ['W8', 1.1], ['W9']], T1); arc(['W10'], 4.95, 5.6, T1);
+      DECOR.push(['BOX 8~11', 4.01, 4.32, ...WB], ['BOX 1~7', 4.49, 5.02, ...WB]);
+      seq(3.93, 5.04, [['W11', 0.9], ['W12'], ['W13'], ['W14'], [null, 0.9], ['W15'], ['W16'], ['W17'], ['W18']], W2);
+      arc(['N1'], 5.6, 6, [T1[0], T2[1]], true); arc(Rs(2, 7, 'N'), 6, 7, [T1[0], T2[1]], true);
+      SECTIONS.forEach(x => { const n = { 피크닉테이블석: '피크닉', 하이네켄테이블석: '하이네켄', 라탄석1: '라탄 1', 라탄석2: '라탄 2' }[x.id]; if (n) x.name = n;
+        if (/^V\d$/.test(x.id)) x.mix = x.id === 'V2' ? ['골드', '클래식'] : ['골드', '클래식', '하프'];  // 프리미엄석 하프 아래는 V1, V3 만
+        if (/^라탄/.test(x.id)) x.mix = ['더블', '트윈']; });  // 라탄 테라스 존 2인 (더블), (트윈) 아래 라탄석1·2구역. 4인~8인 등급 아래에 나오면 그 등급 이름으로 더함
     } },
   // 이 아래는 놀티켓(구 인터파크)에서 파는 구장. seller: 현황판에 적는 예매처
   // 수원월드컵경기장 (수원삼성 좌석도): E 안쪽 E1~E9, 바깥 E10~E19, N 안쪽 N1~N6(아래→위), 바깥 N7~N13, S 안쪽 S6~S1(위→아래), 바깥 S13~S7,
@@ -502,10 +510,32 @@ const zoneId = n => {
 // 화면 글자 해석: 오른쪽 구역 목록 "R8구역 (줄바꿈) 28석", 왼쪽 등급 목록 "가변석 574 석", 상단 "FC안양 vs 상대 / 날짜"
 function parseText(text) {
   // 한글 인식기가 구역 이름의 W 를 \/, \\, VV 로 읽음: 구역 번호 앞이면 W 로 (원정 구장 W11구역 등)
-  const t = text.replace(/(\d),(?=\d{3})/g, '$1').replace(/(^|[^A-Za-z])(?:\\+\/?|VV|vv)(?=\s*\d{1,2}\s*구\s*역)/gm, '$1W')
+  let t = text.replace(/(\d),(?=\d{3})/g, '$1').replace(/(^|[^A-Za-z])(?:\\+\/?|VV|vv)(?=\s*\d{1,2}\s*구\s*역)/gm, '$1W')
     .replace(/(^|[^A-Za-z0-9])([6G58HM])(\d{1,2})(?=\s*구\s*역)/gm, (m, pre, ch, n) => state.rows[LOOK[ch] + n] ? pre + LOOK[ch] + n : m),  // 611구역 → E11구역
     seen = {}, totals = [], unknown = [], grades = [];
   const add = (id, v) => (seen[id] ??= []).push(v);
+  // 원정 구장 등급 목록: 구역 줄을 바로 앞 등급 줄(구역 이름이 아닌 줄, 괄호 붙은 '피크닉 테이블석(2인)' 도 등급)과 함께 봄
+  // 휠체어석, 장애인석 아래 구역은 읽지 않음: 일반 구역과 이름이 같고(인천 '휠체어석(E석)' 아래 'E3구역 16 석') 총석에서도 뺌 (11/17 사용자)
+  // mix 가 등급 낱말 목록인 칸(인천 V1~V3: 프리미엄 골드, 클래식, 하프 아래 같은 이름)은 등급마다 따로 기억해 더함. 0석 등급은 펼치지 않아도 0 (그 칸을 이미 받았을 때만)
+  // '(좌석 그림)' 아래 줄은 좌석 그림으로 센 블록 전체 숫자라 등급과 상관없음
+  const mix = {}, zero = {};  // mix: { 칸: { 등급: 잔여 } } (전북 E2B 는 아래 등급 줄 읽기에서 테이블/일반으로)
+  if (AWAY) { const L = t.split('\n'), out = []; let g = '', gv = 0, used = 0;
+    for (let i = 0; i < L.length; i++) {
+      if (L[i] === '(좌석 그림)') { g = ''; continue; }
+      const one = L[i].match(/^(.*?[^\d\s])\s*(\d+)\s*석\s*$/), two = !one && L[i + 1]?.match(/^\s*(\d+)\s*석\s*$/);
+      const n = (one ? one[1] : two ? L[i] : '').replace(/^[^0-9A-Za-z가-힣]+/, '').trim(), v = one ? +one[2] : two ? +two[1] : 0;
+      const z = n && zoneId(n), x = z && SECTIONS.find(s => s.id === z);
+      if (!n || !(/구\s*역/.test(n) || z && !n.includes('('))) {  // 등급 줄 (또는 숫자 없는 줄)
+        if (n) { g = n; gv = v; used = 0; if (v === 0) SECTIONS.forEach(s => { const k = Array.isArray(s.mix) && s.mix.find(k => n.includes(k)); if (k) (zero[s.id] ||= {})[k] = 0; }); }
+        out.push(L[i]); continue;
+      }
+      if (/휠체어|장애인/.test(g) && !(gv > 0 && used >= gv)) { used += v; if (two) i++; continue; }  // 구역 합이 등급 숫자에 닿으면 그 아래는 다른 등급
+      if (g && Array.isArray(x?.mix)) { (mix[z] ||= {})[x.mix.find(k => g.includes(k)) || g] = v; if (two) i++; continue; }
+      out.push(L[i]);
+    }
+    t = out.join('\n');
+    for (const [id, p] of Object.entries(zero)) if (mix[id] || state.rows[id]?.parts) mix[id] = { ...p, ...mix[id] };
+  }
   for (const [, a, n, v] of t.matchAll(/(?<![A-Za-z])([A-Z]{1,2})\s*(\d{1,2})\s*구\s*역\s*(\d+)\s*석/gi)) add(a.toUpperCase() + n, +v);
   // 원정 구장은 구역 표기가 제각각(전북 'E-2A', 서울 'EA', 포항 '청암E1', '코너테이블 가'): 빈칸, 하이픈을 빼고 현황판 구역 이름과 맞춰 봄
   // (그대로, 한글 앞말을 빼고, 한글을 모두 빼고). 안 맞는 이름은 '현황판에 없는 구역'으로 알림
@@ -518,13 +548,12 @@ function parseText(text) {
   }
   // '구역' 글자 없이 '이름 N 석'으로 나오는 구장(전북 'W-1K 90 석', 하이픈 포함): 이름이 현황판 칸과 맞는 줄만
   // 같은 구역 이름이 등급마다 따로 나오면(전북 'W-1K': A 테이블 아래와 A 커플 아래) 바로 앞 등급 줄의 이름으로 칸을 가림 (칸의 of, when)
-  const mix = {};  // { 칸: { 테이블: 잔여, 일반: 잔여 } } 같은 구역 이름이 테이블 등급과 일반 등급에 나뉘어 나오는 칸 (전북 E2B)
   if (AWAY) { let grade = '';
     for (const [, raw, v] of t.matchAll(/^[^\n0-9A-Za-z가-힣]*((?:\d*[A-Za-z가-힣·-])[^\n]{0,24}?)[ \t]*\n?[ \t]*(\d+)[ \t]*석/gm)) {
       const n = raw.trim(), id = /^[0-9A-Za-z가-힣·-]{1,14}$/.test(n) && zoneId(n);
       if (/구\s*역/.test(n)) continue;  // '○○구역 N석' 줄은 위에서 읽음 (좌석 그림으로 센 블록 전체 숫자도 이 모양)
       const c = id && (SECTIONS.find(x => x.of === id && x.when.test(grade))?.id || id);
-      if (c && SECTIONS.find(x => x.id === c).mix) (mix[c] ||= {})[/테이블/.test(grade) ? '테이블' : '일반'] = +v;
+      if (c && SECTIONS.find(x => x.id === c).mix === true) (mix[c] ||= {})[/테이블/.test(grade) ? '테이블' : '일반'] = +v;
       else if (c) add(c, +v);
       else if (/^[A-Za-z]{1,2}-?\d{1,2}[A-Za-z]?$/.test(n)) missZones.push(n);  // 구역 코드처럼 생겼는데 현황판에 없는 칸 (전북 'W-1E' 같은)
       else grade = n;
@@ -615,11 +644,13 @@ const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } c
 // 사람이 누른 미판매는 따로 저장: 미판매·매진 버튼, 잔여 직접 입력으로만 바뀜. 현황판 탭이 여럿이거나 오래 열린 탭이 숫자를 받아 저장해도
 // 지워지지 않게 숫자를 받을 때마다 이 목록을 새로 읽어 지킴 (11/07: 먼저 열어 둔 탭이 0석을 매진으로 저장해 미판매가 사라진 일)
 const OFFKEY = 'fc-anyang-unsold' + (AWAY ? '-' + STADIUM : '') + (TEST ? '-test' : '');
+// 구장마다 평소 팔지 않는 구역(STADIUMS.<구장>.unsold, 인천 N7): 처음 열 때와 새 경기에서 미판매로 시작. 사람이 끄면 그대로(다음 새 경기까지)
+const defaultOff = () => (AWAY && STADIUMS[STADIUM].unsold || []).forEach(id => { if (state.rows[id]) Object.assign(state.rows[id], { off: true, remain: null }); });
 const saveOff = () => { try { localStorage.setItem(OFFKEY, JSON.stringify(SECTIONS.filter(s => state.rows[s.id].off).map(s => s.id))); } catch {} };
 const syncOff = () => {
   let v = null;
   try { v = JSON.parse(localStorage.getItem(OFFKEY)); } catch {}
-  if (!Array.isArray(v)) return saveOff();  // 처음: 지금 표시를 목록으로
+  if (!Array.isArray(v)) { defaultOff(); return saveOff(); }  // 처음: 구장의 기본 미판매(인천 N7)와 지금 표시를 목록으로
   SECTIONS.forEach(s => { state.rows[s.id].off = v.includes(s.id); });
 };
 const localISO = (t = Date.now()) => new Date(t - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);  // "2026-11-27T12:00"
@@ -740,6 +771,8 @@ const phase = () => { const k = state.date.length > 10 ? new Date(state.date) : 
 const matchTitle = () => AWAY ? `${HOST} vs ${GUEST}` : `FC안양 vs ${state.opp || '상대팀'}`;
 const baseLabel = () => state.base ? state.base.at ? state.base.at.slice(5).replace('-', '.').replace('T', ' ') : '비교 기준' : '';  // "11.25 12:00"
 const nameOf = id => SECTIONS.find(s => s.id === id).name || id;
+// mix 칸에서 아직 못 받은 등급 (전북 E2B 는 테이블, 일반 / 인천 V1 은 골드, 클래식, 하프)
+const mixMiss = id => { const x = SECTIONS.find(s => s.id === id), p = state.rows[id]?.parts; return p && x?.mix ? (x.mix === true ? ['테이블', '일반'] : x.mix).filter(k => !(k in p)) : []; };
 // 카드, 요약 글, 발행 JSON 이 같이 쓰는 합계
 function stats() {
   const est = groupEst(), t = { avail: 0, soldSum: 0, soldOut: [], empty: [], off: [], noMax: [], cap: FULL, booked: 0, est };  // est: 묶음 잔여로 나눈 추정 구역
@@ -1041,7 +1074,7 @@ function apply({ found, mix = {}, totals, filled = [], unknown = [], grades = []
   ids.forEach(id => { const r = state.rows[id];
     if (mix[id]) { r.parts = { ...r.parts, ...mix[id] }; r.remain = Object.values(r.parts).reduce((a, b) => a + b, 0); }
     else { r.remain = found[id]; delete r.parts; } });  // 블록 전체 숫자(좌석 그림, '구역' 줄)면 나눠 둔 것은 지움
-  const half = ids.filter(id => state.rows[id].parts && Object.keys(state.rows[id].parts).length < 2);
+  const half = ids.filter(id => mixMiss(id).length && SECTIONS.find(s => s.id === id).mix === true), halfA = ids.filter(id => mixMiss(id).length && !half.includes(id));
   // 놀티켓 등급 묶음(원정 구장의 totals 는 모두 묶음): 묶음 잔여를 기억해 구역 잔여를 모르는 칸을 묶음으로 셈
   const groups = AWAY ? totals : [], got = ids.length || groups.length;
   groups.forEach(([g, v]) => { if (g.free) g.ids = state.groups[g.name]?.ids || []; state.groups[g.name] = { ids: g.ids, remain: v, ...(g.free && { free: true }) }; });
@@ -1061,6 +1094,7 @@ function apply({ found, mix = {}, totals, filled = [], unknown = [], grades = []
     ...(kept.length > live.length ? [`미판매로 둔 구역은 그대로 둠: ${kept.filter(id => !live.includes(id)).map(nameOf).join(', ')}`] : []),
     ...live.map(id => `미판매로 둔 ${nameOf(id)}에 잔여 ${found[id]}석이 보입니다. 판매를 시작했으면 표에서 미판매를 끄세요 (그 뒤 숫자를 받음).`),
     ...(half.length ? [`${half.map(nameOf).join(', ')}: 테이블석과 일반석 중 ${state.rows[half[0]].parts.테이블 != null ? '테이블석' : '일반석'}만 받음. ${state.rows[half[0]].parts.테이블 != null ? '일반 등급(E 일반 등)' : '테이블 등급'}도 눌러야 블록 전체 잔여가 됩니다`] : []),
+    ...halfA.map(id => `${nameOf(id)}: ${Object.keys(state.rows[id].parts).join(', ')} 등급만 받음. ${mixMiss(id).join(', ')} 등급도 눌러야 구역 전체 잔여가 됩니다`),
     ...(learned.length ? [`최대 좌석을 새로 넣음: ${learned.map(id => nameOf(id) + ' ' + fmt(state.rows[id].max)).join(', ')}`] : []),
     ...(unknown.length ? [`현황판에 없는 등급: ${unknown.join(', ')} (등급 이름이 바뀌었으면 알려 주세요)`] : []),
     ...(missZones.length ? [`현황판에 없는 구역 이름: ${missZones.slice(0, 12).join(', ')}${missZones.length > 12 ? ' 등' : ''} (티켓링크 표기와 현황판 칸 이름이 다르면 알려 주세요)`] : []),
@@ -1134,7 +1168,7 @@ $('toMax').onclick = () => {
   fillTable(); save(); render();
 };
 // 새 경기: 잔여, 비교 기준을 비우고 원정석 최대는 평소 값으로 (넓게 열었던 날 값이 남지 않게)
-const newGame = () => { SECTIONS.forEach(s => { state.rows[s.id].remain = null; delete state.rows[s.id].block; delete state.rows[s.id].parts; }); state.groups = {}; if (state.rows.원정석) { state.rows.원정석.max = KNOWN_MAX.원정석; delete state.rows.원정석.fixed; } state.base = null; state.crowd = null; state.crowdAway = null; state.awayGrade = null; };
+const newGame = () => { SECTIONS.forEach(s => { state.rows[s.id].remain = null; delete state.rows[s.id].block; delete state.rows[s.id].parts; }); state.groups = {}; if (!AWAY && state.rows.원정석) { state.rows.원정석.max = KNOWN_MAX.원정석; delete state.rows.원정석.fixed; } syncOff(); defaultOff(); saveOff(); state.base = null; state.crowd = null; state.crowdAway = null; state.awayGrade = null; };
 $('clear').onclick = () => {
   if (!confirm('잔여와 비교 기준을 모두 지울까요?\n(최대 좌석은 그대로, 원정석은 1235로)')) return;
   newGame(); fillTable([]); save(); render();
@@ -1893,10 +1927,10 @@ async function ocrRun(files) {
       let p = parseText(texts.join(''));
       // 새 경기인지 먼저 판단: 목록 글자의 경기가 표의 경기와 다르면 여기서 지난 숫자를 비움 (그러지 않으면 새 경기 좌석 그림을 지난 경기 잔여와 견줘 버림)
       const shotAt = localISO(Math.max(...files.map(f => f.lastModified || Date.now()))), early = hasSeats(p) ? newCapture(p, shotAt) : null;
-      const known = m => p.found[m.id] ?? (state.rows[m.id].parts && Object.keys(state.rows[m.id].parts).length < 2 ? null : state.rows[m.id].remain);  // 테이블석이나 일반석만 받은 칸은 블록 전체가 아니라 견주지 않음
+      const known = m => p.found[m.id] ?? (mixMiss(m.id).length ? null : state.rows[m.id].remain);  // 테이블석이나 일반석만 받은 칸은 블록 전체가 아니라 견주지 않음
       const skipped = counted.filter(m => !m.id), wrong = counted.filter(m => m.id && known(m) != null && Math.abs(known(m) - m.remain) > Math.max(2, known(m) * 0.03));
       counted = counted.filter(m => m.id && !wrong.includes(m));
-      texts.push(...counted.filter(m => known(m) == null).map(m => `\n${m.id}구역 ${m.remain}석\n`));
+      texts.push(...counted.filter(m => known(m) == null).map(m => `\n(좌석 그림)\n${m.id}구역 ${m.remain}석\n`));
       raw.value = texts.join('');  // 원래 순서대로 (같은 구역이 여러 장이면 나중 장이 우선)
       p = parseText(raw.value);
       // 집계 시각 = 가장 늦게 찍은 캡처 (붙여넣기는 지금). 좌석 숫자를 못 찾았으면 경기 판단은 건너뜀 (지난 숫자를 지우지 않게)

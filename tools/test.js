@@ -507,7 +507,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     const H2 = (host, venue) => `${host} vs FC안양\n${venue} | 2026.11.29(일) 14:00\n등급 선택\n`;
     const cases = [
       ['jeonbuk', 104, 11, H2('전북현대', '전주월드컵경기장') + 'S원정\n500 석\nS-1C구역\n120 석\nE일반2A구역\n30 석\n1A구역\n7 석', { S1C: 120, E2A: 30 }, '1A'],
-      ['incheon', 50, 1, H2('인천유나이티드', '인천축구전용경기장') + '원정석\n500 석\nE3구역\n90 석\nV1구역\n10 석', { 원정석: 500, E3: 90, V1: 10 }, ''],
+      ['incheon', 62, 7, H2('인천유나이티드', '인천축구전용경기장') + '원정석\n1142 석\nN1구역\n144 석\nE3구역\n90 석\nW5구역\n10 석', { N1: 144, E3: 90, W5: 10 }, ''],
       ['pohang', 61, 7, H2('포항스틸러스', '포항스틸야드') + '청암E1구역\n100 석\nA1구역\n50 석\n데크석\n20 석', { E1: 100, A1: 50, 데크석: 20 }, ''],
       ['seoul', 69, 3, H2('FC서울', '서울월드컵경기장') + 'E-A구역\n80 석\nSC구역\n40 석', { EA: 80, SC: 40 }, ''],
       ['ulsan', 106, 11, H2('울산HD', '울산문수축구경기장') + 'N1구역\n120 석\nE13구역\n50 석\n프리미엄 테이블석\n10 석', { N1: 120, E13: 50, 프리미엄테이블석: 10 }, ''],
@@ -762,9 +762,27 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     // 시험 페이지(인천 vs 울산): 티켓링크 머리글 '인천 유나이티드 vs 울산 HD FC', 'E3구역 132 석'을 받음. 둘 다 파랑이라 울산(원정석 쪽)은 둘째 색 노랑
     { const pg = await open(b, { url: URL + '?s=incheon&test=ulsan#edit' });
       out.ic = await pg.evaluate(() => { const k = fcIngest('인천 유나이티드 vs 울산 HD FC\n인천축구전용경기장 | 2026.11.21(토) 16:30\n등급 선택\nExciting석\n1495 석\nE3구역\n132 석\n원정석\n500 석');
-        ['E4', '원정석'].forEach(id => Object.assign(state.rows[id], { max: 100, remain: 10 })); render(); const f = id => document.querySelector(`#board [data-z="${id}"]`).getAttribute('fill');
-        return [k.ok, state.rows.E3.remain, document.title, f('E4'), f('원정석'), /노랑 = 울산 원정석 쪽/.test(document.getElementById('board').textContent)].join(); });
+        ['E4', 'N3'].forEach(id => Object.assign(state.rows[id], { max: 100, remain: 10 })); render(); const f = id => document.querySelector(`#board [data-z="${id}"]`).getAttribute('fill');
+        return [k.ok, state.rows.E3.remain, document.title, f('E4'), f('N3'), /노랑 = 울산 원정석 쪽/.test(document.getElementById('board').textContent)].join(); });
       await pg.context().close(); }
+    // 인천 원정석 N1~N7: N7 은 평소 미판매라 처음 열 때와 새 경기에서 미판매로 시작, 0석이 와도 그대로, 잔여가 보이면 알림, 사람이 끄면 받음
+    { const pg = await open(b, { url: URL + '?s=incheon#edit' });
+      out.n7 = await pg.evaluate(() => { const H = '인천 유나이티드 vs FC안양\n인천축구전용경기장 | 2026.12.05(토) 14:00\n등급 선택\n원정석\n1142 석\nN1구역\n144 석\nN6구역\n292 석\n', st = () => document.getElementById('status').innerText, o = [state.rows.N7.off];
+        fcIngest(H + 'N7구역\n0 석'); o.push(state.rows.N7.off, state.rows.N7.remain, state.rows.N1.remain);
+        fcIngest(H + 'N7구역\n40 석'); o.push(state.rows.N7.off, /미판매로 둔 N7에 잔여 40석이 보입니다/.test(st()));
+        document.querySelector('tr[data-id="N7"] [data-a=off]').click(); fcIngest(H + 'N7구역\n40 석'); o.push(state.rows.N7.off, state.rows.N7.remain);
+        newGame(); o.push(state.rows.N7.off); return o.join(); });
+      await pg.context().close(); }
+    // 인천 등급 목록(11/17 사용자 화면): 휠체어석(E석), (W석) 아래 E3, 하이네켄 테이블석, 라탄석1구역은 읽지 않음. V1~V3 은 골드, 클래식, 하프 아래 같은 이름이라 더함, 0석 등급은 펼치지 않아도 0
+    { const pg = await open(b, { url: URL + '?s=incheon#edit' });
+      out.wc = await pg.evaluate(() => { const H = '인천 유나이티드 vs FC안양\n인천축구전용경기장 | 2026.12.05(토) 14:00\n등급 선택\nExciting석\n1476 석\nE3구역\n134 석\n', st = () => document.getElementById('status').innerText, o = [];
+        fcIngest(H + '프리미엄 골드\n6 석\nV1구역\n0 석\nV2구역\n1 석\nV3구역\n5 석\n프리미엄 클래식\n15 석\n프리미엄석 하프\n0 석\n하이네켄 테이블석(2인)\n0 석\n하이네켄 테이블석\n0 석\n휠체어석(E석)\n74 석\nE3구역\n16 석\n하이네켄 테이블석\n14 석\n휠체어석(W석)\n56 석\nW4구역\n16 석\n라탄석1구역\n14 석\n원정석\n1129 석\nN1구역\n144 석');
+        o.push(state.rows.E3.remain, state.rows.하이네켄테이블석.remain, state.rows.W4.remain, state.rows.라탄석1.remain, state.rows.N1.remain, state.rows.V2.remain, state.rows.V3.remain, /V2: 골드 등급만 받음\. 클래식 등급도/.test(st()));
+        fcIngest(H + '프리미엄 클래식\n15 석\nV1구역\n0 석\nV2구역\n3 석\nV3구역\n12 석\n프리미엄석 하프\n0 석');
+        o.push(state.rows.V1.remain, state.rows.V2.remain, state.rows.V3.remain, /등급도 눌러야/.test(st())); return o.join(); });
+      await pg.context().close(); }
+    check('인천: 휠체어석 아래 구역은 읽지 않음(E3 134, 하이네켄 0, W4·라탄석1 모름), V1~V3 은 골드, 클래식, 하프를 더함(V2 1 -> 4, V3 5 -> 17), 못 받은 등급은 알림', out.wc === '134,0,,,144,1,5,true,0,4,17,false', out.wc);
+    check('인천 원정석 N1~N7: N7 은 처음과 새 경기에서 미판매, 0석이 와도 그대로, 잔여가 보이면 알림, 사람이 끄면 숫자를 받음', out.n7 === 'true,true,,144,true,true,false,40,true', out.n7);
     check('시험 페이지(인천 vs 울산): 받음(E3 132), 인천 쪽 파랑, 울산 원정석 쪽은 둘째 색 노랑', out.ic === 'true,132,인천유나이티드 vs 울산HD 예매현황 (시험),#24508f,#7d5e00,true', out.ic);
     { const pg = await open(b, { url: URL + '?s=jeonbuk#edit' });
       out.corner = await pg.evaluate(() => [SECTIONS.find(x => x.id === '코너아').ours, SECTIONS.filter(x => x.ours).length].join());
