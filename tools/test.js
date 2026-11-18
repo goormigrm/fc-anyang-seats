@@ -64,8 +64,8 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
 
   // 비교 기준('○○ 이후 +N석')은 마지막으로 발행한 숫자 (11/18 사용자: 그 경기 첫 발행인데 앞 캡처 기준 '이후 N석'이 나옴)
   r = await p.evaluate(() => { const H = 'FC안양 vs 제주SK\n안양종합운동장 | 2026.11.28(토) 14:00\nR10구역\n', o = [];
-    Object.assign(state, { at: '2026-11-27T08:00', base: null, pubAt: null }); fcIngest(H + '22 석'); o.push(state.base?.rows?.R10 ?? '', /이후/.test(summaryText()));
-    Object.assign(state, { at: '2026-11-27T09:00', pubAt: '2026-11-27T09:00' }); fcIngest(H + '20 석'); o.push(state.base?.rows?.R10, /11\.27 09:00 이후 \+2석/.test(summaryText())); return o.join(); });
+    Object.assign(state, { at: '2026-11-27T08:00', base: null, pubAt: null, pubSnap: null }); fcIngest(H + '22 석'); o.push(state.base?.rows?.R10 ?? '', /이후/.test(summaryText()));
+    Object.assign(state, { at: '2026-11-27T09:00', pubAt: '2026-11-27T09:00' }); state.pubSnap = snap(); fcIngest(H + '20 석'); o.push(state.base?.rows?.R10, /11\.27 09:00 이후 \+2석/.test(summaryText())); return o.join(); });
   check('같은 경기 새 집계: 발행 안 한 앞 캡처는 비교 기준이 아님, 발행한 숫자 다음 캡처는 그 숫자(22)가 기준', r === ',false,22,true', r);
 
   r = await ingest(p, 'FC안양 vs 울산HD\n안양종합운동장 | 2026.12.05(토) 14:00\n등급 선택\nR10구역\n100 석');
@@ -119,6 +119,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       sections: [{ id: 'R10', remain: 0, max: 126 }, { id: '일반지정석', remain: 1000, max: null }] };
     const pg = await open(b, { data: { 'latest.json': pubHome } });
     pg.on('dialog', d => d.type() === 'confirm' ? d.accept() : d.dismiss());
+    await pg.waitForTimeout(800);  // 입력 화면은 열 때 숫자 없는 브라우저면 발행본을 불러옴(11/18): 그 뒤에 '다른 브라우저에서 공식 관중만 넣은' 상태를 만듦
     r = await pg.evaluate(async () => {
       SECTIONS.forEach(s => state.rows[s.id].remain = null); Object.assign(state, { opp: '제주SK', date: '2026-11-01T16:30', at: '2026-11-04T21:08' }); syncInputs();
       [['crowd', '4464'], ['crowdAway', '555']].forEach(([id, v]) => { const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event('input')); });
@@ -335,6 +336,16 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       await nk.close();
       check('보내기 스크립트 12판: 놀티켓 형식 감지(관람 구역, 숫자만 줄, 쉼표 숫자), 구역 이름과 숫자, 경기 줄은 보내고 로그인 이름, 남은 시간은 뺌',
         sent.ping?.state === 'seat' && !sent.ping.need.length && /프리미엄 패밀리박스\(4인\)\(GATE:PREMIUM\)\n0\nS1구역\(GATE:4B\)\n12\nE5\n40/.test(sent.text?.s) && /수원삼성 vs FC안양/.test(sent.text.s) && /2층 E석\(E15~19\)\(GATE:3A,3B\)\n1,191/.test(sent.text.s) && !/홍길동|8:41/.test(sent.text.s), JSON.stringify(sent));
+      // 16판(11/18 버그 검토): 개인 정보 줄(이름 '○○님', 전화번호, 생년월일, 긴 숫자)은 보내지 않음. 아주 짙은 회색 칸(포항 원정석)도 남은 좌석으로 세고, 칸 수에 경기장 이름을 실어 보냄
+      {
+        const PV = '<div><h2>김천상무프로축구단 vs FC안양</h2><div>김천종합운동장</div><div>2026.11.07(토) 16:30</div><div>김민석님</div><div>VIP 등급 회원 박지훈님</div><div>휴대폰</div><div>01012345678</div><div>1990.01.01</div><h3>등급 선택</h3><div>W석</div><div>1200 석</div>'
+          + '<div style="display:flex"><span>W12구역</span><span>196 석</span></div><div>' + '<i class="seat" title="W12구역 1열 1번" style="display:inline-block;width:10px;height:10px;margin:2px;background:rgb(54,64,57)"></i>'.repeat(30) + '</div></div>';
+        const pv = await b.newPage(); await pv.setContent(PV); await run(pv, {}, 'true'); await pv.waitForTimeout(4500);
+        const got = await pv.evaluate(() => __set); await pv.close();
+        const t = got.text?.s || '';
+        check('보내기 스크립트 16판: 이름, 전화번호, 생년월일은 보내지 않고 경기, 등급, 구역 줄은 보냄', !/민석|지훈|010|1990/.test(t) && /김천상무프로축구단 vs FC안양/.test(t) && /W석\n1200 석/.test(t) && /W12구역\n196 석/.test(t), t);
+        check('보내기 스크립트 16판: 아주 짙은 회색 칸도 남은 좌석, 칸 수에 경기장 이름', got.seats?.remain === 30 && got.seats.total === 30 && got.seats.venue === '김천종합운동장', JSON.stringify(got.seats));
+      }
       const pg = await open(b, { url: URL + '?s=suwon#edit' });
       r = await pg.evaluate(s => { const k = fcIngest(s), t = stats(); return { k, S1: state.rows.S1.remain, fam: !!state.rows.프리미엄패밀리박스, z: [zoneId('W13'), zoneId('W13구역'), zoneId('2층 테이블석(GATE:1A)')].join(), E5: state.rows.E5.remain, date: state.date,
         max: SECTIONS.filter(x => state.rows[x.id].max).length, none: SECTIONS.filter(x => !state.rows[x.id].max).map(x => x.id).join(), m: ['E15', 'S3', 'W9', 'W5', 'E9', 'N8'].map(id => state.rows[id].max).join(), w13: state.rows.W13.max + state.rows.W13미판매구역.max, cap: t.cap, booked: t.booked }; }, sent.text.s);
@@ -704,7 +715,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       return out;
     });
     await pg.context().close();
-    check('진단 글 복사: 주소와 경기장, 스크립트 판, 램프, 예매 탭 신호와 좌석 그림 구조, 스크립트가 센 좌석과 결과, 받은 글자', /FC안양 현황판 진단 .*\?s=gimcheon#?.* 김천종합운동장/.test(r.diag) && /보내기 스크립트: 15판 \(최신 15판\) · 숫자 받음: .* 구역 1개/.test(r.diag) && /예매 탭 티켓링크 www\.ticketlink\.co\.kr\/reserve .*: seat · 경기장 '김천종합운동장'/.test(r.diag)
+    check('진단 글 복사: 주소와 경기장, 스크립트 판, 램프, 예매 탭 신호와 좌석 그림 구조, 스크립트가 센 좌석과 결과, 받은 글자', /FC안양 현황판 진단 .*\?s=gimcheon#?.* 김천종합운동장/.test(r.diag) && /보내기 스크립트: 16판 \(최신 16판\) · 숫자 받음: .* 구역 1개/.test(r.diag) && /예매 탭 티켓링크 www\.ticketlink\.co\.kr\/reserve .*: seat · 경기장 '김천종합운동장'/.test(r.diag)
       && /좌석 그림: 캔버스 없음 · SVG 도형 0 · 작은 네모 i\.seat 30개/.test(r.diag) && /스크립트 좌석 세기 .*잔여 12 \/ 총석 30 · 칸 속성의 이름 \["N11구역"\]/.test(r.diag) && /결과: 보내기 스크립트가 좌석 그림을 셌습니다: N11/.test(r.diag) && /N11구역\n12 석/.test(r.diag) && /진단 글을 복사했습니다|아래 글자 칸에 넣었습니다/.test(r.st), r.diag + ' / ' + r.st);
     check('수집 램프: 두 줄로 접혀 있고 누르면 펼침(스크립트 좌석 세기 줄), 입력 화면 맨 위에 램프 자리', r.clamp.startsWith('2|') && r.more.startsWith('true|') && +r.more.split('|')[1] > +r.clamp.split('|')[1] && r.more.endsWith('|true') && r.pad === '76px', JSON.stringify({ clamp: r.clamp, more: r.more, pad: r.pad }));
     // 발행 점검: 발행하지 않고 토큰(쓰기 권한), 스크립트 판, 지금 발행본을 알려 줌
@@ -718,7 +729,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       return v + ' || ' + calls.join(',');
     };
     const ok = await chk(201, 'ghp_x'), bad = await chk(401, 'ghp_x'), none = await chk(201, '');
-    check('발행 점검: 토큰 쓰기 확인(파일 조각만 올림, 브랜치는 안 건드림), 만료된 토큰, 토큰 없음, 옛 스크립트, 지금 발행본', /토큰: 발행할 수 있음/.test(ok) && /⚠ 보내기 스크립트: 14판/.test(ok) && !/바로 발행/.test(ok) && /지금 발행본: 부천FC1995 11\.01 16:30 경기, 집계 11\.01 16:30/.test(ok) && ok.endsWith('|| POST blobs')
+    check('발행 점검: 토큰 쓰기 확인(파일 조각만 올림, 브랜치는 안 건드림), 만료된 토큰, 토큰 없음, 옛 스크립트, 지금 발행본', /토큰: 발행할 수 있음/.test(ok) && /⚠ 보내기 스크립트: 15판/.test(ok) && !/바로 발행/.test(ok) && /지금 발행본: 부천FC1995 11\.01 16:30 경기, 집계 11\.01 16:30/.test(ok) && ok.endsWith('|| POST blobs')
       && /⚠ 토큰: 만료됐거나 잘못됐습니다/.test(bad) && /⚠ 토큰: 없음/.test(none) && none.endsWith('|| '), JSON.stringify({ ok, bad, none }));
     // 구역 글자가 칸 밖으로 나가지 않음: 가로로 쓴 글자(이름, 예매율)의 네 귀(조금 안쪽)가 그 칸 위에 있는지. 모서리가 세모꼴인 수원삼성, 서울, 비스듬한 좁은 칸이 많은 부천
     for (const sid of ['suwon', 'seoul', 'bucheon']) {
@@ -1363,6 +1374,166 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     check('현황 발행, 지우기를 해도 발행한 총석(max.json)은 남음', raw('max.json')?.max.R10 === 128 && raw('gimcheon/max.json')?.max.S11 === 200, JSON.stringify([raw('max.json'), raw('gimcheon/max.json')]));
     try { execSync(`gh api -X DELETE repos/goormigrm/fc-anyang-seats/git/refs/heads/${B}`, { stdio: 'ignore' }); } catch {}
     await p.context().close();
+  }
+
+  // ===== 11/18 버그 검토: 찾은 버그마다 다시 생기지 않게 =====
+  {
+    const AH = (host, venue) => `${host} vs FC안양\n${venue} | 2026.11.28(토) 14:00\n등급 선택\n`;
+    // --- 입력 해석 ---
+    let pg = await open(b, { url: URL + '?s=incheon#edit' });
+    r = await pg.evaluate(H => { const o = {};
+      fcIngest(H + 'Exciting석\n1476 석\nE3구역\n134 석\nE4구역\n200 석\n휠체어석(E석)\n16 석\nE3구역\n16 석\nE4구역\n0 석\nE5구역\n0 석');
+      o.wc = [state.rows.E3.remain, state.rows.E4.remain, state.rows.E5.remain].join();
+      newGame(); fcIngest(H + 'Exciting석\n1476\n석\nE3구역\n134\n석\n휠체어석(E석)\n74\n석\nE3구역\n16\n석'); o.nl = state.rows.E3.remain;
+      newGame(); fcIngest(H + 'Exciting석\n1476 석\nE3구역\n134 석\n휠체어석(E석) 744\nE3구역\n16 석'); o.ocr4 = state.rows.E3.remain;
+      newGame(); const R = n => H + `라탄 테라스 존 2인 (더블)\n0 석\n${n}\n8 석\n라탄석1구역\n8 석`;
+      fcIngest(R('라탄 테라스 존 4인')); fcIngest(R('라탄 테라스존 4인')); o.sp = state.rows.라탄석1.remain;
+      fcIngest(H + '라탄 테라스 존 2인 (더블)\n0 석\n라탄 테라스 존 4인\n0 석'); o.zero = state.rows.라탄석1.remain;
+      o.zoneOf = zoneOf('V12');
+      return o; }, AH('인천유나이티드', '인천축구전용경기장'));
+    await pg.context().close();
+    check('휠체어석 아래 0석 구역이 실제 구역을 덮지 않음 (E3 134, E4 200, E5 모름)', r.wc === '134,200,', r.wc);
+    check("'석'이 숫자 다음 줄에 혼자 있는 글자, 인식기가 '석'을 4 로 읽은 휠체어석 줄도 휠체어석으로 봄", r.nl === 134 && r.ocr4 === 134, JSON.stringify(r));
+    check('등급 이름 빈칸만 다른 같은 등급은 한 몫(8, 16 아님), 매진되어 접힌 등급(4인 0석)은 그 몫을 0 으로', r.sp === 8 && r.zero === 0, JSON.stringify(r));
+    check('글자 인식 구역 이름: 두 자리 번호를 먼저 맞춤 (V12 -> W12, V1 아님)', r.zoneOf === 'W12', r.zoneOf);
+    pg = await open(b, { url: URL + '?s=ulsan#edit' });
+    r = await pg.evaluate(H => { fcIngest(H + '휠체어석\n0 석\n프리미엄 테이블석\n10 석\n2층 테이블석\n30 석'); return [state.rows.프리미엄테이블석.remain, state.rows['2층테이블석'].remain].join(); }, AH('울산HD', '울산문수축구경기장'));
+    await pg.context().close();
+    check('접힌 휠체어석(0석) 다음 등급, 숫자로 시작하는 등급(2층 테이블석)도 받음', r === '10,30', r);
+    pg = await open(b, { url: URL + '?s=jeonbuk#edit' });
+    r = await pg.evaluate(H => { const o = [];
+      fcIngest(H + 'E 테이블\n150 석\n✓ E-2B\n13 석'); fcIngest(H + 'E 일반\n7155 석\n✓ E-2B\n40 석'); o.push(state.rows.E2B.remain);
+      fcIngest(H + 'E 테이블\n0 석\nE 일반\n7155 석\n✓ E-2B\n38 석'); o.push(state.rows.E2B.remain);
+      newGame(); fcIngest(H + 'E 일반\n7000 석\nE-2A\n300\n석'); o.push(state.rows.E2A.remain);
+      // 등급 일부(테이블)만 받은 칸에 스크립트가 센 블록 전체(53/80)가 와도 견주지 않고 총석을 넣음
+      newGame(); fcIngest(H + 'E 테이블\n150 석\n✓ E-2B\n13 석'); fcSeats({ remain: 53, total: 80, names: ['E-2B'], own: [] }); o.push(state.rows.E2B.max);
+      return o.join(); }, AH('전북현대', '전주월드컵경기장'));
+    await pg.context().close();
+    check("전북 E2B: 매진되어 접힌 'E 테이블 0 석'은 테이블 몫을 0 으로(53 -> 38), 'E-2A\\n300\\n석', 등급 일부만 받은 칸도 스크립트 칸 수로 총석", r === '53,38,300,80', r);
+    pg = await open(b);
+    r = await pg.evaluate(H => { const o = [];
+      newGame(); fcIngest(H + 'R5구역\n100 석\n휠체어석\n12 석\nR5구역\n2 석'); o.push(state.rows.R5.remain);
+      // 발행 뒤 10분 안에 같은 화면이 다시 보내 집계 시각이 바뀌어도, 다음 새 집계의 비교 기준은 발행한 숫자
+      newGame(); fcIngest(H + 'R10구역\n26 석'); state.pubAt = state.at; state.pubSnap = snap();
+      fcIngest(H + 'R10구역\n24 석'); state.at = '2026-11-01T09:00'; fcIngest(H + 'R10구역\n20 석'); o.push(state.base?.rows?.R10, /이후 \+6석/.test(summaryText()));
+      o.push(parseText('(좌석 그림)\nP구역 30석').found.P);
+      // 다른 구장 예매 화면의 칸 수, 이 현황판에 없는 구역 이름의 칸 수는 받지 않음
+      state.rows.T3.remain = 47; state.rows.T3.max = null; lamp.got = Date.now();
+      fcSeats({ venue: '김천종합운동장', remain: 47, total: 193, names: [], own: [] }); fcSeats({ remain: 47, total: 193, names: ['S11구역'], own: [] }); o.push(state.rows.T3.max);
+      return o.join(); }, H);
+    await pg.context().close();
+    check('홈: 휠체어석 아래 R5 는 R5 를 덮지 않음, 발행 뒤 다시 보내도 비교 기준은 발행한 숫자(26 -> 20, +6), 좌석 그림 P 줄, 다른 구장 칸 수는 넘김', r === '100,26,true,30,', r);
+    pg = await open(b, { url: URL + '?s=suwon#edit' });
+    r = await pg.evaluate(() => { fcIngest('좌석 선택\n수원삼성 vs FC안양 (11.29)\n2026.11.29(토) 2:00 PM\n관람 구역을 선택해 주세요\n원정석(S4~6)(GATE:4A)\n1500'); return JSON.stringify(state.groups); });
+    await pg.context().close();
+    check('놀티켓 구역 범위 등급(원정석(S4~6))은 범위 묶음 하나만 (빈 묶음이 하나 더 생기지 않음)', !/"free":true/.test(r) && /S4/.test(r), r);
+    // --- 그리기, 요약 ---
+    pg = await open(b);
+    r = await pg.evaluate(() => { const o = {}, txt = id => document.getElementById(id).textContent, T = () => [...document.querySelectorAll('#trend text')].map(t => t.textContent);
+      newGame(); Object.assign(state, { opp: '제주SK', date: '2026-11-30T14:00', at: '2026-11-25T12:00' }); state.rows.R1.remain = 100; render();
+      o.home = /정보 없는 구역 \d+개는 예매로 셈/.test(txt('board')) && /는 예매로 셈/.test(summaryText());
+      // 원정석 숫자가 없는 점뿐이면 홈석 그래프는 전체 예매로 (둘 다 비지 않게)
+      history = [{ at: '2026-11-23T10:00:00+09:00', opponent: '제주SK', kickoff: '2026-11-30T14:00:00+09:00', booked: 9000, cap: 11542 }, { at: '2026-11-24T10:00:00+09:00', opponent: '제주SK', kickoff: '2026-11-30T14:00:00+09:00', booked: 9500, cap: 11542 }]; render();
+      o.total = T().includes('예매 추이') && !T().some(t => /발행할 때마다/.test(t));
+      // 예매 오픈 직후 몇 시간의 몰림은 며칠로 늘리지 않음(12시간 넘게 떨어진 점이 있어야 예상), 끝난 경기는 예상 없음, 눈금은 정수
+      newGame(); Object.assign(state, { opp: '제주SK', date: '2026-11-30T14:00', at: '2026-11-25T11:05' });
+      const h = (pts, ko = '2026-11-30T14:00') => { history = pts.map(([at, booked, ab]) => ({ at: at + ':00+09:00', opponent: '제주SK', kickoff: ko + ':00+09:00', booked, cap: 11542, awayBooked: ab, awayCap: 1235 })); state.date = ko; render(); return T(); };
+      o.burst = !h([['2026-11-25T10:00', 0, 0], ['2026-11-25T11:05', 300, 30]]).some(t => t.startsWith('예상'));
+      o.day = h([['2026-11-24T10:00', 0, 0], ['2026-11-25T11:05', 300, 30]]).some(t => t.startsWith('예상'));
+      o.past = !h([['2026-11-08T10:00', 100, 10], ['2026-11-09T11:05', 300, 30]], '2026-11-10T14:00').some(t => t.startsWith('예상'));
+      o.tick = !h([['2026-11-23T10:00', 1000, 500], ['2026-11-24T10:00', 1001, 501]]).some(t => /^\d[\d,]*\.\d$/.test(t));
+      state.crowdAway = 300; o.away = /원정 관중 300명/.test(summaryText());
+      return o; });
+    await pg.context().close();
+    check('홈: 정보 없는 구역은 예매로 센다고 적음(카드, 요약), 원정석 숫자가 없으면 홈 그래프는 전체 예매 추이', r.home && r.total, JSON.stringify(r));
+    check('추이 예상: 오픈 직후 65분 몰림은 늘리지 않음, 하루 넘게 떨어지면 예상, 끝난 경기는 예상 없음, 눈금은 정수, 원정 관중만 넣어도 요약에', r.burst && r.day && r.past && r.tick && r.away, JSON.stringify(r));
+    pg = await open(b, { url: URL + '?s=gimcheon#edit' });
+    r = await pg.evaluate(() => { const o = {}, board = () => document.getElementById('board').textContent;
+      newGame(); render(); o.none = !/\/ 0석/.test(board()) && /잔여석 정보 없음/.test(board());
+      Object.assign(state.rows.S11, { remain: 100, max: 200 }); Object.assign(state.rows.S12, { remain: 100, max: 298 }); state.crowd = 5000; render();
+      o.crowd = !/1004/.test(board()) && /관중이 많아 비율을 내지 않음/.test(board());
+      state.crowd = null; SECTIONS.slice(0, 8).forEach(s => { state.rows[s.id].off = true; }); render();
+      o.font = [...document.querySelectorAll('#board text[y="79"]')].every(t => +t.getAttribute('font-size') >= 10);
+      return o; });
+    await pg.context().close();
+    check('원정: 숫자가 없으면 "- / 0석" 대신 빈칸과 "잔여석 정보 없음", 집계 구역 총석보다 관중이 많으면 비율 없음(1004% 아님), 카드 설명 글자 10px 이상', r.none && r.crowd && r.font, JSON.stringify(r));
+    // --- 좌석 그림 인식 ---
+    const PD = path.join(ROOT, '좌석스크린샷', '시험_포항'), A1 = path.join(PD, '좌석그림_A1.png');
+    if (fs.existsSync(A1)) {
+      pg = await open(b, { url: URL + '?s=pohang#edit' }); pg.on('dialog', d => d.accept());
+      await pg.evaluate(() => document.getElementById('modeMax').click());
+      await pg.setInputFiles('#file', A1); await pg.evaluate(() => document.getElementById('modeStatus').click());  // 인식하는 사이 현황 집계로 바꿔도
+      await pg.evaluate(() => window.ocrDone);
+      r = await pg.evaluate(() => [state.rows.A1.max, state.rows.A1.remain].join());
+      // JPG 는 세지 않고 알림
+      const jpg = path.join(require('os').tmpdir(), 'fc-anyang-A1.jpg');
+      fs.writeFileSync(jpg, Buffer.from(await pg.evaluate(async b64 => { const im = await createImageBitmap(await (await fetch('data:image/png;base64,' + b64)).blob()), c = Object.assign(document.createElement('canvas'), { width: im.width, height: im.height });
+        c.getContext('2d').drawImage(im, 0, 0); return (await new Promise(ok => c.toBlob(ok, 'image/jpeg', 0.92)).then(x => x.arrayBuffer()).then(a => btoa(String.fromCharCode(...new Uint8Array(a))))); }, fs.readFileSync(A1).toString('base64')), 'base64'));
+      await pg.evaluate(() => { state.rows.A21.max = null; document.getElementById('modeMax').click(); });
+      await pg.setInputFiles('#file', jpg); await pg.evaluate(() => window.ocrDone);
+      const st = await pg.evaluate(() => document.getElementById('status').innerText);
+      await pg.context().close();
+      check('좌석 그림: 인식하는 사이 현황 집계로 바꿔도 시작한 총석 집계로 (A1 총석 300, 잔여 그대로), JPG 는 세지 않고 PNG 로 넣으라고 알림', r === '300,' && /JPG, WebP 캡처는/.test(st), r + ' / ' + st);
+    } else console.log('SKIP  포항 좌석 그림 (11/18 검토)');
+    const NOLD2 = path.join(ROOT, '좌석스크린샷', '시험_놀티켓');
+    if (fs.existsSync(path.join(NOLD2, '수원삼성_W13_왼쪽.png'))) {
+      pg = await open(b, { url: URL + '?s=suwon#edit' }); pg.on('dialog', d => d.type() === 'prompt' ? d.accept('W13') : d.accept());
+      await pg.evaluate(() => { state.rows.W13.max = null; document.getElementById('modeMax').click(); });
+      await pg.setInputFiles('#file', ['수원삼성_W13_왼쪽.png', '수원삼성_W13_오른쪽.png'].map(x => path.join(NOLD2, x))); await pg.evaluate(() => window.ocrDone);
+      r = await pg.evaluate(() => state.rows.W13.max);
+      await pg.context().close();
+      check('총석 집계에서 나눠 찍은 두 장(W13 왼쪽, 오른쪽)은 떨어진 묶음을 따로 더하지 않아 318 (388 아님)', r === 318, String(r));
+    }
+    // --- 발행 (가짜 GitHub: 실제 GitHub 에는 요청하지 않음) ---
+    const G = require('./fakegh');
+    const pub = (pg, at, rows, off = []) => pg.evaluate(async ([at, rows, off]) => { state.date = '2026-11-21T14:00'; state.at = at; Object.entries(rows).forEach(([id, v]) => state.rows[id].remain = v);
+      off.forEach(id => { state.rows[id].off = true; state.rows[id].remain = null; }); saveOff(); save(); await publishNow(); return document.getElementById('note').textContent; }, [at, rows, off]);
+    let gs = G.makeStore();
+    const A = await G.open(b, gs, '?s=pohang#edit', { dialog: d => /다른 기기에서/.test(d.message()) ? d.dismiss() : d.accept() }); await A.waitForTimeout(800);
+    await pub(A, '2026-11-18T10:00', { E1: 100, E2: 100, E3: 100 });
+    const B2 = await G.open(b, gs, '?s=pohang#edit'); await B2.waitForTimeout(1500);
+    await pub(B2, '2026-11-18T10:30', { E1: 60, E2: 60 }, ['E3']);
+    const n3 = await pub(A, '2026-11-18T10:40', { E1: 55 }), L3 = gs.json('pohang/latest.json'), sec = id => L3.sections.find(x => x.id === id);
+    r = await A.evaluate(() => [state.rows.E2.remain, state.rows.E3.off].join());
+    check('오래 열어 둔 탭: 다른 기기의 더 나중 발행을 덮어쓰지 않고(묻고 취소) 그 발행을 불러옴', L3.updatedAt.startsWith('2026-11-18T10:30') && sec('E2').remain === 60 && sec('E3').unsold === true && /발행하지 않았습니다/.test(n3) && r === '60,true', JSON.stringify({ at: L3.updatedAt, n3, r }));
+    await A.context().close(); await B2.context().close();
+    gs = G.makeStore();
+    const M1 = await G.open(b, gs, '?s=pohang#edit'), M2 = await G.open(b, gs, '?s=pohang#edit'); await M1.waitForTimeout(800);
+    await M1.evaluate(() => { state.rows.E1.max = 211; delete state.rows.E1.learned; return publishNow(publishMax); });
+    await M2.evaluate(() => { SECTIONS.forEach(x => { state.rows[x.id].max = null; }); state.rows.E3.max = 333; return publishNow(publishMax); });
+    const mx = gs.json('pohang/max.json')?.max || {};
+    check('총석 발행은 이미 올라간 총석에 합침 (다른 기기 총석이 지워지지 않음)', mx.E1 === 211 && mx.E3 === 333, JSON.stringify(mx));
+    await M1.context().close(); await M2.context().close();
+    gs = G.makeStore(); gs.set({ 'pohang/latest.json': { app: 'fc-anyang-seats', version: 1, updatedAt: '2026-11-18T10:00:00+09:00', match: { kickoff: '2026-11-21T14:00:00+09:00' }, sections: [{ id: 'E1', remain: 50, max: 150, maxGuess: true }, { id: 'E2', remain: 40, max: 120 }] },
+      'pohang/max.json': { app: 'fc-anyang-seats', updatedAt: '2026-11-18T10:10:00+09:00', max: { E1: 200, E2: 130 } } });
+    const N = await G.open(b, gs, '?s=pohang#edit'); await N.waitForTimeout(1500);
+    r = await N.evaluate(() => [state.rows.E1.remain, state.rows.E1.max, !!state.rows.E1.learned, state.rows.E2.max].join());
+    check('입력 화면을 열 때 발행본을 불러와도 그 뒤에 올린 총석(max.json)이 이김', r === '50,200,false,130', r);
+    await N.context().close();
+    gs = G.makeStore();
+    const U = await G.open(b, gs, '?s=pohang#edit'); await U.waitForTimeout(800);
+    await pub(U, '2026-11-18T10:00', { E1: 100, E2: 100 }); await pub(U, '2026-11-18T10:20', { E1: 10, E2: 10 });
+    r = await U.evaluate(async () => { await unpublishNow(false); const o = [state.pubAt, state.pubSnap?.rows.E1]; newCapture({ opp: '', date: '2026-11-21T14:00' }, '2026-11-18T11:00');
+      state.rows.E1.remain = 95; state.rows.E2.remain = 100; o.push(/10:00 이후 \+5석/.test(summaryText())); return o.join(); });
+    check('마지막 발행 지우기 뒤 비교 기준은 되돌린 발행(10:00, 지운 10:20 아님)', r === '2026-11-18T10:00,100,true', r);
+    r = await U.evaluate(async () => { state.at = '2026-11-18T12:00'; state.rows.E1.remain = 90; save(); const job = publishNow(); await new Promise(ok => setTimeout(ok, 30));
+      state.at = '2026-11-18T12:01'; state.rows.E2.remain = 50; save(); await job; return [state.pubAt, state.pubSnap.rows.E2].join(); });
+    check('발행하는 사이 새 숫자가 들어와도 비교 기준은 실제로 올린 집계', r === '2026-11-18T12:00,100' && gs.json('pohang/latest.json').updatedAt.startsWith('2026-11-18T12:00'), r);
+    await U.context().close();
+    gs = G.makeStore(); gs.rawOverride = { 'pohang/latest.json': Buffer.from(JSON.stringify({ app: 'fc-anyang-seats', updatedAt: '2026-11-18T10:00:00+09:00', match: {}, sections: [{ id: 'E1', remain: 77 }] })) };
+    const F = await G.open(b, gs, '?s=pohang#edit'); await F.waitForTimeout(1200);
+    r = await F.evaluate(async () => [(await fetchData('latest.json')).status, state.rows.E1.remain].join());
+    check('지금 없는 파일(API 404)은 raw 의 옛 사본으로 다시 받지 않음 (방금 지운 발행이 다시 보이지 않게)', r === '404,', r);
+    await F.context().close();
+    gs = G.makeStore();
+    const S = await G.open(b, gs, '?s=suwon#edit'); await S.waitForTimeout(800);
+    r = await S.evaluate(async () => { fcIngest('좌석 선택\n수원삼성 vs FC안양 (11.29)\n2026.11.29(토) 2:00 PM\n관람 구역을 선택해 주세요\n2층 E석(E15~19)(GATE:3A,3B)\n1,191'); await publishNow(); return document.getElementById('note').textContent; });
+    const og = await S.evaluate(async () => { const J = { s1: { updatedAt: '2026-11-18T10:00:00+09:00' }, s2: { updatedAt: '2026-11-18T11:00:00+09:00' } };
+      const gh = async p => ({ content: btoa(unescape(encodeURIComponent(JSON.stringify(J[p.split('/').pop()])))) });
+      return (await ogAfter(gh, [{ path: 'latest.json', sha: 's1' }, { path: 'latest.png', sha: 'i1' }, { path: 'prev/latest.json', sha: 's2' }, { path: 'prev/latest.png', sha: 'i2' }])).map(f => f.sha || f.content).join(' '); });
+    await S.context().close();
+    check('놀티켓 등급 묶음만 받은 원정 현황도 발행됨', !!gs.json('suwon/latest.json') && !/구역 숫자가 없어/.test(r), r);
+    check('지운 뒤 미리보기는 되돌리기용 prev/latest 를 구장으로 보지 않음', /^i1 .*"stadium":"anyang"/.test(og), og);
   }
 
   await b.close();

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         FC안양 예매현황 보내기
 // @namespace    https://goormigrm.github.io/fc-anyang-seats/
-// @version      15
+// @version      16
 // @description  티켓링크, 놀티켓 좌석 선택 화면에 보이는 잔여석 글자와 사람이 연 구역의 좌석 칸 수를 열려 있는 현황판 탭으로 보냄. 읽기만 하고 클릭, 새로고침, 요청은 하지 않음
 // @match        https://ticketlink.co.kr/*
 // @match        https://*.ticketlink.co.kr/*
@@ -25,7 +25,10 @@ if (site) {
   const pick = () => {
     const ls = document.body.innerText.split('\n').map(l => l.trim()).filter(Boolean);
     // 다음 줄이 숫자만(놀티켓 '1,191') 이거나 'N 석'(티켓링크 전북처럼 구역 이름이 'W-1K' 로 '구역' 글자 없이 따로 놓인 줄, 14판)이면 그 앞 줄(구역, 등급 이름)도
-    return ls.filter((l, i) => /석|구역|안양|등급|운동장|경기장|스타디움|구장|야드|\svs\s|\d{4}\.\d{2}\.\d{2}|^[\d,]+$/i.test(l) || /^[\d,]+(\s*석)?$/.test(ls[i + 1] || '')).join('\n');
+    // 개인 정보 줄은 보내지 않음(16판): 이름('김민석님'), 전화번호, 이메일, 생년월일(요일 괄호 없는 날짜), 긴 숫자. '석'은 숫자 붙은 줄만 (이름에 흔한 글자라)
+    const priv = l => /님|@|휴대폰|연락처|이메일|생년월일|주소|\d{2,3}-?\d{3,4}-?\d{4}/.test(l) || /\d{4}\.\d{2}\.\d{2}(?!\s*\()/.test(l), num = l => /^[\d,]{1,7}$/.test(l);
+    return ls.filter((l, i) => !priv(l) && (/\d\s*석|좌석|잔여|선택|구역|안양|등급|운동장|경기장|스타디움|구장|야드|\svs\s|\d{4}\.\d{2}\.\d{2}\s*\(/i.test(l) || num(l)
+      || num(ls[i + 1] || '') || /^\d+\s*석$/.test(ls[i + 1] || ''))).join('\n');
   };
   const look = () => {
     // 받을 경기: 보통은 FC안양 경기. 현황판 시험 페이지(?test=)가 열려 있으면 그 페이지가 알려 준 원정 팀 이름(예: '서울') 경기 (15판)
@@ -61,7 +64,7 @@ if (site) {
       if (!m || m.length < 3 || m[3] === '0') continue;  // 색 없음, 투명
       const [r, g, b] = m.map(Number), mx = Math.max(r, g, b), mn = Math.min(r, g, b);
       if (mn > 244) continue;  // 흰 바탕
-      if (mx - mn >= 16) remain++; else if (mx > 175) sold++;
+      if (mx - mn >= 16 || mx < 96) remain++; else if (mx > 175) sold++;  // 아주 짙은 회색 칸도 남은 좌석 (포항 원정석, 16판: 현황판 캡처 세기와 같은 기준)
     }
     const zone = t => (String(t).match(/[0-9A-Za-z가-힣·-]{1,12}\s*구\s*역/) || [])[0];
     const own = [...new Set(els.slice(0, 50).flatMap(x => [...x.attributes].map(a => zone(a.value))).filter(Boolean))];
@@ -95,7 +98,7 @@ if (site) {
     if (!v.seat) return v.need.includes(v.want) || show(`대기 · 등급/좌석 선택 화면이 아님 (화면에 없는 글자: ${v.need.join(', ')})`, '#555');  // FC안양 경기 화면이 아니면 표시도 안 함
     const pr = probe(), seats = count(pr), key = JSON.stringify(seats);
     shape = pr.text;
-    if (seats && key !== lastSeats) { lastSeats = key; setTimeout(() => GM_setValue('seats', { ...seats, at: Date.now() }), 1500); }  // 글자(잔여)가 먼저 가게 조금 뒤에
+    if (seats && key !== lastSeats) { lastSeats = key; setTimeout(() => GM_setValue('seats', { ...seats, venue: v.venue, at: Date.now() }), 1500); }  // 글자(잔여)가 먼저 가게 조금 뒤에. venue: 받는 현황판이 자기 구장인지 확인 (16판)
     if (v.s !== last) { last = v.s; resent = false; send(); ping(); setTimeout(check, 3000); }
     else if (board && !acked && !resent && Date.now() - sentAt > 4000) { resent = true; send(); setTimeout(check, 3000); }  // 현황판을 나중에 열었으면 한 번 다시 보냄
     if (acked?.ok) show(`현황판이 받음 ${hms(acked.at)} (구역 ${acked.n}개)`, '#15803d');
@@ -114,7 +117,7 @@ if (site) {
   GM_addValueChangeListener('text', (key, old, v, remote) => { const r = remote && editing() && unsafeWindow.fcIngest?.(v.s); if (r) GM_setValue('ack', { ...r, at: Date.now(), page: location.search }); });
   GM_addValueChangeListener('ping', (key, old, v, remote) => { if (remote) unsafeWindow.fcPing?.(v); });
   GM_addValueChangeListener('seats', (key, old, v, remote) => { if (remote && editing()) unsafeWindow.fcSeats?.(v); });  // 스크립트가 센 좌석 칸 (13판)
-  unsafeWindow.fcPing?.({ state: 'installed', version: 15, at: Date.now() });
+  unsafeWindow.fcPing?.({ state: 'installed', version: 16, at: Date.now() });
   const beat = () => { if (editing()) GM_setValue('board', { at: Date.now(), page: location.search, want: document.body.dataset.want || '안양' }); };  // want: 시험 페이지면 그 원정 팀
   beat();
   setInterval(beat, 5000);

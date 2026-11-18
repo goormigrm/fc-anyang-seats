@@ -59,7 +59,7 @@ const road = d => !!d.match?.home && d.match.home !== 'FC안양';  // 원정 경
   // 같은 경기는 마지막 집계 하나만
   const games = Object.values(recs.reduce((m, { now, d }) => {
     const k = (d.match?.opponent || '') + String(d.match?.kickoff || '').slice(0, 10);
-    if (!m[k] || String(d.updatedAt) > String(m[k].d.updatedAt)) m[k] = { now, d };
+    if (!m[k] || String(d.updatedAt) > String(m[k].d.updatedAt) || String(d.updatedAt) === String(m[k].d.updatedAt) && now) m[k] = { now, d };  // 같은 집계면 지금 발행본(latest)을: games/ 사본에 밀려 '(지금)' 표시가 빠지던 것
     return m;
   }, {})).sort((a, b) => String(a.d.match?.kickoff || a.d.updatedAt).localeCompare(String(b.d.match?.kickoff || b.d.updatedAt)));
   const msg = document.getElementById('msg'), MAX = 10;  // 그래프는 최근 10경기까지 (표는 전부)
