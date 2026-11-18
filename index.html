@@ -347,11 +347,15 @@ const STADIUMS = {
       N1: 582, N2: 637, N3: 626, N4: 626, N5: 637, N6: 671, N7: 664, N8: 940, N9: 935, N10: 698, N11: 935, N12: 940, N13: 664,
       S1: 546, S2: 637, S3: 637, S4: 637, S5: 637, S6: 638, S7: 664, S8: 899, S9: 894, S10: 698, S11: 894, S12: 938, S13: 664,
       W1: 504, W2: 610, W3: 610, W4: 390, W5: 276, W6: 390, W7: 590, W8: 610, W9: 504, W10: 913, W11: 843, W12: 864, W13: 318, W13미판매구역: 454, W14: 860, W15: 843, W16: 918 },
+    // block: 팔지 않는 줄(막힌 좌석) 기본값 (11/18 사용자 경험: 예매 화면에는 안 보임). 2층 E, W, N 은 맨 앞 2줄, N8, N12 는 맨 뒤 10줄도(너무 높음).
+    // 좌석 수는 구역 총석 ÷ 줄 수(E 30, W 28, N 26, N10 20줄, 놀티켓 좌석 그림의 줄 번호) × 줄 수로 어림 (shortcut: 줄마다 좌석 수가 달라 몇 석 틀릴 수 있음, 좌석 그림에서 줄을 세면 바꿀 것)
+    // 미판매 구역(E10, E11, E18, E19, N7, N13, S7~S13)은 빼 둠. N9, N10 광고 천막 자리는 얼마나 가리는지 몰라 아직 넣지 않음
+    block: { E12: 55, E13: 58, E14: 56, E15: 56, E16: 58, E17: 55, W10: 65, W11: 60, W12: 62, W14: 61, W15: 60, W16: 66, N8: 434, N9: 72, N10: 70, N11: 72, N12: 434 },
     layout: () => {
       const T1 = [14, 80], T2 = [86, 168];
       // 놀티켓 구역도: 각 면 양 끝 칸(E1, E9, E10, E19, S6, S1, S13, S7, W9, W1, W16, W10, N1, N6, N7, N13)은 모서리에 비스듬히
       side(Rs(1, 9, 'E'), 0, T1); side(Rs(10, 19, 'E'), 0, T2);
-      side(['S6', 'S5', 'S4', 'S3', 'S2', 'S1'], 2, T1, true); side(['S13', 'S12', 'S11', 'S10', 'S9', 'S8', 'S7'], 2, T2, true);
+      side(['S6', 'S5', 'S4', 'S3', 'S2', 'S1'], 2, T1, ['S4', 'S5', 'S6']); side(['S13', 'S12', 'S11', 'S10', 'S9', 'S8', 'S7'], 2, T2);  // 원정석 S4~S6, S1~S3 은 중립석(홈 관중 쪽, 11/18 사용자)
       side(['W9', 'W8', 'W7', 'W6', 'W5', 'W4', 'W3', 'W2', 'W1'], 4, T1);
       const b = side(['W16', 'W15', 'W14', null, null, 'W12', 'W11', 'W10'], 4, T2);  // 가운데 두 칸 자리 = W13 (안쪽 미판매 구역, 바깥 2층 테이블)
       arc(['W13미판매구역'], b[3], b[5], [86, 125]); arc(['W13'], b[3], b[5], [129, 168]);
@@ -676,7 +680,10 @@ const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } c
 // 지워지지 않게 숫자를 받을 때마다 이 목록을 새로 읽어 지킴 (11/07: 먼저 열어 둔 탭이 0석을 매진으로 저장해 미판매가 사라진 일)
 const OFFKEY = 'fc-anyang-unsold' + (AWAY ? '-' + STADIUM : '') + (TEST ? '-test' : '');
 // 구장마다 평소 팔지 않는 구역(STADIUMS.<구장>.unsold, 인천 N7): 처음 열 때와 새 경기에서 미판매로 시작. 사람이 끄면 그대로(다음 새 경기까지)
+// 팔지 않는 줄(STADIUMS.<구장>.block) 기본값: 막힌 좌석으로 (표의 '−N', 사람이 바꾼 값은 그대로. 새 경기마다 다시)
+const defaultBlock = () => AWAY && Object.entries(STADIUMS[STADIUM].block || {}).forEach(([id, v]) => { const r = state.rows[id]; if (r && r.block == null) r.block = v; });
 const defaultOff = () => (AWAY && STADIUMS[STADIUM].unsold || []).forEach(id => { if (state.rows[id]) Object.assign(state.rows[id], { off: true, remain: null }); });
+defaultBlock();  // 이 브라우저에 아직 막힌 좌석 값이 없는 칸
 const saveOff = () => { try { localStorage.setItem(OFFKEY, JSON.stringify(SECTIONS.filter(s => state.rows[s.id].off).map(s => s.id))); } catch {} };
 const syncOff = () => {
   let v = null;
@@ -1208,7 +1215,7 @@ $('toMax').onclick = () => {
   fillTable(); save(); render();
 };
 // 새 경기: 잔여, 비교 기준을 비우고 원정석 최대는 평소 값으로 (넓게 열었던 날 값이 남지 않게)
-const newGame = () => { SECTIONS.forEach(s => { state.rows[s.id].remain = null; delete state.rows[s.id].block; delete state.rows[s.id].parts; }); state.groups = {}; if (!AWAY && state.rows.원정석) { state.rows.원정석.max = KNOWN_MAX.원정석; delete state.rows.원정석.fixed; } syncOff(); defaultOff(); saveOff(); state.base = null; state.pubSnap = null; state.crowd = null; state.crowdAway = null; state.awayGrade = null; };
+const newGame = () => { SECTIONS.forEach(s => { state.rows[s.id].remain = null; delete state.rows[s.id].block; delete state.rows[s.id].parts; }); state.groups = {}; if (!AWAY && state.rows.원정석) { state.rows.원정석.max = KNOWN_MAX.원정석; delete state.rows.원정석.fixed; } syncOff(); defaultOff(); saveOff(); state.base = null; state.pubSnap = null; state.crowd = null; state.crowdAway = null; state.awayGrade = null; defaultBlock(); };
 $('clear').onclick = () => {
   if (!confirm('잔여와 비교 기준을 모두 지울까요?\n(최대 좌석은 그대로, 원정석은 1235로)')) return;
   newGame(); fillTable([]); save(); render();
@@ -1731,38 +1738,67 @@ async function seatMap(bmp, eng, full) {
     if (mx - mn < 16) return mx > 175 ? 1 : mx < 96 ? 3 : 0;  // 밝은 회색 칸 = 팔림, 아주 짙은 회색(3) = 남음(포항 원정석, 퍼스트클래스석은 등급 색이 검정에 가까움, 11/17), 그 사이 회색은 글자
     return 2;                                  // 색 있는 칸 = 남음
   };
-  const lab = new Uint8Array(W0 * H0), comps = [];
+  // 덩어리 하나(픽셀 번호 목록)의 크기, 위치, 모양. px: 나중에 표시 상자와 붙은 덩어리를 다시 나눌 때 씀
+  // compact: 기울어도 꽉 찬 네모(또는 원): 무게중심에서 퍼진 정도(관성)가 같은 넓이의 정사각형과 비슷 (정사각형 1, 원 0.95, 2칸 붙음 1.25, 글자, 테두리는 훨씬 큼).
+  // 인천 피크닉, E10 처럼 비스듬히 기운 좌석 그림은 칸의 테두리 상자가 커서 꽉 찬 정도로는 일부 칸이 빠졌음 (11/18: E10 27 -> 24, 피크닉 오른쪽 52 -> 50)
+  // 꽉 찬 정도 0.58 넘게: 약 25°까지만 (45° 마름모 무늬는 0.5~0.55, 전북 코너 그림의 무늬가 좌석으로 잡히지 않게. 인천 기운 칸은 0.59~0.74)
+  const mk = (px, k) => {
+    let x0 = W0, x1 = 0, y0 = H0, y1 = 0, sx = 0, sy = 0, sxx = 0, syy = 0;
+    for (const q of px) { const x = q % W0, y = q / W0 | 0; sx += x; sy += y; sxx += x * x; syy += y * y; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    const n = px.length, inert = sxx - sx * sx / n + syy - sy * sy / n;
+    return { k: k === 3 ? 2 : k, dark: k === 3, compact: n >= 9 && 6 * inert / (n * n) < 1.12 && n / ((x1 - x0 + 1) * (y1 - y0 + 1)) > 0.58, n, w: x1 - x0 + 1, h: y1 - y0 + 1, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, edge: !x0 || !y0 || x1 === W0 - 1 || y1 === H0 - 1, px };
+  };
+  const K = new Uint8Array(W0 * H0);
+  for (let i = 0; i < W0 * H0; i++) K[i] = kind(i * 4);
+  const lab = new Uint8Array(W0 * H0);
+  let comps = [];
   for (let s0 = 0; s0 < W0 * H0; s0++) {
     if (lab[s0]) continue;
-    const k = kind(s0 * 4);
+    const k = K[s0];
     if (!k) { lab[s0] = 1; continue; }
-    const st = [s0]; lab[s0] = 1;
-    let n = 0, x0 = W0, x1 = 0, y0 = H0, y1 = 0, sx = 0, sy = 0, sxx = 0, syy = 0;
+    const st = [s0], px = []; lab[s0] = 1;
     while (st.length) {
-      const q = st.pop(), x = q % W0, y = q / W0 | 0;
-      n++; sx += x; sy += y; sxx += x * x; syy += y * y; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      const q = st.pop(), x = q % W0; px.push(q);
       for (const nq of [q - 1, q + 1, q - W0, q + W0])
-        if (nq >= 0 && nq < W0 * H0 && !lab[nq] && Math.abs((nq % W0) - x) <= 1 && kind(nq * 4) === k) { lab[nq] = 1; st.push(nq); }
+        if (nq >= 0 && nq < W0 * H0 && !lab[nq] && Math.abs((nq % W0) - x) <= 1 && K[nq] === k) { lab[nq] = 1; st.push(nq); }
     }
-    // compact: 기울어도 꽉 찬 네모(또는 원): 무게중심에서 퍼진 정도(관성)가 같은 넓이의 정사각형과 비슷 (정사각형 1, 원 0.95, 2칸 붙음 1.25, 글자, 테두리는 훨씬 큼).
-    // 인천 피크닉, E10 처럼 비스듬히 기운 좌석 그림은 칸의 테두리 상자가 커서 꽉 찬 정도로는 일부 칸이 빠졌음 (11/18: E10 27 -> 24, 피크닉 오른쪽 52 -> 50)
-    const inert = sxx - sx * sx / n + syy - sy * sy / n;
-    // 꽉 찬 정도 0.58 넘게: 약 25°까지만 (45° 마름모 무늬는 0.5~0.55, 전북 코너 그림의 무늬가 좌석으로 잡히지 않게. 인천 기운 칸은 0.59~0.74)
-    comps.push({ k: k === 3 ? 2 : k, dark: k === 3, compact: n >= 9 && 6 * inert / (n * n) < 1.12 && n / ((x1 - x0 + 1) * (y1 - y0 + 1)) > 0.58, n, w: x1 - x0 + 1, h: y1 - y0 + 1, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, edge: !x0 || !y0 || x1 === W0 - 1 || y1 === H0 - 1 });
+    comps.push(mk(px, k));
   }
   // 칸 크기: 정사각형에 가깝고 꽉 찬 덩어리 넓이의 중앙값. 화면 전체 캡처면 좌석 그림이 있는 쪽만 (세로: 위 15~60%, 가로: 왼쪽 78%)
   const inMap = o => !full || (H0 > W0 * 1.2 ? o.cy > H0 * 0.15 && o.cy < H0 * 0.6 : o.cx < W0 * 0.78 && o.cy > H0 * 0.12);
   // 놀티켓 좌석은 동그란 점: 작은 원은 픽셀 위치에 따라 꽉 찬 정도가 0.65~0.83 으로 흔들려서, 가로세로가 비슷하고(0.6 넘게 참) 넓이가 보통 점과 비슷하면 칸으로 봄
   // (줄 번호 숫자는 가로세로가 다르거나 점보다 훨씬 작고, 구역 이름 글자는 훨씬 큼)
-  const round = o => o.w / o.h > 0.75 && o.w / o.h < 1.33 && o.n / (o.w * o.h) > 0.6;
+  // 동그란 점은 놀티켓만: 티켓링크 그림에서는 안내 글자 조각('1열은 선수단벤치로…' 빨간 글자)이 점처럼 잡혀 남은 좌석으로 세어졌음 (11/18 포항 프리미엄 테이블 115 -> 117)
+  const round = o => SELLER === '놀티켓' && o.w / o.h > 0.75 && o.w / o.h < 1.33 && o.n / (o.w * o.h) > 0.6;
   const sq = comps.filter(o => o.n >= 25 && o.w / o.h > 0.65 && o.w / o.h < 1.5 && (o.n / (o.w * o.h) > 0.8 || round(o) || o.compact) && inMap(o));
   if (sq.length < 10) return null;
   const med = sq.map(o => o.n).sort((a, b) => a - b)[sq.length >> 1], side = Math.sqrt(med);
+  // 표시 상자('1열 시야방해' 빨간 테두리)가 좌석 칸에 닿아 줄 전체가 한 덩어리가 된 것(꽉 차지 않은 큰 덩어리)은 그 안에서 가는 선(가로나 세로로 2픽셀 이하)을 지우고 다시 나눔
+  // (11/18 포항 청암E4: 맨 아랫줄 40칸과 윗줄 절반이 상자와 붙어 빠짐 640 -> 580. 그림 전체에서 지우면 글자 조각이 칸처럼 잡혀 덩어리 안에서만)
+  comps = comps.flatMap(o => {
+    if (!(o.n >= med * 1.6 && o.n / (o.w * o.h) < 0.94 && Math.max(o.w, o.h) > side * 2.5 && Math.min(o.w, o.h) <= side * 3 && o.n <= med * 120)) return [o];  // 줄 모양 덩어리만 (놀티켓 그림의 넓은 회색 경기장 띠까지 나누면 아주 느림)
+    const inC = new Set(o.px), run = (q, d) => { let a = 0; for (let r = q - d; inC.has(r) && Math.abs((r % W0) - (q % W0)) <= (d === 1 ? W0 : 0); r -= d) a++; for (let r = q + d; inC.has(r) && Math.abs((r % W0) - (q % W0)) <= (d === 1 ? W0 : 0); r += d) a++; return a + 1; };
+    const keep = new Set(o.px.filter(q => run(q, 1) > 2 && run(q, W0) > 2)), seen = new Set(), parts = [];
+    for (const q0 of keep) {
+      if (seen.has(q0)) continue;
+      const st = [q0], px = []; seen.add(q0);
+      while (st.length) { const q = st.pop(), x = q % W0; px.push(q); for (const nq of [q - 1, q + 1, q - W0, q + W0]) if (keep.has(nq) && !seen.has(nq) && Math.abs((nq % W0) - x) <= 1) { seen.add(nq); st.push(nq); } }
+      parts.push({ ...mk(px, o.dark ? 3 : o.k), split: true });  // split: 상자 선이 붙어 칸보다 큼 (칸 수는 넓이 대신 긴 변으로)
+    }
+    // 조각 대부분이 좌석 크기의 네모일 때만 나눔 (전북 코너 그림의 칸 이름 상자 'T01' 은 글자를 지우면 자잘한 조각만 남아 그대로 둠)
+    const seatLike = parts.filter(q => q.n >= med * 0.6 && q.n <= med * 1.8 && q.w / q.h > 0.6 && q.w / q.h < 1.7);
+    // 상자가 회색 칸 옆까지 길게 지나가면 선 픽셀이 많아 넓이 비율 대신 조각 수로. 상자 모서리의 자잘한 조각(칸의 0.3 아래)은 세지 않음 (끝 칸 하나만 붙은 포항 E22, W22, W23 의 맨 윗줄)
+    const real = parts.filter(q => q.n >= med * 0.3);
+    return seatLike.length >= 1 && seatLike.length >= real.length * 0.6 ? parts : [o];
+  });
+  // 기운 칸은 기운 묶음이 있는 그림에서만 (후보 6개 이상): 안내 글자 조각 한두 개가 기운 칸처럼 잡히지 않게 (11/18 포항 프리미엄 테이블 115 -> 117)
+  const tilt = comps.filter(o => o.compact && !o.edge && o.n / (o.w * o.h) <= 0.8 && o.n >= med * 0.5 && o.n <= med * 1.5).length >= 6;
   // 붙어 버린 칸 몇 개는 넓이로 나눠 셈. 버튼, 테두리처럼 큰 덩어리, 줄 번호 숫자처럼 성긴 덩어리(꽉 찬 정도 80% 아래), 그림 끝에 잘린 옆 칸은 뺌
   // 초록 칸 바로 옆 회색 칸은 테두리가 흐려 꽉 찬 정도가 70%대로 떨어짐(김천 S13 2칸): 정사각형(가로세로 1px 안)이고 보통 칸 크기면 칸으로 봄 (9×12 같은 글자 조각은 뺌)
   // 여러 칸으로 셀 큰 덩어리(붙은 칸)는 속이 꽉 차야 함: 칸 이름 상자(전북 커플석 'A1'~'A12', 회색 바탕에 흰 글자)는 글자 구멍 때문에 꽉 찬 정도가 0.85~0.9 (11/17: 커플석 24석을 58석으로 셈)
   // 짙은 회색 칸은 한 칸 크기만 (화면의 짙은 버튼, 아이콘이 붙은 칸 여럿으로 세이지 않게)
-  const seat = o => o.n >= med * 0.45 && !(o.dark && o.n > med * 1.5) && !(o.n >= med * 1.5 && o.n / (o.w * o.h) < 0.94) && (o.n / (o.w * o.h) > 0.8 || o.n / (o.w * o.h) > 0.7 && Math.abs(o.w - o.h) <= 1 && Math.abs(o.w - side) <= 1.5 || round(o) && o.n >= med * 0.75 && o.n <= med * 1.3 || o.compact && !o.edge && o.n >= med * 0.5 && o.n <= med * 1.5) && Math.max(o.w, o.h) <= side * 3.5 && Math.min(o.w, o.h) <= side * 1.6 && !(o.edge && o.n < med * 0.8) && inMap(o);
+  // 얇은 덩어리(짧은 쪽이 칸의 0.6 아래)는 좌석이 아님: 포항 T1, T5 처럼 테이블 막대가 좌석 두 칸쯤으로 짧으면 막대 하나가 팔린 좌석 1칸으로 세어졌음 (11/18: T5 102 -> 153)
+  const seat = o => o.n >= med * 0.45 && !(o.dark && o.n > med * 1.5) && !(o.n >= med * 1.5 && o.n / (o.w * o.h) < 0.94) && (o.n / (o.w * o.h) > 0.8 || o.k === 1 && o.n / (o.w * o.h) > 0.7 && Math.abs(o.w - o.h) <= 1 && Math.abs(o.w - side) <= 1.5 || round(o) && o.n >= med * 0.75 && o.n <= med * 1.3 || tilt && o.compact && !o.edge && o.n >= med * 0.5 && o.n <= med * 1.5) && Math.max(o.w, o.h) <= side * 3.5 && Math.min(o.w, o.h) <= side * 1.6 && Math.min(o.w, o.h) >= side * 0.6 && !(o.edge && o.n < med * 0.8) && inMap(o);
   // 옆 구역 칸 빼기: 칸 사이 간격(가장 가까운 칸까지 거리의 중앙값)의 3.3배 넘게 떨어진 칸 덩어리는 다른 구역으로 보고 가장 큰 덩어리만 셈
   // (한 구역 안 통로는 칸 2~3개 폭, 구역 사이는 그보다 넓음. 놀티켓은 옆 구역 좌석도 같은 회색으로 그려 잘라 낸 그림에 섞임)
   const all = comps.filter(seat), d2 = (a, b) => Math.hypot(a.cx - b.cx, a.cy - b.cy);
@@ -1770,7 +1806,7 @@ async function seatMap(bmp, eng, full) {
   const up = all.map((_, i) => i), find = i => up[i] === i ? i : (up[i] = find(up[i])), groups = {};
   all.forEach((a, i) => { for (let j = i + 1; j < all.length; j++) if (d2(a, all[j]) <= pitch * 3.3) up[find(i)] = find(j); });
   all.forEach((o, i) => (groups[find(i)] ||= []).push(o));
-  const units = o => Math.max(1, Math.round(o.n / med)), gs = Object.values(groups).sort((a, b) => b.reduce((s, o) => s + units(o), 0) - a.reduce((s, o) => s + units(o), 0)), keep = gs[0] || [];
+  const units = o => Math.max(1, Math.round(o.split ? Math.max(o.w, o.h) / (side * 1.15) : o.n / med)), gs = Object.values(groups).sort((a, b) => b.reduce((s, o) => s + units(o), 0) - a.reduce((s, o) => s + units(o), 0)), keep = gs[0] || [];
   // 떨어져 있는 다른 묶음: 옆 구역일 수도, 한 구역 안의 다른 묶음일 수도 있음(전북 코너 테이블 오른쪽 기둥, W2K 오른쪽 작은 묶음). 정하는 것은 ocrRun (목록 잔여와 맞춰 보거나 물음)
   const extra = gs.slice(1).map(g => ({ remain: g.filter(o => o.k === 2).reduce((a, o) => a + units(o), 0), total: g.reduce((a, o) => a + units(o), 0) })).filter(g => g.total > 1);  // 한 칸짜리 조각은 무늬 찌꺼기(전북 그림 왼쪽 마름모 무늬)
   const count = k => keep.filter(o => o.k === k).reduce((a, o) => a + units(o), 0);
@@ -1908,7 +1944,10 @@ async function readShot(f, first, kor, eng, counted = [], lossy = []) {
     // JPG, WebP(손실 압축)는 칸 테두리가 번져 칸이 붙거나 쪼개져 크게 틀리게 셈 (김천 S11 156/193 이 103/138, 포항 A1 총석 300 이 290): 세지 않고 PNG 로 넣으라고 알림
     if (/jpe?g|webp/i.test(f.type)) { lossy.push(f.name); return text; }
     const m = await seatMap(bmp, eng, false);
-    if (m && !m.id) { const c = [...new Set(text.split('\n').map(l => l.trim() && zoneId(l)).filter(Boolean))]; if (c.length === 1) m.id = c[0]; }  // 영문으로 못 읽은 한글 구역 이름(전북 '코너 테이블 (아)')은 한글 인식 글자의 줄에서 (한 구역만 나올 때)
+    if (m && !m.id) { const c = [...new Set(text.split('\n').map(l => l.trim() && zoneId(l)).filter(Boolean))]; if (c.length === 1) m.id = c[0]; }
+    // 인식기가 W 와 N 을 바꿔 읽음(11/18 수원 W11 을 N11 로): 센 총석이 읽은 구역 총석과 3% 넘게 다르고 글자만 바꾼 구역의 총석과 2% 안이면 그 구역
+    if (m?.id && /^[WN]\d/.test(m.id)) { const alt = (m.id[0] === 'W' ? 'N' : 'W') + m.id.slice(1), mx = id => state.rows[id]?.max, near = (id, f) => mx(id) && Math.abs(mx(id) - m.total) <= mx(id) * f;
+      if (state.rows[alt] && near(alt, 0.02) && !near(m.id, 0.03)) m.id = alt; }  // 영문으로 못 읽은 한글 구역 이름(전북 '코너 테이블 (아)')은 한글 인식 글자의 줄에서 (한 구역만 나올 때)
     // 그림의 구역 이름이 같은 칸이 여럿이면(전북 '테이블석A [W1K]', '커플석A [W1K]') 한글 글자(테이블, 커플)로 가림. 어느 쪽인지 모르면 이름을 모르는 것으로 두고 인식 뒤에 물음
     const same = m?.id ? SECTIONS.filter(x => x.id === m.id || x.of === m.id).sort((a, b) => !!a.of - !!b.of) : [];  // 그림에 적힌 이름의 칸이 먼저
     if (same.length > 1) { const hit = same.filter(x => x.when?.test(text)); m.id = hit.length === 1 ? hit[0].id : null; if (!m.id) m.of = same.map(x => x.name || x.id); }
@@ -2216,7 +2255,7 @@ async function loadPublished() {
     if (!r.ok) throw new Error(r.status);
     const d = await r.json(), num = v => Number.isInteger(v) && v >= 0 ? v : null, local = v => typeof v === 'string' ? v.slice(0, 16) : '';
     const secs = Object.fromEntries((d.sections || []).map(x => [x.id, x]));
-    SECTIONS.forEach(s => { const x = secs[s.id] || {}; delete state.rows[s.id].parts; Object.assign(state.rows[s.id], { remain: num(x.remain), max: num(x.max) ?? KNOWN_MAX[s.id] ?? null, off: x.unsold === true, block: num(x.blocked) || 0, learned: x.maxGuess === true && num(x.max) != null }); });
+    SECTIONS.forEach(s => { const x = secs[s.id] || {}; delete state.rows[s.id].parts; Object.assign(state.rows[s.id], { remain: num(x.remain), max: num(x.max) ?? KNOWN_MAX[s.id] ?? null, off: x.unsold === true, block: num(x.blocked) ?? (AWAY && STADIUMS[STADIUM].block?.[s.id]) ?? 0, learned: x.maxGuess === true && num(x.max) != null }); });
     Object.assign(state, {
       groups: Object.fromEntries((Array.isArray(d.groups) ? d.groups : []).filter(g => typeof g?.name === 'string' && Array.isArray(g.ids)).map(g => [g.name, { ids: g.ids.filter(id => state.rows[id]), remain: num(g.remain) }])),
       opp: Object.values(TEAMS).includes(d.match?.opponent) ? d.match.opponent : '', date: local(d.match?.kickoff), at: local(d.updatedAt), pubAt: local(d.updatedAt),
