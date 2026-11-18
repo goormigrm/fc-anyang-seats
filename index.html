@@ -1259,7 +1259,7 @@ const download = (name, blob) => {
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 };
-const fileBase = () => `${AWAY ? HOST + '_안양원정' : '안양_' + (state.opp || '경기')}_${state.date.slice(0, 10).replace(/-/g, '')}_집계${state.at.replace(/\D/g, '')}`;
+const fileBase = () => `${TEST ? `${HOST}_${TEST}` : AWAY ? HOST + '_안양원정' : '안양_' + (state.opp || '경기')}_${state.date.slice(0, 10).replace(/-/g, '')}_집계${state.at.replace(/\D/g, '')}`;
 // 추이 스토리 이미지 (1080x1920): 위에 지금 예매 수와 직전 대비, 가운데 추이 그래프. 인스타가 가리는 위아래(200, 260)는 비움
 function trendStory() {
   const pts = trendPoints(), last = pts.at(-1), prev = pts.at(-2), d = last && prev ? last.booked - prev.booked : null;

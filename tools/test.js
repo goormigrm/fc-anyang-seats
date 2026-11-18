@@ -1324,6 +1324,10 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     // 지난 기본값(N9 72)이 저장된 브라우저는 새 기본값으로, 사람이 바꾼 값(N10 0)은 그대로
     state.rows.N9.block = 72; state.rows.N10.block = 0; delete state.blockDefaults; defaultBlock(); o.push(state.rows.N9.block, state.rows.N10.block); return o.join(','); });
   await p.context().close();
+  p = await open(b, { url: URL + '?s=suwon&test=gyeongnam#edit' });
+  r = await p.evaluate(() => { Object.assign(state, { date: '2026-11-21T14:00', at: '2026-11-18T14:15' }); const t = fileBase(); return t; });
+  await p.context().close();
+  check('시험 페이지 저장 파일 이름은 실제 원정 팀 (수원삼성_경남FC, 안양 아님)', r === '수원삼성_경남FC_20261121_집계202611181415', r);
   check('수원삼성: 원정석 쪽 S4~S6, 팔지 않는 줄 기본값(N8 434석 -> 판매 506석, E12 55석, N9 827, N10 593: 3~5열만), 1층은 없음, 지난 기본값만 새 값으로', r === 'S4 S5 S6,434,55,506,0,827,593,827,0', r);
   const NOLD = path.join(ROOT, '좌석스크린샷', '시험_놀티켓');
   if (fs.existsSync(NOLD)) {
