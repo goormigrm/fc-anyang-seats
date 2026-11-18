@@ -1320,9 +1320,11 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   }
   // 수원삼성(11/18 사용자): 원정석 쪽은 S4~S6(S1~S3 중립석은 홈 관중), 2층 맨 앞 2줄과 N8, N12 맨 뒤 10줄은 팔지 않는 줄(막힌 좌석 기본값)
   p = await open(b, { url: URL + '?s=suwon#edit' });
-  r = await p.evaluate(() => [SECTIONS.filter(x => x.ours).map(x => x.id).sort().join(' '), state.rows.N8.block, state.rows.E12.block, capOf(state.rows.N8), state.rows.S1.block ?? 0].join(','));
+  r = await p.evaluate(() => { const o = [SECTIONS.filter(x => x.ours).map(x => x.id).sort().join(' '), state.rows.N8.block, state.rows.E12.block, capOf(state.rows.N8), state.rows.S1.block ?? 0, state.rows.N9.block, state.rows.N10.block];
+    // 지난 기본값(N9 72)이 저장된 브라우저는 새 기본값으로, 사람이 바꾼 값(N10 0)은 그대로
+    state.rows.N9.block = 72; state.rows.N10.block = 0; delete state.blockDefaults; defaultBlock(); o.push(state.rows.N9.block, state.rows.N10.block); return o.join(','); });
   await p.context().close();
-  check('수원삼성: 원정석 쪽 S4~S6, 팔지 않는 줄 기본값(N8 434석 -> 판매 506석, E12 55석), 1층은 없음', r === 'S4 S5 S6,434,55,506,0', r);
+  check('수원삼성: 원정석 쪽 S4~S6, 팔지 않는 줄 기본값(N8 434석 -> 판매 506석, E12 55석, N9 827, N10 593: 3~5열만), 1층은 없음, 지난 기본값만 새 값으로', r === 'S4 S5 S6,434,55,506,0,827,593,827,0', r);
   const NOLD = path.join(ROOT, '좌석스크린샷', '시험_놀티켓');
   if (fs.existsSync(NOLD)) {
     // W13(2층 테이블석, 2인 테이블 짝)은 한 화면에 안 들어와 왼쪽, 오른쪽 두 장(가운데 블록이 겹침): 왼쪽 장의 잘린 가운데 블록은 떨어진 칸으로 빠져 122 + 196 = 318 (손으로 센 수)

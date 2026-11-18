@@ -349,8 +349,8 @@ const STADIUMS = {
       W1: 504, W2: 610, W3: 610, W4: 390, W5: 276, W6: 390, W7: 590, W8: 610, W9: 504, W10: 913, W11: 843, W12: 864, W13: 318, W13미판매구역: 454, W14: 860, W15: 843, W16: 918 },
     // block: 팔지 않는 줄(막힌 좌석) 기본값 (11/18 사용자 경험: 예매 화면에는 안 보임). 2층 E, W, N 은 맨 앞 2줄, N8, N12 는 맨 뒤 10줄도(너무 높음).
     // 좌석 수는 구역 총석 ÷ 줄 수(E 30, W 28, N 26, N10 20줄, 놀티켓 좌석 그림의 줄 번호) × 줄 수로 어림 (shortcut: 줄마다 좌석 수가 달라 몇 석 틀릴 수 있음, 좌석 그림에서 줄을 세면 바꿀 것)
-    // 미판매 구역(E10, E11, E18, E19, N7, N13, S7~S13)은 빼 둠. N9, N10 광고 천막 자리는 얼마나 가리는지 몰라 아직 넣지 않음
-    block: { E12: 55, E13: 58, E14: 56, E15: 56, E16: 58, E17: 55, W10: 65, W11: 60, W12: 62, W14: 61, W15: 60, W16: 66, N8: 434, N9: 72, N10: 70, N11: 72, N12: 434 },
+    // N9, N10 은 광고 천막으로 3~5열만 팜(11/18 사용자): 3줄 말고 모두 (N9 935 - 36×3, N10 698 - 35×3). 미판매 구역(E10, E11, E18, E19, N7, N13, S7~S13)은 빼 둠
+    block: { E12: 55, E13: 58, E14: 56, E15: 56, E16: 58, E17: 55, W10: 65, W11: 60, W12: 62, W14: 61, W15: 60, W16: 66, N8: 434, N9: 827, N10: 593, N11: 72, N12: 434 },
     layout: () => {
       const T1 = [14, 80], T2 = [86, 168];
       // 놀티켓 구역도: 각 면 양 끝 칸(E1, E9, E10, E19, S6, S1, S13, S7, W9, W1, W16, W10, N1, N6, N7, N13)은 모서리에 비스듬히
@@ -681,7 +681,11 @@ const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } c
 const OFFKEY = 'fc-anyang-unsold' + (AWAY ? '-' + STADIUM : '') + (TEST ? '-test' : '');
 // 구장마다 평소 팔지 않는 구역(STADIUMS.<구장>.unsold, 인천 N7): 처음 열 때와 새 경기에서 미판매로 시작. 사람이 끄면 그대로(다음 새 경기까지)
 // 팔지 않는 줄(STADIUMS.<구장>.block) 기본값: 막힌 좌석으로 (표의 '−N', 사람이 바꾼 값은 그대로. 새 경기마다 다시)
-const defaultBlock = () => AWAY && Object.entries(STADIUMS[STADIUM].block || {}).forEach(([id, v]) => { const r = state.rows[id]; if (r && r.block == null) r.block = v; });
+// 기본값이 바뀌면 지난 기본값 그대로인 칸만 새 값으로 (blockDefaults: 이 브라우저가 마지막으로 넣은 기본값. 없으면 474f9dd 때 수원 N9 72, N10 70)
+const defaultBlock = () => { if (!AWAY) return;
+  const def = STADIUMS[STADIUM].block || {}, prev = state.blockDefaults || (STADIUM === 'suwon' ? { N9: 72, N10: 70 } : {});
+  Object.entries(def).forEach(([id, v]) => { const r = state.rows[id]; if (r && (r.block == null || r.block === prev[id] && prev[id] !== v)) r.block = v; });
+  state.blockDefaults = def; };
 const defaultOff = () => (AWAY && STADIUMS[STADIUM].unsold || []).forEach(id => { if (state.rows[id]) Object.assign(state.rows[id], { off: true, remain: null }); });
 defaultBlock();  // 이 브라우저에 아직 막힌 좌석 값이 없는 칸
 const saveOff = () => { try { localStorage.setItem(OFFKEY, JSON.stringify(SECTIONS.filter(s => state.rows[s.id].off).map(s => s.id))); } catch {} };
