@@ -1417,6 +1417,10 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       return [state.rows.프리미엄테이블1.remain, state.rows.프리미엄테이블2.remain].join(); }, AH('포항스틸러스', '포항스틸야드'));
     await pg.context().close();
     check('포항 프리미엄 테이블1, 2: 1인, 2인, 4인 등급 숫자를 더함 (2+30+10, 0+30+10)', r === '42,40', r);
+    pg = await open(b, { url: URL + '?s=pohang#edit' });
+    r = await pg.evaluate(H => { fcIngest(H + 'W1~W2\n294 석\nW1구역\n148 석\nW3~W4\n50 석\n청암E석\n1849 석\n청암E1구역\n290 석'); return [state.rows.W1.remain, state.rows.W2.remain, state.rows.W4.remain, state.rows.E1.remain].join(); }, AH('포항스틸러스', '포항스틸야드'));
+    await pg.context().close();
+    check("포항 구역 범위 등급('W1~W2 294 석')은 W2 구역 잔여가 아님 (W1 148, W2 W4 모름, E1 290)", r === '148,,,290', r);
     pg = await open(b, { url: URL + '?s=ulsan#edit' });
     r = await pg.evaluate(H => { fcIngest(H + '휠체어석\n0 석\n프리미엄 테이블석\n10 석\n2층 테이블석\n30 석'); return [state.rows.프리미엄테이블석.remain, state.rows['2층테이블석'].remain].join(); }, AH('울산HD', '울산문수축구경기장'));
     await pg.context().close();
