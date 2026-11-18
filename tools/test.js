@@ -1410,6 +1410,13 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     check("'석'이 숫자 다음 줄에 혼자 있는 글자, 인식기가 '석'을 4 로 읽은 휠체어석 줄도 휠체어석으로 봄", r.nl === 134 && r.ocr4 === 134, JSON.stringify(r));
     check('등급 이름 빈칸만 다른 같은 등급은 한 몫(8, 16 아님), 매진되어 접힌 등급(4인 0석)은 그 몫을 0 으로', r.sp === 8 && r.zero === 0, JSON.stringify(r));
     check('글자 인식 구역 이름: 두 자리 번호를 먼저 맞춤 (V12 -> W12, V1 아님)', r.zoneOf === 'W12', r.zoneOf);
+    // 포항 프리미엄 테이블1, 2 는 '프리미엄테이블(1인)', '(2인)', '(4인)' 아래 같은 이름(11/18 사용자): 등급마다 더함 (마지막에 누른 등급 숫자만 남던 것)
+    pg = await open(b, { url: URL + '?s=pohang#edit' });
+    r = await pg.evaluate(H => { const G = (o1 = '', o2 = '', o4 = '') => H + `프리미엄테이블(1인)\n2 석\n${o1}프리미엄테이블(2인)\n60 석\n${o2}프리미엄테이블(4인)\n20 석\n${o4}T1 테이블(2인)\n54 석`;
+      fcIngest(G('프리미엄 테이블1\n2 석\n✓ 프리미엄 테이블2\n0 석\n')); fcIngest(G('', '프리미엄 테이블1\n30 석\n프리미엄 테이블2\n30 석\n')); fcIngest(G('', '', '프리미엄 테이블1\n10 석\n프리미엄 테이블2\n10 석\n'));
+      return [state.rows.프리미엄테이블1.remain, state.rows.프리미엄테이블2.remain].join(); }, AH('포항스틸러스', '포항스틸야드'));
+    await pg.context().close();
+    check('포항 프리미엄 테이블1, 2: 1인, 2인, 4인 등급 숫자를 더함 (2+30+10, 0+30+10)', r === '42,40', r);
     pg = await open(b, { url: URL + '?s=ulsan#edit' });
     r = await pg.evaluate(H => { fcIngest(H + '휠체어석\n0 석\n프리미엄 테이블석\n10 석\n2층 테이블석\n30 석'); return [state.rows.프리미엄테이블석.remain, state.rows['2층테이블석'].remain].join(); }, AH('울산HD', '울산문수축구경기장'));
     await pg.context().close();
