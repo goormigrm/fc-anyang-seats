@@ -1290,6 +1290,20 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       check(`포항 실제 좌석 그림 ${id} (짙은 회색 칸): 전체 ${total}`, r === total, JSON.stringify({ r }));
     }
   }
+  // 인천 실제 캡처(11/17 사용자 총석 집계, 좌석스크린샷/incheon): 비스듬히 기운 좌석 그림(E10 1인 테이블, 피크닉 테이블, 하이네켄 테이블)도 칸을 다 셈
+  // (11/18 검토: 기운 칸 일부가 빠져 E10 27 -> 24, 피크닉 80 -> 78 로 발행됨)
+  {
+    const ID = path.join(ROOT, '좌석스크린샷', 'incheon'), F = n => path.join(ID, `스크린샷 2026-11-17 ${n}.png`);
+    if (fs.existsSync(F('171320'))) {
+      p = await open(b, { url: URL + '?s=incheon#edit' });
+      r = await p.evaluate(async shots => { const out = [];
+        for (const b64 of shots) { const bmp = await createImageBitmap(await (await fetch('data:image/png;base64,' + b64)).blob());
+          const m = await seatMap(bmp, { setParameters: async () => {}, recognize: async () => ({ data: { words: [], text: '' } }) }, false); out.push([m.remain, m.total, m.extra.map(g => g.remain + '/' + g.total).join('+')].join('/')); }
+        return out.join(' '); }, ['171320', '171336', '171243', '171310'].map(n => fs.readFileSync(F(n)).toString('base64')));
+      await p.context().close();
+      check('기운 좌석 그림: 인천 E10 27석, 피크닉 오른쪽 52석(남음 36) + 왼쪽 28석(남음 4), 하이네켄 40 + 28석, 반듯한 S1 27석', r === '0/27/ 36/52/4/28 0/40/0/28 0/27/', r);
+    } else console.log('SKIP  인천 기운 좌석 그림');
+  }
   const NOLD = path.join(ROOT, '좌석스크린샷', '시험_놀티켓');
   if (fs.existsSync(NOLD)) {
     // W13(2층 테이블석, 2인 테이블 짝)은 한 화면에 안 들어와 왼쪽, 오른쪽 두 장(가운데 블록이 겹침): 왼쪽 장의 잘린 가운데 블록은 떨어진 칸으로 빠져 122 + 196 = 318 (손으로 센 수)
