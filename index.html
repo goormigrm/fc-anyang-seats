@@ -1209,7 +1209,9 @@ function newCapture({ opp, date }, at, snapshot = true) {
   const other = (!AWAY && opp && opp !== state.opp) || (date && date.slice(0, 10) !== state.date.slice(0, 10));
   if (other && had) { try { localStorage.setItem(BACKUP, JSON.stringify(state)); } catch {} $('restore').hidden = false; }
   if (other) newGame();
-  else if (snapshot && had && at !== state.at) state.base = snap();
+  // 비교 기준('○○ 이후 +N석')은 마지막으로 발행한 숫자: 지금 숫자가 발행한 그대로일 때만 기준으로 (발행 전에 여러 번 받아도 앞 캡처가 기준이 되지 않게.
+  // 11/18 사용자: 그 경기 첫 발행인데 '이후 N석'이 나옴)
+  else if (snapshot && had && at !== state.at && state.pubAt === state.at) state.base = snap();
   state.at = at;
   return other && had ? ['⚠ 다른 경기라 지난 숫자를 지웠습니다. 잘못이면 "지난 경기 숫자 되살리기"를 누르세요.'] : [];
 }
@@ -1544,6 +1546,7 @@ async function publishNow(job = publish, done = '발행했습니다. 보기 화�
   note('발행 중…');
   try {
     const res = await job(token);
+    if (job === publish) { state.pubAt = state.at; save(); }  // 다음 캡처의 비교 기준이 됨 (newCapture)
     if (fresh) {  // 처음 넣은 토큰: 저장하고 만료일을 물어 둠
       ls(TOKEN, token);
       const exp = (prompt('토큰 만료 날짜를 적어 두면 30일 전부터 알려 줍니다 (예: 2027-11-05, 모르면 비움)') || '').trim();
@@ -2152,7 +2155,7 @@ async function loadPublished() {
     SECTIONS.forEach(s => { const x = secs[s.id] || {}; Object.assign(state.rows[s.id], { remain: num(x.remain), max: num(x.max) ?? KNOWN_MAX[s.id] ?? null, off: x.unsold === true, block: num(x.blocked) || 0, learned: x.maxGuess === true && num(x.max) != null }); });
     Object.assign(state, {
       groups: Object.fromEntries((Array.isArray(d.groups) ? d.groups : []).filter(g => typeof g?.name === 'string' && Array.isArray(g.ids)).map(g => [g.name, { ids: g.ids.filter(id => state.rows[id]), remain: num(g.remain) }])),
-      opp: Object.values(TEAMS).includes(d.match?.opponent) ? d.match.opponent : '', date: local(d.match?.kickoff), at: local(d.updatedAt), crowd: num(d.match?.attendance), crowdAway: num(d.match?.awayAttendance), awayGrade: num(d.awayRemain),
+      opp: Object.values(TEAMS).includes(d.match?.opponent) ? d.match.opponent : '', date: local(d.match?.kickoff), at: local(d.updatedAt), pubAt: local(d.updatedAt), crowd: num(d.match?.attendance), crowdAway: num(d.match?.awayAttendance), awayGrade: num(d.awayRemain),
       base: d.sinceBase ? { at: local(d.sinceBase.at), rows: Object.fromEntries(SECTIONS.map(s => {
         const x = secs[s.id] || {}; return [s.id, num(x.remain) != null && Number.isInteger(x.sold) ? x.remain + x.sold : null]; })) } : null,
     });

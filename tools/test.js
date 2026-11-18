@@ -62,8 +62,11 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   r = await p.evaluate(() => { const before = state.rows.일반지정석.remain; fcIngest('울산HD vs FC안양\n울산문수축구경기장 | 2026.12.12(토) 14:00\n등급 선택\n지정석 S\n1200 석'); return { st: document.getElementById('status').innerText, v: state.rows.일반지정석.remain, before }; });
   check('원정 경기 화면은 무시 (안양종합운동장 아님)', r.v === r.before && /'안양종합운동장'가 없어 넘겼습니다/.test(r.st), JSON.stringify(r));
 
-  r = await p.evaluate(() => { state.at = '2026-11-27T09:00'; fcIngest('FC안양 vs 제주SK\n안양종합운동장 | 2026.11.28(토) 14:00\nR10구역\n20 석'); return { base: state.base?.rows?.R10, at: state.at }; });
-  check('같은 경기 새 집계는 직전 숫자를 비교 기준으로', r.base === 26, JSON.stringify(r));
+  // 비교 기준('○○ 이후 +N석')은 마지막으로 발행한 숫자 (11/18 사용자: 그 경기 첫 발행인데 앞 캡처 기준 '이후 N석'이 나옴)
+  r = await p.evaluate(() => { const H = 'FC안양 vs 제주SK\n안양종합운동장 | 2026.11.28(토) 14:00\nR10구역\n', o = [];
+    Object.assign(state, { at: '2026-11-27T08:00', base: null, pubAt: null }); fcIngest(H + '22 석'); o.push(state.base?.rows?.R10 ?? '', /이후/.test(summaryText()));
+    Object.assign(state, { at: '2026-11-27T09:00', pubAt: '2026-11-27T09:00' }); fcIngest(H + '20 석'); o.push(state.base?.rows?.R10, /11\.27 09:00 이후 \+2석/.test(summaryText())); return o.join(); });
+  check('같은 경기 새 집계: 발행 안 한 앞 캡처는 비교 기준이 아님, 발행한 숫자 다음 캡처는 그 숫자(22)가 기준', r === ',false,22,true', r);
 
   r = await ingest(p, 'FC안양 vs 울산HD\n안양종합운동장 | 2026.12.05(토) 14:00\n등급 선택\nR10구역\n100 석');
   check('다른 경기는 새 경기로 (지난 숫자, 원정석 최대 되돌림, ⚠)', r.state.opp === '울산HD' && r.state.rows.일반지정석.remain === null && r.state.rows.원정석.max === 1235 && /⚠ 다른 경기라/.test(r.status), r.status);
