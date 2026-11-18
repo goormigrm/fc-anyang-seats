@@ -1327,6 +1327,10 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   p = await open(b, { url: URL + '?s=suwon&test=gyeongnam#edit' });
   r = await p.evaluate(() => { Object.assign(state, { date: '2026-11-21T14:00', at: '2026-11-18T14:15' }); const t = fileBase(); return t; });
   await p.context().close();
+  p = await open(b, { url: URL + '?s=suwon#edit' });
+  r = await p.evaluate(() => [['N8', 'N9', 'N10', 'E12'].map(id => blockShare(id).toFixed(2)).join('/'), document.querySelectorAll('#board path[fill="url(#hatch)"][stroke="none"]').length, state.rows.W13미판매구역.off].join(','));
+  await p.context().close();
+  check('수원 N8~N12: 막힌 좌석이 칸의 10% 넘으면 그만큼 빗금(N8 0.46, N9 0.88, N10 0.10, E12 는 없음), W13 미판매 구역은 기본 미판매', r === '0.46/0.88/0.10/0.00,5,true', r);
   check('시험 페이지 저장 파일 이름은 실제 원정 팀 (수원삼성_경남FC, 안양 아님)', r === '수원삼성_경남FC_20261121_집계202611181415', r);
   check('수원삼성: 원정석 쪽 S4~S6, 팔지 않는 줄 기본값(N8 434석 -> 판매 506석, E12 55석, N9, N11 827: 3~5열만, N10 70), 1층은 없음, 지난 기본값만 새 값으로', r === 'S4 S5 S6,434,55,506,0,827,70,827,827,0', r);
   const NOLD = path.join(ROOT, '좌석스크린샷', '시험_놀티켓');
