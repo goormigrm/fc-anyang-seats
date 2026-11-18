@@ -1306,16 +1306,18 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   }
   // 포항 실제 캡처(11/18 사용자, 좌석스크린샷/pohang): 테이블 막대는 좌석이 아님(T5 102), 안내 글자 조각도 아님(프리미엄 테이블1 115),
   // 표시 상자가 좌석에 닿아 한 덩어리가 된 줄은 다시 나눔(W22 맨 윗줄 끝 칸 -> 216, N21 맨 윗줄 -> 307)
+  // 상자 선이 3px 로 두꺼워 1, 2열이 위아래로 붙은 것도 나눔(N23 161 -> 207, S25 40 -> 60), 몇 칸만 떼고 큰 덩어리가 남은 것도 다시(N22 304 -> 332, 떨어진 묶음 포함),
+  // 빨간 안내 글자 조각(18x10)은 좌석 아님(N25 64 -> 63)
   {
-    const PD2 = path.join(ROOT, '좌석스크린샷', 'pohang'), F = n => path.join(PD2, `스크린샷 2026-11-18 ${n}.png`), list = [['134844', 'T5 102'], ['134758', '프리미엄 115'], ['135319', 'W22 216'], ['135209', 'N21 307']];
+    const PD2 = path.join(ROOT, '좌석스크린샷', 'pohang'), F = n => path.join(PD2, `스크린샷 2026-11-18 ${n}.png`), list = [['134844', 'T5 102'], ['134758', '프리미엄 115'], ['135319', 'W22 216'], ['135209', 'N21 307'], ['135222', 'N23 207'], ['135030', 'S25 60'], ['135217', 'N22 332'], ['135232', 'N25 63']];
     if (fs.existsSync(F('134844'))) {
       p = await open(b, { url: URL + '?s=pohang#edit' });
       r = await p.evaluate(async shots => { const out = [];
         for (const b64 of shots) { const bmp = await createImageBitmap(await (await fetch('data:image/png;base64,' + b64)).blob());
-          out.push((await seatMap(bmp, { setParameters: async () => {}, recognize: async () => ({ data: { words: [], text: '' } }) }, false)).total); }
+          const m = await seatMap(bmp, { setParameters: async () => {}, recognize: async () => ({ data: { words: [], text: '' } }) }, false); out.push(m.extra.reduce((a, g) => a + g.total, m.total)); }
         return out.join(','); }, list.map(([n]) => fs.readFileSync(F(n)).toString('base64')));
       await p.context().close();
-      check('포항 좌석 그림: 테이블 막대, 안내 글자는 좌석 아님, 표시 상자와 붙은 줄은 다시 나눔 (T5 102, 프리미엄 115, W22 216, N21 307)', r === '102,115,216,307', r);
+      check(`포항 좌석 그림: 테이블 막대, 안내 글자는 좌석 아님, 표시 상자와 붙은 줄은 다시 나눔 (${list.map(x => x[1]).join(', ')})`, r === '102,115,216,307,207,60,332,63', r);
     } else console.log('SKIP  포항 좌석 그림 (11/18)');
   }
   // 수원삼성(11/18 사용자): 원정석 쪽은 S4~S6(S1~S3 중립석은 홈 관중), 2층 맨 앞 2줄과 N8, N12 맨 뒤 10줄은 팔지 않는 줄(막힌 좌석 기본값)
