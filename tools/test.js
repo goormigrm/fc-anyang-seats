@@ -320,7 +320,8 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       await other.setContent('<div>호텔 예약 1박 120,000원</div>');
       await run(other, {}, 'nol.yanolja.com'); await other.waitForTimeout(2200);
       const b6 = await badge(other), ping6 = await other.evaluate(() => __set.ping);
-      check('보내기 스크립트: 놀티켓 좌석 화면 감지(좌석등급), 보낸 곳 놀티켓, 다른 야놀자 화면은 표시 안 함', ping?.state === 'seat' && ping?.site === '놀티켓' && /이 크롬에 현황판 입력 화면이 없어/.test(b5) && !b6 && ping6?.state === 'idle', JSON.stringify({ ping, b5, b6, ping6 }));
+      // 놀티켓은 현황판이 받았을 때(초록)만 표시: 구역 숫자가 없는 화면에서 '보냄', '안 받음'을 오가며 깜빡였음 (11/19 사용자, 17판)
+      check('보내기 스크립트: 놀티켓 좌석 화면 감지(좌석등급), 보낸 곳 놀티켓, 받기 전 표시 없음, 다른 야놀자 화면은 표시 안 함', ping?.state === 'seat' && ping?.site === '놀티켓' && !b5 && !b6 && ping6?.state === 'idle', JSON.stringify({ ping, b5, b6, ping6 }));
       await nk.close(); await other.close();
     }
 
@@ -1119,6 +1120,20 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     const off = await p.evaluate(() => document.body.classList.contains('maxmode'));
     await p.close();
     check('총석 집계 화면: 캡처는 총석만 넣고(E12 87) 잔여, 경기 정보, 집계 시각, 비교 기준은 그대로, 다시 열면 현황 집계', r.E12 === '/87' && r.E13 === 5 && r.keep === before && /총석을 넣었습니다 \(확인한 뒤 "총석 발행"\): E12 87석/.test(r.st) && !asked.some(m => /회색인 줄/.test(m)) && off === false, JSON.stringify({ r, before, asked, off }));
+  }
+  // 표의 잔여는 같은 집계(10분 안)일 때만 견줌 (11/19 수원 S1~S3: 놀티켓 좌석 그림을 어제 집계 잔여와 견줘 버림). 같은 집계면 전처럼 다르면 안 넣음
+  {
+    const f = await shot('grid_stale', grid('E12', 37, 50, '#0d2b45', 14, 0), 30 * 2 + 20 * 14 * 1.5 + 14 * 1.4 + 40, 120 + 5 * 14 * 1.5);
+    const out = [];
+    for (const ago of [26 * 3600e3, 3 * 60e3]) {
+      p = await open(b, { url: URL + '?s=ulsan#edit' });
+      p.on('dialog', d => d.type() === 'prompt' ? d.accept('E12') : d.accept());
+      await p.evaluate(ago => { Object.assign(state, { date: '2026-12-05T14:00', at: localISO(Date.now() - ago) }); Object.assign(state.rows.E12, { remain: 60, max: 87 }); save(); }, ago);
+      await p.setInputFiles('#file', f); await p.evaluate(() => window.ocrDone);
+      out.push(await p.evaluate(() => state.rows.E12.remain + (/목록의 잔여 60석과 달라/.test(document.getElementById('status').innerText) ? '!' : '')));
+      await p.context().close();
+    }
+    check('좌석 그림: 지난 집계(26시간 전) 표 잔여와는 견주지 않고 넣음(37), 같은 집계(3분 전) 표 잔여와 다르면 안 넣음(60)', out.join() === '37,60!', out.join());
   }
   // 남은 칸이 많은 좌석 그림(실제 W23 처럼): 작은 회색 구역 이름, 양쪽 줄 번호, 칸 사이 GATE 상자, 화면 배율 100~150%
   // 통째로는 이름을 못 읽는 경우가 있어 칸 바로 위 이름 자리만 잘라 읽음. 이름이 없으면 사람에게 물음

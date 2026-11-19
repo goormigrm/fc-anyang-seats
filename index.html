@@ -2042,11 +2042,14 @@ async function ocrRun(files) {
     // 견줄 잔여: 등급마다 나눠 받는 칸(전북 E2B, 인천 V1)은 이번 글자와 표의 몫을 합쳐 모든 등급이 있을 때만 (한쪽 등급 몫과 블록 전체를 견줘 맞는 칸 수를 버리던 것)
     // 이번 글자의 경기가 표의 경기와 다르면 표의 잔여(지난 경기)와는 견주지 않음
     const stale = !mm && (!!(p0.date && state.date && p0.date.slice(0, 10) !== state.date.slice(0, 10)) || !AWAY && !!p0.opp && p0.opp !== state.opp);
+    // 표의 잔여는 같은 집계(표의 집계 시각이 캡처와 10분 안)일 때만 견줌: 지난 집계 숫자와 견주면 그 사이 팔린 만큼 달라 맞게 센 그림을 버림
+    // (11/19 수원 S1~S3: 놀티켓은 구역 잔여 목록이 없어 좌석 그림이 유일한 숫자인데 어제 15:16 잔여 274, 266, 245 와 달라 231, 209, 204 를 넣지 않음)
+    const shotAt = localISO(Math.max(...files.map(f => f.lastModified || Date.now()))), tableOk = !mm && !stale && !!state.at && Math.abs(new Date(shotAt) - new Date(state.at)) < 600e3;
     const mixKnown = (p, id) => { const x = SECTIONS.find(s => s.id === id); if (!x?.mix || !p.mix?.[id]) return undefined;
-      const have = { ...(stale ? {} : state.rows[id].parts), ...p.mix[id] }; return (x.mix === true ? ['테이블', '일반'] : x.mix).every(k => k in have) ? Object.values(have).reduce((a, b) => a + b, 0) : null; };
+      const have = { ...(tableOk ? state.rows[id].parts : {}), ...p.mix[id] }; return (x.mix === true ? ['테이블', '일반'] : x.mix).every(k => k in have) ? Object.values(have).reduce((a, b) => a + b, 0) : null; };
     const listed = (p, id, table) => { const v = mixKnown(p, id); return v !== undefined ? v : p.found[id] ?? (!table || stale || mixMiss(id).length ? null : state.rows[id].remain); };
     for (const m of counted.filter(m => m.id && m.extra?.length && counted.filter(x => x.id === m.id).length < 2)) {  // 나눠 찍은 같은 구역 여러 장은 떨어진 묶음을 따로 묻지 않음(잘린 묶음을 더한 뒤 다른 장을 또 더해 두 번 세던 것)
-      const k = listed(p0, m.id, !mm), ex = m.extra.reduce((a, g) => ({ remain: a.remain + g.remain, total: a.total + g.total }), { remain: 0, total: 0 });
+      const k = listed(p0, m.id, tableOk), ex = m.extra.reduce((a, g) => ({ remain: a.remain + g.remain, total: a.total + g.total }), { remain: 0, total: 0 });
       const add = k != null ? !near(m.remain, k) && near(m.remain + ex.remain, k)
         : mm && confirm(`${nameOf(m.id)} 좌석 그림: 큰 묶음 ${fmt(m.total)}석 말고 떨어져 있는 묶음 ${m.extra.length}개(${fmt(ex.total)}석)가 있습니다.\n같은 구역의 다른 묶음이면 [확인]: 더해서 ${fmt(m.total + ex.total)}석\n옆 구역이 같이 찍힌 것이면 [취소]: 큰 묶음만`);
       if (add) { Object.assign(m, { remain: m.remain + ex.remain, total: m.total + ex.total, dropped: Math.max(0, (m.dropped || 0) - ex.total) }); grouped.push(m.id); }
@@ -2077,8 +2080,8 @@ async function ocrRun(files) {
     } else {
       let p = parseText(texts.join(''));
       // 새 경기인지 먼저 판단: 목록 글자의 경기가 표의 경기와 다르면 여기서 지난 숫자를 비움 (그러지 않으면 새 경기 좌석 그림을 지난 경기 잔여와 견줘 버림)
-      const shotAt = localISO(Math.max(...files.map(f => f.lastModified || Date.now()))), early = hasSeats(p) ? newCapture(p, shotAt) : null;
-      const known = m => listed(p, m.id, true);  // 표의 잔여: 새 경기로 비웠으면(early) 이번 경기 숫자, 아직 판단 전인데 다른 경기 글자면(stale) 견주지 않음
+      const early = hasSeats(p) ? newCapture(p, shotAt) : null;
+      const known = m => listed(p, m.id, tableOk);  // 이번 목록 글자, 없으면 같은 집계의 표 잔여 (다른 경기 글자(stale)나 지난 집계면 견주지 않음)
       const skipped = counted.filter(m => !m.id), wrong = counted.filter(m => m.id && known(m) != null && Math.abs(known(m) - m.remain) > Math.max(2, known(m) * 0.03));
       counted = counted.filter(m => m.id && !wrong.includes(m));
       texts.push(...counted.filter(m => known(m) == null).map(m => `\n(좌석 그림)\n${m.id}구역 ${m.remain}석\n`));
@@ -2159,7 +2162,7 @@ window.fcSeats = v => {
 // 티켓링크 탭이 여럿이거나 예매 화면이 틀(iframe) 안이면 신호가 여러 곳에서 옴: 보낸 곳마다 따로 두고 가장 앞선 상태를 보여 줌
 const lamp = { installed: 0, version: 0, pings: {}, got: 0, zones: 0, rejected: '', seats: null };  // seats: 스크립트가 마지막으로 센 좌석과 그 결과
 // 보내기 스크립트 최신 판 (fc-anyang-send.user.js 의 @version 과 같게. 자동 시험이 맞춰 봄). 설치된 판이 낮으면 입력 화면 맨 위 버튼을 눈에 띄게
-const SCRIPT_VERSION = 16;
+const SCRIPT_VERSION = 17;
 const hms = t => new Date(t).toTimeString().slice(0, 8);
 // Tampermonkey 저장소는 브라우저마다 따로: 티켓링크를 다른 브라우저에서 열면 신호가 안 옴 (램프에 이 브라우저 이름을 보여 줌)
 const BROWSER = (ua => /Whale\//.test(ua) ? '웨일' : /Edg\//.test(ua) ? '엣지' : /Chrome\//.test(ua) ? '크롬' : /Firefox\//.test(ua) ? '파이어폭스' : '이 브라우저')(navigator.userAgent);

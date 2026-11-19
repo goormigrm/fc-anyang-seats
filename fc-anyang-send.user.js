@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         FC안양 예매현황 보내기
 // @namespace    https://goormigrm.github.io/fc-anyang-seats/
-// @version      16
+// @version      17
 // @description  티켓링크, 놀티켓 좌석 선택 화면에 보이는 잔여석 글자와 사람이 연 구역의 좌석 칸 수를 열려 있는 현황판 탭으로 보냄. 읽기만 하고 클릭, 새로고침, 요청은 하지 않음
 // @match        https://ticketlink.co.kr/*
 // @match        https://*.ticketlink.co.kr/*
@@ -84,7 +84,11 @@ if (site) {
     }
     badge.textContent = '현황판 보내기: ' + msg;
     badge.style.background = bg;
+    badge.style.display = '';
   };
+  const hide = () => { if (badge) badge.style.display = 'none'; };
+  // 놀티켓 화면은 구역 숫자가 없는 일이 많아 '보냄'과 '안 받음'을 오가며 깜빡였음(11/19 사용자): 현황판이 받았을 때(초록)만 보임
+  const quiet = () => site === '놀티켓' && !acked?.ok;
   let last = '', sentAt = 0, acked = null, resent = false, timer;
   // 상태 신호: 바뀔 때와 5초마다 (현황판 램프가 예매 화면이 열려 있는지, 닫혔는지 알 수 있게)
   const ping = () => {
@@ -95,13 +99,14 @@ if (site) {
   const send = () => { sentAt = Date.now(); acked = null; GM_setValue('text', { s: last, at: sentAt }); };
   const check = () => {
     const v = ping(), b = GM_getValue('board'), board = b && Date.now() - b.at < 90e3;  // 현황판 입력 화면이 5초마다 남기는 신호 (뒤 탭은 1분까지 늦음)
-    if (!v.seat) return v.need.includes(v.want) || show(`대기 · 등급/좌석 선택 화면이 아님 (화면에 없는 글자: ${v.need.join(', ')})`, '#555');  // FC안양 경기 화면이 아니면 표시도 안 함
+    if (!v.seat) return v.need.includes(v.want) || (quiet() ? hide() : show(`대기 · 등급/좌석 선택 화면이 아님 (화면에 없는 글자: ${v.need.join(', ')})`, '#555'));  // FC안양 경기 화면이 아니면 표시도 안 함
     const pr = probe(), seats = count(pr), key = JSON.stringify(seats);
     shape = pr.text;
     if (seats && key !== lastSeats) { lastSeats = key; setTimeout(() => GM_setValue('seats', { ...seats, venue: v.venue, at: Date.now() }), 1500); }  // 글자(잔여)가 먼저 가게 조금 뒤에. venue: 받는 현황판이 자기 구장인지 확인 (16판)
     if (v.s !== last) { last = v.s; resent = false; send(); ping(); setTimeout(check, 3000); }
     else if (board && !acked && !resent && Date.now() - sentAt > 4000) { resent = true; send(); setTimeout(check, 3000); }  // 현황판을 나중에 열었으면 한 번 다시 보냄
-    if (acked?.ok) show(`현황판이 받음 ${hms(acked.at)} (구역 ${acked.n}개)`, '#15803d');
+    if (quiet()) hide();
+    else if (acked?.ok) show(`현황판이 받음 ${hms(acked.at)} (구역 ${acked.n}개)`, '#15803d');
     else if (acked) show(`현황판이 안 받음: ${acked.why}`, '#c2410c');
     else if (!board) show(`예매 화면 감지 · 이 ${browser}에 현황판 입력 화면이 없어 못 넘김 → 이 ${browser}에서 현황판 입력 화면(#edit)을 여세요`, '#b91c1c');
     else show(`예매 화면 감지 · 보냄 ${hms(sentAt)} (구역 ${v.zones}줄), 현황판 응답 기다리는 중`, '#3e1a78');
@@ -117,7 +122,7 @@ if (site) {
   GM_addValueChangeListener('text', (key, old, v, remote) => { const r = remote && editing() && unsafeWindow.fcIngest?.(v.s); if (r) GM_setValue('ack', { ...r, at: Date.now(), page: location.search }); });
   GM_addValueChangeListener('ping', (key, old, v, remote) => { if (remote) unsafeWindow.fcPing?.(v); });
   GM_addValueChangeListener('seats', (key, old, v, remote) => { if (remote && editing()) unsafeWindow.fcSeats?.(v); });  // 스크립트가 센 좌석 칸 (13판)
-  unsafeWindow.fcPing?.({ state: 'installed', version: 16, at: Date.now() });
+  unsafeWindow.fcPing?.({ state: 'installed', version: 17, at: Date.now() });
   const beat = () => { if (editing()) GM_setValue('board', { at: Date.now(), page: location.search, want: document.body.dataset.want || '안양' }); };  // want: 시험 페이지면 그 원정 팀
   beat();
   setInterval(beat, 5000);
