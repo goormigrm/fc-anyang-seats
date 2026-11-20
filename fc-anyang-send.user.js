@@ -1,12 +1,10 @@
 // ==UserScript==
 // @name         FC안양 예매현황 보내기
 // @namespace    https://goormigrm.github.io/fc-anyang-seats/
-// @version      17
-// @description  티켓링크, 놀티켓 좌석 선택 화면에 보이는 잔여석 글자와 사람이 연 구역의 좌석 칸 수를 열려 있는 현황판 탭으로 보냄. 읽기만 하고 클릭, 새로고침, 요청은 하지 않음
+// @version      18
+// @description  티켓링크 좌석 선택 화면에 보이는 잔여석 글자와 사람이 연 구역의 좌석 칸 수를 열려 있는 현황판 탭으로 보냄. 읽기만 하고 클릭, 새로고침, 요청은 하지 않음
 // @match        https://ticketlink.co.kr/*
 // @match        https://*.ticketlink.co.kr/*
-// @match        https://nol.yanolja.com/*
-// @match        https://*.interpark.com/*
 // @match        https://goormigrm.github.io/fc-anyang-seats/*
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -15,7 +13,8 @@
 // ==/UserScript==
 // Tampermonkey 저장소는 브라우저마다 따로라서 예매 사이트와 현황판이 같은 브라우저(크롬끼리, 웨일끼리)에 있어야 넘어감
 const ua = navigator.userAgent, browser = /Whale\//.test(ua) ? '웨일' : /Edg\//.test(ua) ? '엣지' : /Chrome\//.test(ua) ? '크롬' : /Firefox\//.test(ua) ? '파이어폭스' : '브라우저';
-// 예매 사이트: 티켓링크, 놀티켓(구 인터파크 티켓, 부천, 강원, 수원 구장). 놀티켓 화면 글자는 아직 실제로 확인하지 못해 감지 조건을 넓게 둠
+// 예매 사이트: 티켓링크. 놀티켓(구 인터파크, 수원삼성, 수원FC, 부천, 강원)은 18판(11/20)부터 @match 에서 빼 놀티켓 화면에서는 돌지 않음
+// (구역별 잔여가 안 나와 현황판에서 그 구장을 뺌. 아래 놀티켓 감지 코드는 다시 하게 될 때를 위해 남겨 둠)
 const site = /(^|\.)ticketlink\.co\.kr$/.test(location.hostname) ? '티켓링크' : /(^|\.)(interpark\.com|yanolja\.com)$/.test(location.hostname) ? '놀티켓' : '';
 if (site) {
   // 사람이 등급을 누를 때마다 좌석 줄이 바뀌면 0.8초 뒤 한 번 보냄. FC안양 경기의 좌석 선택 화면('등급 선택', "N석")에서만
@@ -122,7 +121,7 @@ if (site) {
   GM_addValueChangeListener('text', (key, old, v, remote) => { const r = remote && editing() && unsafeWindow.fcIngest?.(v.s); if (r) GM_setValue('ack', { ...r, at: Date.now(), page: location.search }); });
   GM_addValueChangeListener('ping', (key, old, v, remote) => { if (remote) unsafeWindow.fcPing?.(v); });
   GM_addValueChangeListener('seats', (key, old, v, remote) => { if (remote && editing()) unsafeWindow.fcSeats?.(v); });  // 스크립트가 센 좌석 칸 (13판)
-  unsafeWindow.fcPing?.({ state: 'installed', version: 17, at: Date.now() });
+  unsafeWindow.fcPing?.({ state: 'installed', version: 18, at: Date.now() });
   const beat = () => { if (editing()) GM_setValue('board', { at: Date.now(), page: location.search, want: document.body.dataset.want || '안양' }); };  // want: 시험 페이지면 그 원정 팀
   beat();
   setInterval(beat, 5000);

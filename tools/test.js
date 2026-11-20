@@ -550,7 +550,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   p = await open(b, { url: URL + '?s=gimcheon', data: { 'gimcheon/latest.json': { updatedAt: '2026-11-07T14:06:00+09:00', match: { opponent: '김천상무' }, sections: [] } } });
   await p.waitForTimeout(1200);
   r = await p.evaluate(() => [...document.querySelectorAll('#stadiums a')].map(a => a.textContent + (a.getAttribute('aria-current') ? '*' : '')).join('|'));
-  check('구장 버튼: 안양 홈, 김천(지금, 11.07), 전북, 포항, 북패(서울), 울산, 인천, 수원삼성, 수원FC, 부천, 강원, 경기별 기록', r === '안양 홈|김천11.07*|전북|포항|북패|울산|인천|수원삼성|수원FC|부천|강원|경기별 기록', r);
+  check('구장 버튼: 안양 홈, 김천(지금, 11.07), 전북, 포항, 북패(서울), 울산, 인천, 경기별 기록 (놀티켓 구장 수원삼성, 수원FC, 부천, 강원은 11/20 뺌)', r === '안양 홈|김천11.07*|전북|포항|북패|울산|인천|경기별 기록', r);
   await p.context().close();
 
   // 사이트 화면에서만 FC서울 = '북패' (저장, 공유 이미지와 요약 글은 '서울', 경기장 이름은 그대로)

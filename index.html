@@ -2162,7 +2162,7 @@ window.fcSeats = v => {
 // 티켓링크 탭이 여럿이거나 예매 화면이 틀(iframe) 안이면 신호가 여러 곳에서 옴: 보낸 곳마다 따로 두고 가장 앞선 상태를 보여 줌
 const lamp = { installed: 0, version: 0, pings: {}, got: 0, zones: 0, rejected: '', seats: null };  // seats: 스크립트가 마지막으로 센 좌석과 그 결과
 // 보내기 스크립트 최신 판 (fc-anyang-send.user.js 의 @version 과 같게. 자동 시험이 맞춰 봄). 설치된 판이 낮으면 입력 화면 맨 위 버튼을 눈에 띄게
-const SCRIPT_VERSION = 17;
+const SCRIPT_VERSION = 18;
 const hms = t => new Date(t).toTimeString().slice(0, 8);
 // Tampermonkey 저장소는 브라우저마다 따로: 티켓링크를 다른 브라우저에서 열면 신호가 안 옴 (램프에 이 브라우저 이름을 보여 줌)
 const BROWSER = (ua => /Whale\//.test(ua) ? '웨일' : /Edg\//.test(ua) ? '엣지' : /Chrome\//.test(ua) ? '크롬' : /Firefox\//.test(ua) ? '파이어폭스' : '이 브라우저')(navigator.userAgent);
@@ -2257,11 +2257,14 @@ const FOLLOW = (q => !q.has('s') || q.has('auto'))(new URLSearchParams(location.
 const go = id => { const q = new URLSearchParams(location.search); if (id === 'anyang') { q.delete('s'); q.delete('auto'); } else { q.set('s', id); q.set('auto', ''); } location.replace(location.pathname + (q.size ? '?' + q : '')); };
 const follow = () => { const all = latestAll(); return all.then(list => list.find(([id]) => id === STADIUM)?.[1] !== undefined && newest(all).then(id => id !== STADIUM && go(id))); };  // 지금 구장 파일을 못 받았으면(undefined) 그대로
 // 구장마다 마지막 발행 (raw 로 받아 API 횟수를 쓰지 않음, 최대 몇 분 늦을 수 있음)
-const latestAll = () => Promise.all(['anyang', ...Object.keys(STADIUMS)].map(id => fetch(`${RAW}${id === 'anyang' ? '' : id + '/'}latest.json?t=${Date.now()}`, { cache: 'no-cache' })
+// 놀티켓 구장(seller)은 뺌 (11/20 사용자: 구역별 잔여가 안 나와 현황을 셀 수 없음). 구장 버튼, 최근 구장 따라가기, 시험 페이지에서 빠짐.
+// 칸 그림과 놀티켓 처리 코드는 남겨 둠 (다시 하게 되면 이 줄만 풀면 됨, 주소 ?s=suwon 으로는 열림)
+const SHOWN = Object.keys(STADIUMS).filter(k => !STADIUMS[k].seller);
+const latestAll = () => Promise.all(['anyang', ...SHOWN].map(id => fetch(`${RAW}${id === 'anyang' ? '' : id + '/'}latest.json?t=${Date.now()}`, { cache: 'no-cache' })
   .then(r => r.ok ? r.json() : r.status === 404 ? null : undefined).catch(() => undefined).then(d => [id, d])));  // null: 발행 없음, undefined: 못 받음
 const newest = (all = latestAll()) => all.then(list => list.map(([id, d]) => [id, +new Date(d?.updatedAt) || 0]).reduce((a, b) => b[1] > a[1] ? b : a)[0]);
 // 구장 버튼: 안양 홈, 원정 구장, 경기별 기록. 누르면 그 구장의 마지막 집계(지난 경기면 그 기록)
-$('stadiums').innerHTML = [['anyang', '안양 홈'], ...Object.entries(STADIUMS).map(([k, v]) => [k, v.name])]
+$('stadiums').innerHTML = [['anyang', '안양 홈'], ...SHOWN.map(k => [k, STADIUMS[k].name])]
   .map(([k, n]) => `<a class="btn" href="?s=${k}" data-s="${k}"${k === STADIUM ? ' aria-current="page"' : ''}>${nick(n)}<small></small></a>`).join('') + '<a class="btn" href="season.html">경기별 기록</a>';
 const latest0 = latestAll();  // 처음 한 번 받은 것을 구장 버튼과 최근 구장 찾기가 같이 씀
 latest0.then(list => list.forEach(([k, d]) => { const el = $('stadiums').querySelector(`[data-s="${k}"] small`); if (d?.updatedAt) el.textContent = String(d.updatedAt).slice(5, 10).replace('-', '.'); }));
@@ -2312,7 +2315,7 @@ const toggleEdit = () => { try { localStorage.setItem(EDIT, editing ? '0' : '1')
 addEventListener('keydown', e => { if (!embed && e.ctrlKey && e.shiftKey && e.code === 'KeyE') { e.preventDefault(); toggleEdit(); } });
 $('viewMode').onclick = toggleEdit;
 // 시험 페이지(안양 경기가 아닌 경기의 시험 집계)로 가는 링크: 보기 화면에는 없고 입력 화면 '그 밖의 기능'에만. 새 시험 페이지를 만들면 여기에 [구장, 원정 팀] 한 줄
-const TEST_PAGES = [['jeonbuk', 'seoul'], ['incheon', 'ulsan'], ['suwon', 'gyeongnam']];
+const TEST_PAGES = [['jeonbuk', 'seoul'], ['incheon', 'ulsan']];
 $('testPages').innerHTML = [...TEST_PAGES.map(([s, t]) => [`?s=${s}&test=${t}`, `${STADIUMS[s].host} vs ${(STADIUMS[t] || GUESTS[t]).host}`]), ['./', 'FC안양 현황판 (시험 아님)']]
   .map(([q, n]) => `<a href="${q}#edit">${esc(nick(n))}</a>`).join(' · ');
 portrait.addEventListener('change', render);
