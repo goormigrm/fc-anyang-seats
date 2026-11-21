@@ -1,0 +1,402 @@
+{
+ "app": "fc-anyang-seats",
+ "version": 1,
+ "updatedAt": "2026-11-01T16:30:00+09:00",
+ "match": {
+  "opponent": "부천FC1995",
+  "kickoff": "2026-11-01T16:30:00+09:00",
+  "venue": "안양종합운동장",
+  "home": "FC안양",
+  "away": "부천FC1995",
+  "competition": "K리그1",
+  "attendance": 4464,
+  "awayAttendance": 555
+ },
+ "capacity": 11542,
+ "available": 7078,
+ "booked": 4464,
+ "awayCapacity": 1235,
+ "awayBooked": 700,
+ "sinceBase": null,
+ "soldOut": [
+  "R14",
+  "R13",
+  "R12",
+  "R11",
+  "FS5",
+  "FS3",
+  "R10"
+ ],
+ "unknown": [
+  "스탠딩석",
+  "퍼스트석"
+ ],
+ "sections": [
+  {
+   "id": "일반지정석",
+   "name": "일반지정석",
+   "grade": "일반지정석",
+   "remain": 1350,
+   "max": null,
+   "sold": null
+  },
+  {
+   "id": "일반자유석",
+   "name": "일반자유석",
+   "grade": "일반자유석",
+   "remain": 2532,
+   "max": null,
+   "sold": null
+  },
+  {
+   "id": "T4",
+   "name": "피크닉 T4",
+   "grade": "피크닉존 테이블석(T4)",
+   "remain": 56,
+   "max": 62,
+   "sold": null
+  },
+  {
+   "id": "P",
+   "name": "돗자리 P",
+   "grade": "피크닉존 돗자리석(P)",
+   "remain": 200,
+   "max": 226,
+   "sold": null
+  },
+  {
+   "id": "중립석",
+   "name": "중립석",
+   "grade": "중립석",
+   "remain": 150,
+   "max": null,
+   "sold": null
+  },
+  {
+   "id": "원정석",
+   "name": "원정석",
+   "grade": "원정석",
+   "remain": 535,
+   "max": 1235,
+   "sold": null
+  },
+  {
+   "id": "T3",
+   "name": "T3",
+   "grade": "테이블석(T3)",
+   "remain": 28,
+   "max": null,
+   "sold": null
+  },
+  {
+   "id": "남측자유석",
+   "name": "남측자유석",
+   "grade": "남측 자유석(2층)",
+   "remain": 1150,
+   "max": null,
+   "sold": null
+  },
+  {
+   "id": "R15",
+   "name": "R15",
+   "grade": "해링턴플레이스존",
+   "remain": 66,
+   "max": 141,
+   "sold": null
+  },
+  {
+   "id": "R16",
+   "name": "R16",
+   "grade": "해링턴플레이스존",
+   "remain": 58,
+   "max": 138,
+   "sold": null
+  },
+  {
+   "id": "R17",
+   "name": "R17",
+   "grade": "해링턴플레이스존",
+   "remain": 46,
+   "max": 123,
+   "sold": null
+  },
+  {
+   "id": "R18",
+   "name": "R18",
+   "grade": "해링턴플레이스존",
+   "remain": 34,
+   "max": 123,
+   "sold": null
+  },
+  {
+   "id": "R19",
+   "name": "R19",
+   "grade": "해링턴플레이스존",
+   "remain": 30,
+   "max": 138,
+   "sold": null
+  },
+  {
+   "id": "R20",
+   "name": "R20",
+   "grade": "해링턴플레이스존",
+   "remain": 26,
+   "max": 123,
+   "sold": null
+  },
+  {
+   "id": "R21",
+   "name": "R21",
+   "grade": "해링턴플레이스존",
+   "remain": 26,
+   "max": 123,
+   "sold": null
+  },
+  {
+   "id": "R22",
+   "name": "R22",
+   "grade": "해링턴플레이스존",
+   "remain": 32,
+   "max": 138,
+   "sold": null
+  },
+  {
+   "id": "R23",
+   "name": "R23",
+   "grade": "해링턴플레이스존",
+   "remain": 40,
+   "max": 123,
+   "sold": null
+  },
+  {
+   "id": "R24",
+   "name": "R24",
+   "grade": "해링턴플레이스존",
+   "remain": 48,
+   "max": 123,
+   "sold": null
+  },
+  {
+   "id": "R25",
+   "name": "R25",
+   "grade": "해링턴플레이스존",
+   "remain": 62,
+   "max": 138,
+   "sold": null
+  },
+  {
+   "id": "R26",
+   "name": "R26",
+   "grade": "해링턴플레이스존",
+   "remain": 78,
+   "max": 138,
+   "sold": null
+  },
+  {
+   "id": "R9",
+   "name": "R9",
+   "grade": "가변석",
+   "remain": 52,
+   "max": 108,
+   "sold": null
+  },
+  {
+   "id": "R8",
+   "name": "R8",
+   "grade": "가변석",
+   "remain": 25,
+   "max": 99,
+   "sold": null
+  },
+  {
+   "id": "R7",
+   "name": "R7",
+   "grade": "가변석",
+   "remain": 52,
+   "max": 123,
+   "sold": null
+  },
+  {
+   "id": "R6",
+   "name": "R6",
+   "grade": "가변석",
+   "remain": 45,
+   "max": 135,
+   "sold": null
+  },
+  {
+   "id": "T1",
+   "name": "T1",
+   "grade": "테이블석(T1)",
+   "remain": 40,
+   "max": 117,
+   "sold": null
+  },
+  {
+   "id": "T2",
+   "name": "T2",
+   "grade": "테이블석(T2)",
+   "remain": 18,
+   "max": 60,
+   "sold": null
+  },
+  {
+   "id": "R5",
+   "name": "R5",
+   "grade": "가변석",
+   "remain": 40,
+   "max": 120,
+   "sold": null
+  },
+  {
+   "id": "R4",
+   "name": "R4",
+   "grade": "가변석",
+   "remain": 48,
+   "max": 123,
+   "sold": null
+  },
+  {
+   "id": "R3",
+   "name": "R3",
+   "grade": "가변석",
+   "remain": 55,
+   "max": 123,
+   "sold": null
+  },
+  {
+   "id": "R2",
+   "name": "R2",
+   "grade": "가변석",
+   "remain": 62,
+   "max": 123,
+   "sold": null
+  },
+  {
+   "id": "R1",
+   "name": "R1",
+   "grade": "가변석",
+   "remain": 78,
+   "max": 141,
+   "sold": null
+  },
+  {
+   "id": "R14",
+   "name": "R14",
+   "grade": "서포터즈석",
+   "remain": 0,
+   "max": 123,
+   "sold": null
+  },
+  {
+   "id": "R13",
+   "name": "R13",
+   "grade": "서포터즈석",
+   "remain": 0,
+   "max": 63,
+   "sold": null
+  },
+  {
+   "id": "R12",
+   "name": "R12",
+   "grade": "서포터즈석",
+   "remain": 0,
+   "max": 63,
+   "sold": null
+  },
+  {
+   "id": "R11",
+   "name": "R11",
+   "grade": "서포터즈석",
+   "remain": 0,
+   "max": 63,
+   "sold": null
+  },
+  {
+   "id": "스탠딩석",
+   "name": "스탠딩석",
+   "grade": "스탠딩석",
+   "remain": null,
+   "max": null,
+   "sold": null
+  },
+  {
+   "id": "FS7",
+   "name": "FS7",
+   "grade": "퍼스트 스탠딩석",
+   "remain": 4,
+   "max": null,
+   "sold": null
+  },
+  {
+   "id": "FS6",
+   "name": "FS6",
+   "grade": "퍼스트 스탠딩석",
+   "remain": 2,
+   "max": 26,
+   "sold": null
+  },
+  {
+   "id": "FS5",
+   "name": "FS5",
+   "grade": "퍼스트 스탠딩석",
+   "remain": 0,
+   "max": null,
+   "sold": null
+  },
+  {
+   "id": "FS4",
+   "name": "FS4",
+   "grade": "퍼스트 스탠딩석",
+   "remain": 1,
+   "max": 36,
+   "sold": null
+  },
+  {
+   "id": "FS3",
+   "name": "FS3",
+   "grade": "퍼스트 스탠딩석",
+   "remain": 0,
+   "max": null,
+   "sold": null
+  },
+  {
+   "id": "FS2",
+   "name": "FS2",
+   "grade": "퍼스트 스탠딩석",
+   "remain": 1,
+   "max": 26,
+   "sold": null
+  },
+  {
+   "id": "FS1",
+   "name": "FS1",
+   "grade": "퍼스트 스탠딩석",
+   "remain": 8,
+   "max": 50,
+   "sold": null
+  },
+  {
+   "id": "퍼스트석",
+   "name": "퍼스트석",
+   "grade": "퍼스트석",
+   "remain": null,
+   "max": null,
+   "sold": null
+  },
+  {
+   "id": "R10",
+   "name": "R10",
+   "grade": "서포터즈석",
+   "remain": 0,
+   "max": 126,
+   "sold": null
+  }
+ ],
+ "summary": "FC안양 vs 부천FC1995 2026.11.01(일) 16:30 예매 현황 (11.01 16:30 기준)\n공식 관중 4,464명 (예매 4,464석 대비 0), 그중 원정 555명\n마지막 집계 예매 4,464석 / 11,542석 (38.7%)\n매진: FS3, FS5, R10, R11, R12, R13, R14\n(정보 없는 구역 2개 빠짐)",
+ "images": {
+  "board": "https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/latest.png",
+  "story": "https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/latest-story.png"
+ },
+ "history": "https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/history.json"
+}
