@@ -553,6 +553,13 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   check('구장 버튼: 안양 홈, 김천(지금, 11.07), 전북, 포항, 북패(서울), 울산, 인천, 경기별 기록 (놀티켓 구장 수원삼성, 수원FC, 부천, 강원은 11/20 뺌)', r === '안양 홈|김천11.07*|전북|포항|북패|울산|인천|경기별 기록', r);
   await p.context().close();
 
+  // 보기 화면: 발행본의 공식 관중(match.attendance, awayAttendance)과 원정석 등급 잔여를 읽음 (11/18 주석 뒤에 붙어 안 읽히던 것, 11/22 포항 4,677 이 안 보임)
+  p = await open(b, { url: URL + '?s=pohang', data: { 'pohang/latest.json': { updatedAt: '2026-11-21T10:48:00+09:00', match: { opponent: '포항스틸러스', kickoff: '2026-11-21T14:00:00+09:00', attendance: 4677, awayAttendance: 330 }, awayRemain: 12, sections: [{ id: 'E1', remain: 100, max: 352 }] } } });
+  await p.waitForTimeout(1200);
+  r = await p.evaluate(() => [state.crowd, state.crowdAway, state.awayGrade, /4,677/.test(document.body.innerText)].join());
+  await p.context().close();
+  check('보기 화면: 발행본의 공식 관중 4,677(원정 330), 원정석 등급 잔여를 읽어 보여 줌', r === '4677,330,12,true', r);
+
   // 사이트 화면에서만 FC서울 = '북패' (저장, 공유 이미지와 요약 글은 '서울', 경기장 이름은 그대로)
   p = await open(b, { url: URL + '?s=seoul#edit' });
   r = await p.evaluate(() => {

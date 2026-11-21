@@ -2286,7 +2286,9 @@ async function loadPublished() {
     Object.assign(state, {
       groups: Object.fromEntries((Array.isArray(d.groups) ? d.groups : []).filter(g => typeof g?.name === 'string' && Array.isArray(g.ids)).map(g => [g.name, { ids: g.ids.filter(id => state.rows[id]), remain: num(g.remain) }])),
       opp: Object.values(TEAMS).includes(d.match?.opponent) ? d.match.opponent : '', date: local(d.match?.kickoff), at: local(d.updatedAt), pubAt: local(d.updatedAt),
-      pubSnap: { at: local(d.updatedAt), rows: Object.fromEntries(SECTIONS.map(s => [s.id, num(secs[s.id]?.remain)])) },  // 불러온 발행 = 다음 캡처의 비교 기준 crowd: num(d.match?.attendance), crowdAway: num(d.match?.awayAttendance), awayGrade: num(d.awayRemain),
+      pubSnap: { at: local(d.updatedAt), rows: Object.fromEntries(SECTIONS.map(s => [s.id, num(secs[s.id]?.remain)])) },  // 불러온 발행 = 다음 캡처의 비교 기준
+      // 공식 관중, 원정석 등급 잔여 (11/18 위 줄 주석 뒤에 붙어 읽히지 않았음: 보기 화면에 공식 관중이 안 나오던 것, 11/22 사용자)
+      crowd: num(d.match?.attendance), crowdAway: num(d.match?.awayAttendance), awayGrade: num(d.awayRemain),
       base: d.sinceBase ? { at: local(d.sinceBase.at), rows: Object.fromEntries(SECTIONS.map(s => {
         const x = secs[s.id] || {}; return [s.id, num(x.remain) != null && Number.isInteger(x.sold) ? x.remain + x.sold : null]; })) } : null,
     });
