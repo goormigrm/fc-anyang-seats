@@ -1281,7 +1281,7 @@ function trendStory() {
 }
 // story: false 가로판(발행용), true 스토리, 'trend' 추이 스토리, 'full' 가로판 아래에 예매 추이(홈석, 원정석)를 붙인 한 장('현황판 저장', 추이 점이 없으면 가로판만)
 async function pngBlob(story) {
-  if (typeof EMBLEM !== 'string') await loadScript('emblem.js');
+  if (typeof EMBLEM !== 'string') await (window.emblemLoad ||= loadScript('emblem.js'));  // 현황판, 스토리 그림을 같이 만들 때 두 번 불러 'EMBLEM 이미 선언' 오류가 나던 것
   const full = story === 'full' && trendPoints().length > 0, TH = 300;
   const [w, h, z] = story && story !== 'full' ? [1080, 1920, 1] : [W, H + (full ? TH : 0), 2];
   exporting = true;
