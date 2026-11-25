@@ -530,7 +530,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       ['jeonbuk', 104, 11, H2('전북현대', '전주월드컵경기장') + 'S원정\n500 석\nS-1C구역\n120 석\nE일반2A구역\n30 석\n1A구역\n7 석', { S1C: 120, E2A: 30 }, '1A'],
       ['incheon', 62, 7, H2('인천유나이티드', '인천축구전용경기장') + '원정석\n1142 석\nN1구역\n144 석\nE3구역\n90 석\nW5구역\n10 석', { N1: 144, E3: 90, W5: 10 }, ''],
       ['pohang', 63, 7, H2('포항스틸러스', '포항스틸야드') + '청암E1구역\n100 석\nA1구역\n50 석\n데크석\n20 석\n퍼스트클래스석\n12 석\n퍼스트클래스 구역\n12 석\n프레스티지 테이블(1인)\n7 석\n프레스티지 테이블(2인)\n26 석\nT2 테이블(1인)\n1 석\nT2 테이블(2인)\n60 석', { E1: 100, A1: 50, 데크석: 20, 퍼스트클래스석: 12, 프레스티지테이블: 33, T2: 61 }, ''],
-      ['seoul', 69, 3, H2('FC서울', '서울월드컵경기장') + 'E-A구역\n80 석\nSC구역\n40 석', { EA: 80, SC: 40 }, ''],
+      ['seoul', 80, 3, H2('FC서울', '서울월드컵경기장') + 'E-A구역\n80 석\nSC구역\n40 석', { EA: 80, SC: 40 }, ''],
       ['ulsan', 106, 11, H2('울산HD', '울산문수축구경기장') + 'N1구역\n120 석\nE13구역\n50 석\n프리미엄 테이블석\n10 석', { N1: 120, E13: 50, 프리미엄테이블석: 10 }, ''],
       ['suwon', 62, 3, H2('수원삼성', '수원월드컵경기장') + 'S3구역\n20 석\nE5구역\n40 석', { S3: 20, E5: 40 }, ''],
       ['suwonfc', 38, 13, H2('수원FC', '수원종합운동장') + 'S7구역\n30 석\nVIP석\n5 석', { S7: 30, VIP석: 5 }, ''],
@@ -1365,12 +1365,13 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   r = await p.evaluate(() => [/^\d{4}\.\d{2}\.\d{2} \d{2}:\d{2}$/.test(APP_VERSION), document.querySelector('.foot').textContent.endsWith(`판 ${APP_VERSION}`), document.getElementById('appVerTop').textContent === `판 ${APP_VERSION}`, diagText().includes(`현황판 판: ${APP_VERSION}`)].join());
   await p.context().close();
   check('현황판 판: 화면 아래, 입력 화면 맨 위, 진단 글', r === 'true,true,true,true', r);
-  // 서울(11/25 서울 vs 대전 목록): '동측 B구역' 방향 이름, E피치석 아래 구역 줄은 E피치석 몫(EB 아님), E석 'A 구역' + 'A구역', 서측 B·G 는 W피치석 + W석, 시험 페이지 원정석 남측 A~F, 기본 미판매
+  // 서울(11/25 서울 vs 대전 목록): '동측 B구역' 방향 이름, E석 'A 구역' + 'A구역', 서측 B·G 는 W피치석 + W석, 시험 페이지 원정석 남측 A~F, 기본 미판매
   p = await open(b, { url: URL + '?s=seoul&test=daejeon#edit' });
   r = await p.evaluate(() => { fcIngest('FC서울 vs 대전하나시티즌\n서울월드컵경기장 | 2026.11.28(토) 14:00\n등급 선택\n신한카드 E피치석 1344 석\n동측 B구역 477 석\n동측 C구역 340 석\nE석 8476 석\n동측 A 구역 231 석\n동측 A구역 22 석\n동측 B 구역 448 석\n동측 B구역 0 석\n동측 K구역 771 석\nW피치석 469 석\n서측 B구역 5 석\n서측 G구역 50 석\nW석 6767 석\n서측 B구역 2 석\n서측 G구역 412 석\n원정석 5344 석\n남측 A구역 594 석');
-    const v = id => state.rows[id].remain; return [v('E피치석'), v('EA'), v('EB'), v('EC'), v('EK'), v('WB'), v('WG'), v('SA'), SECTIONS.filter(s => s.ours).map(s => s.id).sort().join(' '), state.rows.NC.off].join(); });
+    const v = id => state.rows[id].remain; return [v('EB앞'), v('EC앞'), v('EA앞'), v('EA'), v('EB'), v('EC'), v('EK'), v('WB앞'), v('WG앞'), v('WB'), v('WG'), v('SA'), SECTIONS.filter(s => s.ours).map(s => s.id).sort().join(' '), state.rows.NC.off, !!state.rows.E피치석].join(); });
   await p.context().close();
-  check('서울 목록: 방향 이름, E피치석 아래 줄은 E피치석 몫, E석 A 두 줄 더함, 서측 B·G 는 두 등급 더함, 대전전 원정석 남측 A~F, 북측 C 기본 미판매', r === '1344,253,448,,771,7,462,594,SA SB SC SD SE SF,true', r);
+  // (11/25 사용자) 동측은 글자마다 앞쪽('동측 B구역': 신한카드 E피치석과 E석 0석 줄을 더함)과 뒤쪽('동측 B 구역') 두 칸, 서측 W피치석 아래 B·G 는 앞줄 칸, W석 아래는 뒷줄 칸
+  check('서울 목록: 방향 이름, 동측 앞쪽/뒤쪽 칸(붙여 쓴 이름/띄어 쓴 이름), 서측 W피치석은 앞줄 칸, 대전전 원정석 남측 A~F, 북측 C 기본 미판매, E 피치석 칸 없음', r === '477,340,22,231,448,,771,5,50,2,412,594,SA SB SC SD SE SF,true,false', r);
   // 수원삼성(11/18 사용자): 원정석 쪽은 S4~S6(S1~S3 중립석은 홈 관중), 2층 맨 앞 2줄과 N8, N12 맨 뒤 10줄은 팔지 않는 줄(막힌 좌석 기본값)
   p = await open(b, { url: URL + '?s=suwon#edit' });
   const rSw = await p.evaluate(() => { const o = [SECTIONS.filter(x => x.ours).map(x => x.id).sort().join(' '), state.rows.N8.block, state.rows.E12.block, capOf(state.rows.N8), state.rows.S1.block ?? 0, state.rows.N9.block, state.rows.N10.block, state.rows.N11.block];

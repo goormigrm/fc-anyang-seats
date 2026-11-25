@@ -281,21 +281,27 @@ const STADIUMS = {
   // S 안쪽 F·E·D·C·B·A(C, B, A 가 원정석), 바깥 P·N~H·G, W 앞줄 B~G(피치석, 센터석), 뒷줄 J~M, 모서리 A·H, 바깥 N·P~W·X, N 안쪽 A·B~E·F, 바깥 G·H~N·P
   // c0 음수: 직선 부분이 경기장보다 조금 길고 모서리 칸이 작음 (원본 팔각형 비율). E 피치석 줄은 원본처럼 두껍게, 층 사이 통로는 좁게
   // unsold: 11/25 서울 vs 대전 좌석 그림(직접 셈)에서 판매 등급이 아니거나 통째로 회색인 구역(W센터석 C~E, VIP J~L, 2층 모서리, 북측 서포터즈 C·D, 남측 2층). 총석은 data seoul/max.json
-  // dirs: 티켓링크 구역 이름이 '동측 B구역'(방향 + 글자). gradeCells: 등급 줄이 곧 칸(신한카드 E피치석)이면 그 아래 '동측 B구역' 줄은 그 칸 몫이라 EB 로 넣지 않음
-  seoul: { unsold: ['WC', 'WD', 'WE', 'WJ', 'WK', 'WL', 'WN', 'WX', 'EJ', 'ET', 'NC', 'ND', 'NG', 'NP', 'SG', 'SH', 'SJ', 'SK', 'SL', 'SM', 'SN', 'SP'], newUnsold: true, dirs: true, gradeCells: true,
+  // dirs: 티켓링크 구역 이름이 '동측 B구역'(방향 + 글자). gradeCells: 등급 줄이 곧 칸(테라 테이블석)이면 그 아래 구역 줄은 그 칸 몫. 붙여 쓴 '동측 B구역'은 앞줄 EB앞, 띄어 쓴 '동측 B 구역'은 뒷줄 EB
+  seoul: { unsold: ['WC', 'WD', 'WE', 'WJ', 'WK', 'WL', '테라테이블석', '테라라이트테이블석', 'WN', 'WX', 'EJ', 'ET', 'NC', 'ND', 'NG', 'NP', 'SG', 'SH', 'SJ', 'SK', 'SL', 'SM', 'SN', 'SP'], newUnsold: true, dirs: true, gradeCells: true,
     color: 'red', venue: '서울월드컵경기장', host: 'FC서울', name: '서울', geo: { kx: 0.9, c0: -6, chamfer: true, r: [12, 172], s: 1.32 },
     layout: () => {
-      const T1 = [14, 100], T2 = [106, 172], ours = ['SC', 'SB', 'SA'], c = (p, l) => [...l].map(x => p + x);
-      arc(['E피치석'], 0, 1, [14, 48]); arc(c('E', 'GFEDCB'), 0, 1, [50, 100]); arc(c('E', 'SRQPNMLK'), 0, 1, T2);
-      arc(['NA', 'EH'], 7, 8, T1); arc(['NG', 'ET'], 7, 8, T2); arc(['EA', 'SF'], 1, 2, T1); arc(['EJ', 'SP'], 1, 2, T2);
+      const T1 = [14, 100], T2 = [106, 172], F = [14, 48], B = [50, 100], ours = ['SC', 'SB', 'SA'], c = (p, l) => [...l].map(x => p + x);
+      // 동측 1층: 글자마다 앞쪽(티켓링크 '동측 B구역': B~G 는 신한카드 E피치석 1~14열, A·H 는 8~14열)과 뒤쪽('동측 B 구역', 15~40열) 두 칸 (11/25 사용자: 'E 피치석' 이라는 구역은 없음)
+      arc(c('E', 'GFEDCB').map(x => x + '앞'), 0, 1, F); arc(c('E', 'GFEDCB'), 0, 1, B); arc(c('E', 'SRQPNMLK'), 0, 1, T2);
+      arc(['NA'], 7, 7.5, T1); arc(['EH앞'], 7.5, 8, F); arc(['EH'], 7.5, 8, B); arc(['NG', 'ET'], 7, 8, T2);
+      arc(['EA앞'], 1, 1.5, F); arc(['EA'], 1, 1.5, B); arc(['SF'], 1.5, 2, T1); arc(['EJ', 'SP'], 1, 2, T2);
       arc(c('S', 'EDCB'), 2, 3, T1, ours); arc(c('S', 'NMLKJH'), 2, 3, T2);
       arc(['SA', 'WH'], 3, 4, T1, ours); arc(['SG', 'WX'], 3, 4, T2);
-      arc(c('W', 'GFEDCB'), 4, 5, [14, 45]); arc(c('W', 'MLKJ'), 4, 5, [47, 100]); arc(c('W', 'WVUTSRQP'), 4, 5, T2);
+      // 서측 1층(11/25 사용자 좌석도): 앞줄 W피치석 B·G 와 C, W센터석 D·E, F / 뒷줄 B(W석), 테라 라이트 테이블석, J, VIP 테이블석 K·L, 테라 테이블석, M, G(W석). u 는 G 쪽(4)에서 B 쪽(5)으로
+      const row = (list, T) => list.reduce((u, [id, w]) => { arc([id], u, u + w, T); return u + w; }, 4);
+      row([['WG앞', 0.2], ['WF', 0.15], ['WE', 0.15], ['WD', 0.15], ['WC', 0.15], ['WB앞', 0.2]], [14, 45]);
+      row([['WG', 0.18], ['WM', 0.14], ['테라테이블석', 0.07], ['WL', 0.13], ['WK', 0.13], ['WJ', 0.12], ['테라라이트테이블석', 0.05], ['WB', 0.18]], [47, 100]);
+      arc(c('W', 'WVUTSRQP'), 4, 5, T2);
       arc(['WA', 'NF'], 5, 6, T1); arc(['WN', 'NP'], 5, 6, T2);
       arc(c('N', 'EDCB'), 6, 7, T1); arc(c('N', 'NMLKJH'), 6, 7, T2);
-      SECTIONS.forEach(x => { if (x.id === 'E피치석') x.name = 'E 피치석'; });
-      // 같은 이름이 두 번 나오는 칸은 둘을 더함: E석의 '동측 A 구역'(16~40열)과 '동측 A구역'(앞줄, B~G 는 E피치석 자리라 0), 서측 B·G 는 W피치석과 W석 (11/25 서울 vs 대전 목록)
-      SECTIONS.forEach(x => { const m = x.id.match(/^E([A-H])$/); if (m) x.mix = [`${m[1]} 구역`, `${m[1]}구역`]; if (x.id === 'WB' || x.id === 'WG') x.mix = ['피치', 'W석']; });
+      SECTIONS.forEach(x => { const m = x.id.match(/^([EW][A-H])앞$/); if (m) x.name = m[1] + ' 앞'; if (x.id === '테라테이블석') x.name = '테라 테이블'; if (x.id === '테라라이트테이블석') x.name = '테라 라이트'; });
+      // 여러 등급이 같은 칸으로 오면 등급마다 더함: 동측 앞쪽 B~G 는 신한카드 E피치석과 E석('동측 B구역' 0석), VIP 테이블석 K·L 은 2인, 1인, 법인 2인, 법인 1인
+      SECTIONS.forEach(x => { if (/^E[A-H]앞$/.test(x.id) || x.id === 'WK' || x.id === 'WL') x.mix = []; });
     } },
   // 울산문수축구경기장 (울산 좌석도, 3층): 안쪽 밤겔 피크닉존·E1~E9·게이밍 체어존·S1~S8·W1~W8(가운데 프리미엄 테이블)·N1~N8,
   // 가운데 E11~E24·S11~S20·W11~W16(2층 테이블)·N11~N20, 바깥 E31~E40·S31~S34·W31~W38(3층 테이블)·N31~N36. 원정석 = N1~N4, N11~N15, N31~N32
@@ -531,9 +537,10 @@ function fillByTotals(found, totals) {
 
 // 구역 이름 → 현황판 칸 id (빈칸, 하이픈, 가운뎃점을 빼고 대문자로. 그대로 → 한글 앞말을 빼고 → 한글을 모두 빼고)
 // 서울(dirs): '동측 B구역' -> 'EB구역' (동 E, 서 W, 남 S, 북 N)
-const dirName = t => AWAY && STADIUMS[STADIUM].dirs ? t.replace(/(^|\s)([동서남북])측\s*(?=[A-Z])/g, (m, a, d) => a + { 동: 'E', 서: 'W', 남: 'S', 북: 'N' }[d]) : t;
+// 동측 1층은 붙여 쓴 '동측 B구역' 이 앞쪽 칸(EB앞), 띄어 쓴 '동측 B 구역' 이 뒤쪽 칸(EB)
+const dirName = t => AWAY && STADIUMS[STADIUM].dirs ? t.replace(/동측\s*([A-H])구\s*역/g, 'E$1앞').replace(/(^|\s)([동서남북])측\s*(?=[A-Z])/g, (m, a, d) => a + { 동: 'E', 서: 'W', 남: 'S', 북: 'N' }[d]) : t;
 const zoneId = n => {
-  const k = dirName(n.toUpperCase().replace(/[\s·_-]/g, '')), b = k.replace(/\([^)]*\)/g, ''), names = {};  // 놀티켓 '프리미엄 패밀리박스(4인)(GATE:PREMIUM)'
+  const k = dirName(n.toUpperCase()).replace(/[\s·_-]/g, ''), b = k.replace(/\([^)]*\)/g, ''), names = {};  // 놀티켓 '프리미엄 패밀리박스(4인)(GATE:PREMIUM)'
   const put = (a, id) => { if (a) names[a.toUpperCase().replace(/[\s·_-]/g, '')] = id; };
   SECTIONS.forEach(x => [x.name, ...(x.alias || [])].forEach(a => put(a, x.id))); SECTIONS.forEach(x => put(x.id, x.id));  // 칸 id 가 이름보다 우선 (수원 'W13' = 2층 테이블, 이름이 W13 인 칸은 미판매 구역)
   return [...new Set([k, b, b.replace(/구역$/, ''), k.replace(/[()]/g, '')])].flatMap(c => [c, c.replace(/^[가-힣]+/, ''), c.replace(/[가-힣]/g, '')]).map(c => c && names[c]).find(Boolean) || null;
@@ -554,13 +561,15 @@ function parseText(text) {
   for (const [, n, v] of t.matchAll(/\(좌석 그림\)\n([^\n]+?)구역 (\d+)석/g)) { const id = state.rows[n] ? n : zoneId(n); if (id) add(id, +v); }
   // 휠체어석 아래 구역 건너뛰기는 홈도 (안양 '휠체어석 12 석' 아래 'R5구역 2 석'이 R5 를 덮지 않게). 등급마다 나눠 받는 것은 원정만
   const mix = {}, zero = {};  // mix: { 칸: { 등급: 잔여 } } (전북 E2B 는 아래 등급 줄 읽기에서 테이블/일반으로)
-  { const L = t.split('\n'), out = []; let g = '', gv = 0, used = 0, gc = null;  // gc: 등급 줄이 곧 칸(서울 '신한카드 E피치석')일 때 그 칸 (gradeCells)
+  { const L = t.split('\n'), out = []; let g = '', gv = 0, used = 0, gc = null;  // gc: 등급 줄이 곧 칸(서울 '테라 테이블석')일 때 그 칸 (gradeCells)
     for (let i = 0; i < L.length; i++) {
       if (L[i] === '(좌석 그림)') { g = ''; continue; }
       // '석'을 인식기가 4 로 읽은 등급 줄('휠체어석(E석) 744' = 74석): 이름에 석이 있는 줄만 (휠체어석 줄을 못 알아보면 그 아래 구역이 실제 구역을 덮음)
       const one = L[i].match(/^(.*?[^\d\s])\s*(\d+)\s*석\s*$/) || !/구\s*역/.test(L[i]) && L[i].match(/^(.*석\)?)\s+(\d+)4\s*$/), two = !one && L[i + 1]?.match(/^\s*(\d+)\s*석\s*$/);
       const n = (one ? one[1] : two ? L[i] : '').replace(/^[^0-9A-Za-z가-힣]+/, '').trim(), v = one ? +one[2] : two ? +two[1] : 0;
-      const z = n && zoneId(n), x = z && SECTIONS.find(s => s.id === z);
+      let z = n && zoneId(n);
+      if (z && AWAY && STADIUMS[STADIUM].dirs && /피치/.test(g) && /구\s*역/.test(n) && state.rows[z + '앞']) z += '앞';  // 서울 W피치석 아래 '서측 B구역' = 앞줄 칸 (W석 아래 같은 이름은 뒷줄)
+      const x = z && SECTIONS.find(s => s.id === z);
       if (!n || !(/구\s*역/.test(n) || z && !n.includes('('))) {  // 등급 줄 (또는 숫자 없는 줄)
         // 0석 등급(매진되어 접힘)은 그 등급 몫을 0 으로: 낱말 목록 칸은 낱말, 전북 테이블/일반 칸은 같은 면(E, W)의 테이블/일반, 그 밖에는 등급 이름으로 받은 몫
         // (전에는 낱말 목록 칸만이라 전북 E2B 의 '테이블' 13석, 인천 라탄 '4인' 몫이 매진 뒤에도 남아 잔여가 많게 나옴)
@@ -578,7 +587,8 @@ function parseText(text) {
       if (AWAY && STADIUMS[STADIUM].gradeCells) { if (!/구\s*역/.test(n)) { gc = z; g = n; } else if (gc) { if (two) i++; continue; } }  // 칸인 등급 아래 구역 줄은 그 칸 몫 (등급 숫자로 이미 받음)
       if (AWAY && g && Array.isArray(x?.mix)) { (mix[z] ||= {})[x.mix.find(k => g.includes(k) || n.includes(k)) || g.replace(/\s/g, '')] = v; if (two) i++; continue; }  // 낱말은 등급 이름 또는 그 줄 이름에서 (서울 E석 'A 구역'과 'A구역')  // 낱말 없는 등급 이름은 빈칸을 빼고 (인식에서 '테라스존' 처럼 붙어도 같은 몫)
       if (AWAY && g && z && z === zoneId(g)) { (mix[z] ||= {})[g.replace(/\s/g, '')] = v; if (two) i++; continue; }  // 그 등급 아래 같은 칸 줄(인천 '피크닉 테이블석(2인)' 아래 '피크닉 테이블석')은 같은 몫
-      out.push(dirName(L[i]));  // 서울 '동측 K구역' -> 'EK구역' (아래 구역 줄 읽기가 받게)
+      if (AWAY && STADIUMS[STADIUM].dirs && z && /구\s*역/.test(n)) { out.push(`${z}구역 ${v}석`); if (two) i++; continue; }  // 서울: 정한 칸 이름으로 (아래 구역 줄 읽기가 받게)
+      out.push(L[i]);
     }
     t = out.join('\n');
     for (const [id, p] of Object.entries(zero)) if (mix[id] || state.rows[id]?.parts) mix[id] = { ...p, ...mix[id] };
@@ -715,8 +725,10 @@ const syncOff = () => {
   // 본 기록이 없는 브라우저: 예전부터 있던 기본값(인천 N7 처럼 사람이 여닫는 칸)은 본 것으로 치고, 새로 넣은 기본값(newUnsold: 11/25 서울 22구역, 안양 홈 T1)만 켬
   // (11/25: 그 전에 서울 시험 페이지를 연 브라우저가 빈 목록을 기억해 서울 미판매 22구역이 빈칸으로 보임)
   if (!Array.isArray(seen)) seen = !AWAY || STADIUMS[STADIUM].newUnsold ? [] : def;
-  def.filter(id => !seen.includes(id) && state.rows[id]).forEach(id => Object.assign(state.rows[id], { off: true, remain: null }));
-  keep(); saveOff();
+  const add = def.filter(id => !seen.includes(id) && state.rows[id]);
+  add.forEach(id => Object.assign(state.rows[id], { off: true, remain: null }));
+  if (add.length) saveOff();  // 바뀐 것이 있을 때만 저장 (탭 맞춤 때마다 저장하면 다른 탭의 미판매를 덮음)
+  if (def.some(id => !seen.includes(id))) keep();
 };
 const localISO = (t = Date.now()) => new Date(t - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);  // "2026-11-27T12:00"
 state.at ||= localISO();
@@ -2188,7 +2200,7 @@ const lamp = { installed: 0, version: 0, pings: {}, got: 0, zones: 0, rejected: 
 // 보내기 스크립트 최신 판 (fc-anyang-send.user.js 의 @version 과 같게. 자동 시험이 맞춰 봄). 설치된 판이 낮으면 입력 화면 맨 위 버튼을 눈에 띄게
 const SCRIPT_VERSION = 18;
 // 현황판 판: 커밋할 때 tools/pre-commit.sh 가 이 줄을 커밋 시각(KST)으로 바꿈. 화면 아래와 입력 화면 맨 위에 보여 수정이 반영됐는지 알 수 있게 (11/25 사용자)
-const APP_VERSION = '2026.11.25 16:11';
+const APP_VERSION = '2026.11.25 16:22';
 const hms = t => new Date(t).toTimeString().slice(0, 8);
 // Tampermonkey 저장소는 브라우저마다 따로: 티켓링크를 다른 브라우저에서 열면 신호가 안 옴 (램프에 이 브라우저 이름을 보여 줌)
 const BROWSER = (ua => /Whale\//.test(ua) ? '웨일' : /Edg\//.test(ua) ? '엣지' : /Chrome\//.test(ua) ? '크롬' : /Firefox\//.test(ua) ? '파이어폭스' : '이 브라우저')(navigator.userAgent);
@@ -2335,7 +2347,7 @@ document.body.classList.toggle('editing', editing);
 document.body.classList.toggle('embed', embed); document.body.classList.toggle('away', AWAY);
 $('appVer').textContent = ` · 판 ${APP_VERSION}`; $('appVerTop').textContent = `판 ${APP_VERSION}`;
 // 입력 화면: 사이트에 더 새 판이 올라와 있으면 알림 (이 탭이 옛 판이면 새로 고침해야 수정이 반영됨). 주소 끝 ?v= 로 캐시를 피해 한 번만 받음
-if (editing) fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.text() : '').then(t => { const v = t.match(/const APP_VERSION = '([^']+)'/)?.[1];
+if (editing && /^http/.test(location.protocol)) fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.text() : '').then(t => { const v = t.match(/const APP_VERSION = '([^']+)'/)?.[1];
   if (v && v > APP_VERSION) { $('appVerTop').textContent = `판 ${APP_VERSION} · 새 판 ${v} 있음: 새로 고침(Ctrl+F5)`; $('appVerTop').style.color = '#b91c1c'; } }).catch(() => {});
 if (SELLER !== '티켓링크') document.querySelector('.foot').textContent = document.querySelector('.foot').textContent.replace('티켓링크', SELLER);  // 바닥 글의 예매처
 if (AWAY) {
