@@ -47,6 +47,8 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
 
   check('자체 시험(parseText) 과 페이지 오류 없음', !p.errors.length, p.errors.join(' / '));
 
+  // 총석을 모르는 구역에서 처음 본 잔여로 최대를 배움: 11/25 부터 안양 홈은 모든 구역 총석이 있어 일반지정석 총석을 지우고 시험
+  await p.evaluate(() => { delete KNOWN_MAX.일반지정석; state.rows.일반지정석.max = null; });
   let r = await ingest(p, H + '퍼스트 스탠딩석\n44 석\nFS1구역\n27 석\n퍼스트석\n0 석\n스탠딩석\n6 석\n일반 지정석(2층)\n1426 석\nVIP석\n20 석\n서포터즈석\n79 석\nR10구역\n26 석\nR11구역\n1 석\nR12구역\n0 석\nR14구역\n52 석');
   const rows = r.state.rows;
   check('PC 글자: 구역, 등급 숫자', rows.FS1.remain === 27 && ['F1', 'F4', 'F7'].every(id => rows[id].remain === 0) && rows.일반지정석.remain === 1426 && rows.R10.remain === 26, JSON.stringify(rows.FS1));
@@ -96,7 +98,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       history = history.slice(2); render(); out.none = document.getElementById('trend').textContent;  // 같은 시점보다 늦은 점만 있으면 안 보임
       return out;
     });
-    check('추이: 지난 경기 같은 시점 비교 (홈석 3,350 대비 +6,931, 원정석 150 대비 +85), 자료 없으면 안 보임', /부천FC1995전 같은 시점 3,350석 대비 \+6,931/.test(r.a) && /부천FC1995전 같은 시점 150석 대비 \+85/.test(r.a) && !/같은 시점/.test(r.none), r.a);
+    check('추이: 지난 경기 같은 시점 비교 (홈석 3,350 대비 +5,907, 원정석 150 대비 +85), 자료 없으면 안 보임', /부천FC1995전 같은 시점 3,350석 대비 \+5,907/.test(r.a) && /부천FC1995전 같은 시점 150석 대비 \+85/.test(r.a) && !/같은 시점/.test(r.none), r.a);
     check('숨긴 버튼(지난 경기 숫자 되살리기)은 화면에 안 보임', r.hid === 'none', r.hid);
     // 구역을 누르면 자세히, 구역이 아닌 곳을 누르면 닫힘
     // 도형 안의 한 점 (둥근 띠 모양 칸은 테두리 상자 가운데가 칸 밖일 수 있어 상자 안을 훑음)
@@ -662,12 +664,12 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   // 확인된 총석(FS4 36)은 그 브라우저가 처음 본 잔여로 배운 추정값보다 우선, 사람이 넣은 값은 그대로
   {
     const ctx = await b.newContext();
-    // 모르는 구역 예: 중립석은 코드에 총석이 없음 (총석 발행으로만. 11/25 FS5 는 36 확인)
-    await ctx.addInitScript(() => { if (!localStorage.getItem('fc-anyang-seat-status')) localStorage.setItem('fc-anyang-seat-status', JSON.stringify({ rows: { FS4: { remain: 20, max: 20, learned: true }, FS1: { remain: 5, max: 48 }, 중립석: { remain: 9, max: 9, learned: true } } })); });
+    // (11/25 부터 안양 홈은 모든 구역 총석이 있어 '모르는 구역 추정값은 그대로'는 위 '최대 좌석 배우기'에서 봄)
+    await ctx.addInitScript(() => { if (!localStorage.getItem('fc-anyang-seat-status')) localStorage.setItem('fc-anyang-seat-status', JSON.stringify({ rows: { FS4: { remain: 20, max: 20, learned: true }, FS1: { remain: 5, max: 48 } } })); });
     const pg = await ctx.newPage(); await pg.goto(URL + '#edit');
-    r = await pg.evaluate(() => [state.rows.FS4.max, !!state.rows.FS4.learned, state.rows.FS1.max, state.rows.중립석.max, !!state.rows.중립석.learned].join());
+    r = await pg.evaluate(() => [state.rows.FS4.max, !!state.rows.FS4.learned, state.rows.FS1.max].join());
     await ctx.close();
-    check('확인된 총석 FS4 36 은 배운 추정값(20)보다 우선, 사람이 넣은 FS1 48 과 모르는 중립석 추정값은 그대로', r === '36,false,48,9,true', r);
+    check('확인된 총석 FS4 36 은 배운 추정값(20)보다 우선, 사람이 넣은 FS1 48 은 그대로', r === '36,false,48', r);
   }
 
   // 수집 상태 램프: 신호 없음 / 켜짐 / 티켓링크 열림 / 예매 화면 감지 / 숫자 받음 / 다른 구장 / 신호 끊김 / 뒤 탭
@@ -764,18 +766,19 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     await pg.waitForTimeout(300);
     r = await pg.evaluate(() => {
       newGame(); Object.assign(state, { opp: '제주SK', date: '2026-11-28T14:00', at: '2026-11-26T14:00' }); state.rows.R10.remain = 26; state.rows.원정석.remain = 1000; state.rows.원정석.max = 1235;  /* 원정석 총석을 정해 둠 (평소 값 11/25 1235 -> 1500) */
-      history = ['2026-11-20T11:00', '2026-11-22T20:00', '2026-11-24T09:30', '2026-11-25T18:00', '2026-11-26T09:00'].map((at, i) => ({ at: at + ':00+09:00', opponent: '제주SK', kickoff: '2026-11-28T14:00:00+09:00', booked: 8000 + i * 400, cap: 11542, awayBooked: 100 + i * 20, awayCap: 1235, unknown: 0 })); render();
+      history = ['2026-11-20T11:00', '2026-11-22T20:00', '2026-11-24T09:30', '2026-11-25T18:00', '2026-11-26T09:00'].map((at, i) => ({ at: at + ':00+09:00', opponent: '제주SK', kickoff: '2026-11-28T14:00:00+09:00', booked: 6976 + i * 400, cap: 11542, awayBooked: 100 + i * 20, awayCap: 1235, unknown: 0 })); render();
       // 가로축 글자(날짜 줄)끼리 겹치지 않는지: 같은 높이의 글자 상자가 서로 닿지 않음
       const days = [...document.querySelectorAll('#trend text')].filter(t => /^\d\d\.\d\d\(.\)$/.test(t.textContent)).map(t => t.getBoundingClientRect()).filter(q => q.x < innerWidth / 2).sort((a, b) => a.x - b.x);
       return { n: days.length, overlap: days.some((q, i) => i && q.x < days[i - 1].right + 2), txt: document.getElementById('trend').textContent.includes('14:00 경기 시작') };
     });
     await pg.context().close();
     check('추이 그래프 가로축: 날짜와 시각 두 줄, 점 6개 + 예상이어도 옆 글자와 겹치지 않음', r.n === 7 && !r.overlap && r.txt, JSON.stringify(r));
+    // (11/25 총석을 구역 총석 합으로 바꿔 이 상황의 홈 예매가 10,281 -> 9,257: 기록 자료도 1,024석 낮춰 늘어나는 모양을 그대로 둠)
     // 예상 점선은 줄어든 구간을 늘이지 않음(11/18 인천 vs 울산 원정석 −52석 -> 예상 −268석): 원정석 300 -> 280 -> 235 는 예상 없음, 홈석은 늘어서 예상
     pg = await open(b); await pg.waitForTimeout(300);
     r = await pg.evaluate(() => {
       newGame(); Object.assign(state, { opp: '제주SK', date: '2026-11-28T14:00', at: '2026-11-26T14:00' }); state.rows.R10.remain = 26; state.rows.원정석.remain = 1000; state.rows.원정석.max = 1235;  /* 원정석 총석을 정해 둠 (평소 값 11/25 1235 -> 1500) */
-      history = ['2026-11-24T09:30', '2026-11-26T09:00'].map((at, i) => ({ at: at + ':00+09:00', opponent: '제주SK', kickoff: '2026-11-28T14:00:00+09:00', booked: 10500, cap: 11542, awayBooked: 300 - i * 20, awayCap: 1235, unknown: 0 })); render();
+      history = ['2026-11-24T09:30', '2026-11-26T09:00'].map((at, i) => ({ at: at + ':00+09:00', opponent: '제주SK', kickoff: '2026-11-28T14:00:00+09:00', booked: 9476, cap: 11542, awayBooked: 300 - i * 20, awayCap: 1235, unknown: 0 })); render();
       return [...document.querySelectorAll('#trend text')].map(t => t.textContent).filter(t => t.startsWith('예상')).join('/'); });
     await pg.context().close();
     check('추이 예상: 줄어든 원정석은 예상 점선 없음, 늘어난 홈석만 예상', r === '예상 +26석', r);
