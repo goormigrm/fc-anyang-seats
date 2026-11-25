@@ -1342,6 +1342,16 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       check(`포항 좌석 그림: 테이블 막대, 안내 글자는 좌석 아님, 표시 상자와 붙은 줄은 다시 나눔 (${list.map(x => x[1]).join(', ')})`, r === '102,115,216,307,207,60,332,63', r);
     } else console.log('SKIP  포항 좌석 그림 (11/18)');
   }
+  // 여러 줄을 감싼 시야방해 상자: 상자 안 좌석도 나눠 셈 (11/25 안양 R2 1~4열 48석이 빠지던 것). 11/1 부천전 실제 캡처 R10 126, R14 123
+  if (fs.existsSync(path.join(SHOTS, '1101_R14.png'))) {
+    p = await open(b);
+    r = await p.evaluate(async shots => { const out = [];
+      for (const b64 of shots) { const bmp = await createImageBitmap(await (await fetch('data:image/png;base64,' + b64)).blob());
+        out.push((await seatMap(bmp, { setParameters: async () => {}, recognize: async () => ({ data: { words: [], text: '' } }) }, false)).total); }
+      return out.join(','); }, ['1101_R10.png', '1101_R14.png'].map(f => fs.readFileSync(path.join(SHOTS, f)).toString('base64')));
+    await p.context().close();
+    check('여러 줄을 감싼 시야방해 상자 안 좌석도 셈: 안양 R10 126, R14 123', r === '126,123', r);
+  } else console.log('SKIP  여러 줄 상자 (좌석스크린샷/시험 없음)');
   // 수원삼성(11/18 사용자): 원정석 쪽은 S4~S6(S1~S3 중립석은 홈 관중), 2층 맨 앞 2줄과 N8, N12 맨 뒤 10줄은 팔지 않는 줄(막힌 좌석 기본값)
   p = await open(b, { url: URL + '?s=suwon#edit' });
   r = await p.evaluate(() => { const o = [SECTIONS.filter(x => x.ours).map(x => x.id).sort().join(' '), state.rows.N8.block, state.rows.E12.block, capOf(state.rows.N8), state.rows.S1.block ?? 0, state.rows.N9.block, state.rows.N10.block, state.rows.N11.block];
