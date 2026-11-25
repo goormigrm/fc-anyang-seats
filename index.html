@@ -2330,7 +2330,7 @@ const toggleEdit = () => { try { localStorage.setItem(EDIT, editing ? '0' : '1')
 addEventListener('keydown', e => { if (!embed && e.ctrlKey && e.shiftKey && e.code === 'KeyE') { e.preventDefault(); toggleEdit(); } });
 $('viewMode').onclick = toggleEdit;
 // 시험 페이지(안양 경기가 아닌 경기의 시험 집계)로 가는 링크: 보기 화면에는 없고 입력 화면 '그 밖의 기능'에만. 새 시험 페이지를 만들면 여기에 [구장, 원정 팀] 한 줄
-const TEST_PAGES = [['jeonbuk', 'seoul'], ['incheon', 'ulsan'], ['seoul', 'daejeon']];
+const TEST_PAGES = [['jeonbuk', 'seoul'], ['incheon', 'gangwon'], ['seoul', 'daejeon']];  // 인천 vs 울산(11/21)은 끝남: 같은 test/incheon 자리를 강원전(11/29)이 씀
 $('testPages').innerHTML = [...TEST_PAGES.map(([s, t]) => [`?s=${s}&test=${t}`, `${STADIUMS[s].host} vs ${(STADIUMS[t] || GUESTS[t]).host}`]), ['./', 'FC안양 현황판 (시험 아님)']]
   .map(([q, n]) => `<a href="${q}#edit">${esc(nick(n))}</a>`).join(' · ');
 portrait.addEventListener('change', render);
