@@ -280,7 +280,10 @@ const STADIUMS = {
   // 서울월드컵경기장 (서울 좌석도, 팔각형): 구역 = 방향 + 글자. E 안쪽 H(모서리)·G~B·A(모서리)와 앞줄 E 피치석, 바깥 T·S~K·J,
   // S 안쪽 F·E·D·C·B·A(C, B, A 가 원정석), 바깥 P·N~H·G, W 앞줄 B~G(피치석, 센터석), 뒷줄 J~M, 모서리 A·H, 바깥 N·P~W·X, N 안쪽 A·B~E·F, 바깥 G·H~N·P
   // c0 음수: 직선 부분이 경기장보다 조금 길고 모서리 칸이 작음 (원본 팔각형 비율). E 피치석 줄은 원본처럼 두껍게, 층 사이 통로는 좁게
-  seoul: { color: 'red', venue: '서울월드컵경기장', host: 'FC서울', name: '서울', geo: { kx: 0.9, c0: -6, chamfer: true, r: [12, 172], s: 1.32 },
+  // unsold: 11/25 서울 vs 대전 좌석 그림(직접 셈)에서 판매 등급이 아니거나 통째로 회색인 구역(W센터석 C~E, VIP J~L, 2층 모서리, 북측 서포터즈 C·D, 남측 2층). 총석은 data seoul/max.json
+  // dirs: 티켓링크 구역 이름이 '동측 B구역'(방향 + 글자). gradeCells: 등급 줄이 곧 칸(신한카드 E피치석)이면 그 아래 '동측 B구역' 줄은 그 칸 몫이라 EB 로 넣지 않음
+  seoul: { unsold: ['WC', 'WD', 'WE', 'WJ', 'WK', 'WL', 'WN', 'WX', 'EJ', 'ET', 'NC', 'ND', 'NG', 'NP', 'SG', 'SH', 'SJ', 'SK', 'SL', 'SM', 'SN', 'SP'], dirs: true, gradeCells: true,
+    color: 'red', venue: '서울월드컵경기장', host: 'FC서울', name: '서울', geo: { kx: 0.9, c0: -6, chamfer: true, r: [12, 172], s: 1.32 },
     layout: () => {
       const T1 = [14, 100], T2 = [106, 172], ours = ['SC', 'SB', 'SA'], c = (p, l) => [...l].map(x => p + x);
       arc(['E피치석'], 0, 1, [14, 48]); arc(c('E', 'GFEDCB'), 0, 1, [50, 100]); arc(c('E', 'SRQPNMLK'), 0, 1, T2);
@@ -291,6 +294,8 @@ const STADIUMS = {
       arc(['WA', 'NF'], 5, 6, T1); arc(['WN', 'NP'], 5, 6, T2);
       arc(c('N', 'EDCB'), 6, 7, T1); arc(c('N', 'NMLKJH'), 6, 7, T2);
       SECTIONS.forEach(x => { if (x.id === 'E피치석') x.name = 'E 피치석'; });
+      // 같은 이름이 두 번 나오는 칸은 둘을 더함: E석의 '동측 A 구역'(16~40열)과 '동측 A구역'(앞줄, B~G 는 E피치석 자리라 0), 서측 B·G 는 W피치석과 W석 (11/25 서울 vs 대전 목록)
+      SECTIONS.forEach(x => { const m = x.id.match(/^E([A-H])$/); if (m) x.mix = [`${m[1]} 구역`, `${m[1]}구역`]; if (x.id === 'WB' || x.id === 'WG') x.mix = ['피치', 'W석']; });
     } },
   // 울산문수축구경기장 (울산 좌석도, 3층): 안쪽 밤겔 피크닉존·E1~E9·게이밍 체어존·S1~S8·W1~W8(가운데 프리미엄 테이블)·N1~N8,
   // 가운데 E11~E24·S11~S20·W11~W16(2층 테이블)·N11~N20, 바깥 E31~E40·S31~S34·W31~W38(3층 테이블)·N31~N36. 원정석 = N1~N4, N11~N15, N31~N32
@@ -410,7 +415,7 @@ const STADIUM = STADIUMS[new URLSearchParams(location.search).get('s')] ? new UR
 // 시험 페이지(11/17): ?s=<구장>&test=<원정 팀의 구장 키> (예: ?s=jeonbuk&test=seoul = 전북현대 vs FC서울). 안양 경기가 아닌 경기를 시험으로 집계, 발행, 공유하는 숨은 주소(사이트 어디에도 링크 없음)
 // 입력값(이 브라우저), 발행 데이터(data 브랜치 test/<구장>/)가 안양 현황판과 따로이고, 기본 주소의 최근 구장 따라가기, 경기별 기록, 링크 미리보기(og)에 들어가지 않음. 구장 총석(max.json)은 실제 구장 것을 같이 씀
 // 시험 페이지의 원정 팀: 원정 구장 팀(STADIUMS) 또는 구장이 없는 팀(GUESTS: 11/17 수원삼성 vs 경남FC 시험 ?s=suwon&test=gyeongnam)
-const GUESTS = { gyeongnam: { host: '경남FC', name: '경남', color: 'red' }, daejeon: { host: '대전하나시티즌', name: '대전', color: 'green' } };  // 대전: 11/28 서울 vs 대전 시험(11/25 일반 예매), 구단 색 중 초록(하나)
+const GUESTS = { gyeongnam: { host: '경남FC', name: '경남', color: 'red' }, daejeon: { host: '대전하나시티즌', name: '대전', color: 'green', ours: ['SA', 'SB', 'SC', 'SD', 'SE', 'SF'] } };  // ours: 그 경기 원정석 구역 (11/25 대전전 원정석 = 남측 A~F)  // 대전: 11/28 서울 vs 대전 시험(11/25 일반 예매), 구단 색 중 초록(하나)
 const TESTKEY = AWAY && (STADIUMS[new URLSearchParams(location.search).get('test')] || GUESTS[new URLSearchParams(location.search).get('test')]) ? new URLSearchParams(location.search).get('test') : '', TG = TESTKEY && (STADIUMS[TESTKEY] || GUESTS[TESTKEY]), TEST = TG && TG.host;
 const VENUE = AWAY ? STADIUMS[STADIUM].venue : '안양종합운동장', HOST = AWAY ? STADIUMS[STADIUM].host : 'FC안양', DATA = (TEST ? 'test/' : '') + (AWAY ? STADIUM + '/' : ''), MAXDATA = AWAY ? STADIUM + '/' : '';
 const GUEST = TEST || 'FC안양', WANT = TEST ? TG.name : '안양';  // 원정 팀, 받은 글자에 있어야 할 원정 팀 이름
@@ -471,6 +476,7 @@ cells(Rs(1, 7, 'FS').reverse(), -400, -125, 90, 250 / 7, true);
 cells(Rs(1, 7, 'F').reverse(), -310, -125, 30, 250 / 7, true);
 cells(['R10'], -460, 125, 180, 45);
 }
+if (TEST && TG.ours) SECTIONS.forEach(s => { s.ours = TG.ours.includes(s.id); });  // 시험 페이지 원정 팀의 원정석 구역
 // 스크린샷 좌석도에서 센 구역별 좌석 수 (센 남은 좌석이 화면의 잔여석과 모두 일치). 11/1 부천전, FS1은 10/24 전북전, 원정석은 평소 값(넓게 여는 날은 최대 1713석, 표에서 바꿈)
 // R6·R7·T1·T2는 myseatcheck.com 2025년 좌석도 (실제 예매가 열리면 대조). R12·R13 은 같은 자료였는데 11/1 '좌석 위치보기' 캡처로 63 확인
 // FS4 는 11/1 '좌석 위치보기' 캡처(2줄 × 18). FS3·FS5·FS7, T3, 스탠딩석 S1~S3, 퍼스트석 F1~F7 은 11/25 제주전 좌석 그림을 직접 셈
@@ -524,8 +530,10 @@ function fillByTotals(found, totals) {
 }
 
 // 구역 이름 → 현황판 칸 id (빈칸, 하이픈, 가운뎃점을 빼고 대문자로. 그대로 → 한글 앞말을 빼고 → 한글을 모두 빼고)
+// 서울(dirs): '동측 B구역' -> 'EB구역' (동 E, 서 W, 남 S, 북 N)
+const dirName = t => AWAY && STADIUMS[STADIUM].dirs ? t.replace(/(^|\s)([동서남북])측\s*(?=[A-Z])/g, (m, a, d) => a + { 동: 'E', 서: 'W', 남: 'S', 북: 'N' }[d]) : t;
 const zoneId = n => {
-  const k = n.toUpperCase().replace(/[\s·_-]/g, ''), b = k.replace(/\([^)]*\)/g, ''), names = {};  // 놀티켓 '프리미엄 패밀리박스(4인)(GATE:PREMIUM)'
+  const k = dirName(n.toUpperCase().replace(/[\s·_-]/g, '')), b = k.replace(/\([^)]*\)/g, ''), names = {};  // 놀티켓 '프리미엄 패밀리박스(4인)(GATE:PREMIUM)'
   const put = (a, id) => { if (a) names[a.toUpperCase().replace(/[\s·_-]/g, '')] = id; };
   SECTIONS.forEach(x => [x.name, ...(x.alias || [])].forEach(a => put(a, x.id))); SECTIONS.forEach(x => put(x.id, x.id));  // 칸 id 가 이름보다 우선 (수원 'W13' = 2층 테이블, 이름이 W13 인 칸은 미판매 구역)
   return [...new Set([k, b, b.replace(/구역$/, ''), k.replace(/[()]/g, '')])].flatMap(c => [c, c.replace(/^[가-힣]+/, ''), c.replace(/[가-힣]/g, '')]).map(c => c && names[c]).find(Boolean) || null;
@@ -546,7 +554,7 @@ function parseText(text) {
   for (const [, n, v] of t.matchAll(/\(좌석 그림\)\n([^\n]+?)구역 (\d+)석/g)) { const id = state.rows[n] ? n : zoneId(n); if (id) add(id, +v); }
   // 휠체어석 아래 구역 건너뛰기는 홈도 (안양 '휠체어석 12 석' 아래 'R5구역 2 석'이 R5 를 덮지 않게). 등급마다 나눠 받는 것은 원정만
   const mix = {}, zero = {};  // mix: { 칸: { 등급: 잔여 } } (전북 E2B 는 아래 등급 줄 읽기에서 테이블/일반으로)
-  { const L = t.split('\n'), out = []; let g = '', gv = 0, used = 0;
+  { const L = t.split('\n'), out = []; let g = '', gv = 0, used = 0, gc = null;  // gc: 등급 줄이 곧 칸(서울 '신한카드 E피치석')일 때 그 칸 (gradeCells)
     for (let i = 0; i < L.length; i++) {
       if (L[i] === '(좌석 그림)') { g = ''; continue; }
       // '석'을 인식기가 4 로 읽은 등급 줄('휠체어석(E석) 744' = 74석): 이름에 석이 있는 줄만 (휠체어석 줄을 못 알아보면 그 아래 구역이 실제 구역을 덮음)
@@ -556,7 +564,7 @@ function parseText(text) {
       if (!n || !(/구\s*역/.test(n) || z && !n.includes('('))) {  // 등급 줄 (또는 숫자 없는 줄)
         // 0석 등급(매진되어 접힘)은 그 등급 몫을 0 으로: 낱말 목록 칸은 낱말, 전북 테이블/일반 칸은 같은 면(E, W)의 테이블/일반, 그 밖에는 등급 이름으로 받은 몫
         // (전에는 낱말 목록 칸만이라 전북 E2B 의 '테이블' 13석, 인천 라탄 '4인' 몫이 매진 뒤에도 남아 잔여가 많게 나옴)
-        if (n) { g = n; gv = v; used = 0; if (AWAY && v === 0) SECTIONS.forEach(s => { if (!s.mix) return;
+        if (n) { g = n; gv = v; used = 0; gc = null; if (AWAY && v === 0) SECTIONS.forEach(s => { if (!s.mix) return;
           const key = n.replace(/\s/g, ''), k = s.mix === true ? (n[0]?.toUpperCase() === s.id[0] && /테이블|일반/.test(n) ? (/테이블/.test(n) ? '테이블' : '일반') : null)
             : s.mix.find(k => n.includes(k)) || (state.rows[s.id]?.parts && key in state.rows[s.id].parts ? key : null);
           if (k) (zero[s.id] ||= {})[k] = 0; }); }
@@ -567,9 +575,10 @@ function parseText(text) {
       // 휠체어석 아래 구역은 합이 등급 숫자를 넘지 않는 데까지 (아래 구역 합은 등급 숫자를 넘을 수 없음: 넘으면 휠체어석이 아닌 다음 등급의 줄.
       // 전에는 합이 등급 숫자에 닿은 뒤의 0석 줄을 실제 구역으로 받아 E4, E5 가 매진으로 바뀌었고, 접힌 '휠체어석 0 석' 다음 '프리미엄 테이블석 10 석'이 사라짐)
       if (/휠체어|장애인/.test(g) && used + v <= gv) { used += v; if (two) i++; continue; }
-      if (AWAY && g && Array.isArray(x?.mix)) { (mix[z] ||= {})[x.mix.find(k => g.includes(k)) || g.replace(/\s/g, '')] = v; if (two) i++; continue; }  // 낱말 없는 등급 이름은 빈칸을 빼고 (인식에서 '테라스존' 처럼 붙어도 같은 몫)
+      if (AWAY && STADIUMS[STADIUM].gradeCells) { if (!/구\s*역/.test(n)) { gc = z; g = n; } else if (gc) { if (two) i++; continue; } }  // 칸인 등급 아래 구역 줄은 그 칸 몫 (등급 숫자로 이미 받음)
+      if (AWAY && g && Array.isArray(x?.mix)) { (mix[z] ||= {})[x.mix.find(k => g.includes(k) || n.includes(k)) || g.replace(/\s/g, '')] = v; if (two) i++; continue; }  // 낱말은 등급 이름 또는 그 줄 이름에서 (서울 E석 'A 구역'과 'A구역')  // 낱말 없는 등급 이름은 빈칸을 빼고 (인식에서 '테라스존' 처럼 붙어도 같은 몫)
       if (AWAY && g && z && z === zoneId(g)) { (mix[z] ||= {})[g.replace(/\s/g, '')] = v; if (two) i++; continue; }  // 그 등급 아래 같은 칸 줄(인천 '피크닉 테이블석(2인)' 아래 '피크닉 테이블석')은 같은 몫
-      out.push(L[i]);
+      out.push(dirName(L[i]));  // 서울 '동측 K구역' -> 'EK구역' (아래 구역 줄 읽기가 받게)
     }
     t = out.join('\n');
     for (const [id, p] of Object.entries(zero)) if (mix[id] || state.rows[id]?.parts) mix[id] = { ...p, ...mix[id] };
@@ -988,8 +997,8 @@ function build(story) {
       [home ? '전체 / 홈석(원정석 뺌) / 총석' : FULL ? '구역 총석 합 기준' : '원정석 포함 판매 구역 전체', exclTxt, FULL ? '선택 중 좌석 포함' : ''].filter(Boolean).join(' · '),
       none ? '' : (home ? `홈 ${home} / ` : '') + `총 ${fmt(cap)}석`, '석'],  // 증감은 추이 그래프에서만. 스토리(휴대폰)는 큰 숫자 옆에 '석', 아랫줄에 홈 / 총석
     ['예매율', rate(booked), '%', (noData ? '잔여석 정보 없음' : `잔여석 ${fmt(avail)}석`) + (AWAY ? ` · 매진 ${soldN}개${offN ? `, 미판매 ${offN}개` : ''} 구역` : ''), noData ? '' : `잔여 ${fmt(avail)}석`],
-    AWAY ? ['원정석 예매', oCap ? fmt(oBooked) : '-', oCap ? ` / ${fmt(oCap)}석` : '', oCap ? `원정석 ${oPc}% 예매 · 잔여 ${fmt(oCap - oBooked)}석` : '원정석 총석 정보 없음', oCap ? `${oPc}% 예매` : '']
-      : ['매진 구역', String(soldN), ' 개', `전체 ${SECTIONS.length}개 구역 중`, `${SECTIONS.length}개 구역 중`],
+    ['원정석 예매', oCap ? fmt(oBooked) : '-', oCap ? ` / ${fmt(oCap)}석` : '', oCap ? `원정석 ${oPc}% 예매 · 잔여 ${fmt(oCap - oBooked)}석` : '원정석 총석 정보 없음', oCap ? `${oPc}% 예매` : '']
+
   ];
   // 공식 관중(연맹 발표)이 나오면 카드는 실제 관중으로. 구역 색과 예매율 범례는 마지막 집계 그대로, 집계 숫자는 설명 줄에
   const cw = state.crowd, ca = state.crowdAway, ab = oCap ? oBooked : null;
