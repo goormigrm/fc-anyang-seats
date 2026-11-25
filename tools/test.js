@@ -1393,6 +1393,14 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     await ctx.close();
     check('서울 기본 미판매 다시(unsoldRev 2): 켜 둔 WC·WD 도 미판매로 한 번, 그 뒤 사람이 켠 WC 는 그대로', r === 'true,true,true,false / false', r);
   }
+  // 기본값에서 뺀 막힌 좌석(서울 11/25 밤: 막힌 좌석 대신 총석을 줄임)은 그 기본값 그대로인 칸만 지움, 사람이 바꾼 값은 그대로
+  {
+    const ctx = await b.newContext(), pg = await ctx.newPage(); await pg.goto(URL + '?s=seoul&test=daejeon#edit');
+    await pg.evaluate(() => { state.rows.EA.block = 205; state.rows.EB.block = 100; state.blockDefaults = { EA: 205, EB: 368 }; save(); }); await pg.reload();
+    r = await pg.evaluate(() => [state.rows.EA.block ?? '-', state.rows.EB.block].join());
+    await ctx.close();
+    check('기본값에서 뺀 막힌 좌석: 기본값 그대로인 EA 205 는 지움, 사람이 바꾼 EB 100 은 그대로', r === '-,100', r);
+  }
   // 수원삼성(11/18 사용자): 원정석 쪽은 S4~S6(S1~S3 중립석은 홈 관중), 2층 맨 앞 2줄과 N8, N12 맨 뒤 10줄은 팔지 않는 줄(막힌 좌석 기본값)
   p = await open(b, { url: URL + '?s=suwon#edit' });
   const rSw = await p.evaluate(() => { const o = [SECTIONS.filter(x => x.ours).map(x => x.id).sort().join(' '), state.rows.N8.block, state.rows.E12.block, capOf(state.rows.N8), state.rows.S1.block ?? 0, state.rows.N9.block, state.rows.N10.block, state.rows.N11.block];
