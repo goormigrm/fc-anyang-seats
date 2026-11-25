@@ -153,7 +153,7 @@
     </div>
     <div class="box seats">
       <h2 id="seatTitle">구역별 잔여석</h2>
-      <p class="hint only-status" id="seatHint">빈칸 = 정보 없음, 0 = 매진. 원정석 최대는 평소 1235 (넓게 여는 날 최대 1713).</p>
+      <p class="hint only-status" id="seatHint">빈칸 = 정보 없음, 0 = 매진. 원정석 최대는 평소 1500 (11/25 중립석이 생긴 뒤, 넓게 여는 날은 표에서 바꿈).</p>
       <p class="hint only-max">최대 = 구역 총석. 좌석 그림으로 센 값이 들어가고, 손으로 고쳐도 됩니다. 이미 총석이 있는 구역은 캡처로 바뀌지 않습니다.</p>
       <div class="row"><button id="restore" hidden>지난 경기 숫자 되살리기</button><button id="groupSet" hidden>묶음 구역 정하기</button></div>
       <div class="scroll"><table>
@@ -480,7 +480,7 @@ const KNOWN_MAX = AWAY ? STADIUMS[STADIUM].max || {} : {
   R15: 141, R16: 138, R17: 123, R18: 123, R19: 138, R20: 123, R21: 123, R22: 138, R23: 123, R24: 123, R25: 138, R26: 138,
   FS1: 50, FS2: 26, FS3: 36, FS4: 36, FS5: 36, FS6: 26, FS7: 50, T3: 30, S1: 50, S2: 65, S3: 50,
   F1: 8, F2: 15, F3: 21, F4: 21, F5: 21, F6: 15, F7: 8,
-  T1: 117, T2: 60, T4: 62, P: 226, 원정석: 1235,
+  T1: 117, T2: 42, T4: 62, P: 226, 원정석: 1500,  // T2 는 11/25 좌석 그림(테이블 3 x 2석 x 7줄, 전에는 2025년 자료 60). 원정석은 11/25 중립석이 생긴 뒤 평소 값(전에는 1235)
 };
 // 상대팀 = 2026 K리그1에서 안양을 뺀 11팀. key: 스크린샷 맨 위 "FC안양 vs 부천FC1995"에서 찾을 한글 지명 (영문은 OCR이 자주 깨뜨림)
 // 승강에 따라 올 수 있는 팀(수원삼성, 수원FC, 서울이랜드, 대구)도 미리. 이름이 겹치는 것은 긴 이름을 먼저 찾음 (수원삼성 → 수원FC, 서울이랜드 → FC서울)
@@ -674,7 +674,7 @@ SECTIONS.forEach(s => {
   if (r.learned && KNOWN_MAX[s.id]) { r.max = KNOWN_MAX[s.id]; delete r.learned; }  // 확인된 총석이 생기면 처음 본 잔여로 배운 추정값 대신
   r.max ??= KNOWN_MAX[s.id] ?? null;
 });
-if (state.rows.원정석?.max === 1218) state.rows.원정석.max = 1235;  // 11/05 잠깐 쓰던 원정석 기본값
+if ([1218, 1235].includes(state.rows.원정석?.max) && !state.rows.원정석.fixed) state.rows.원정석.max = KNOWN_MAX.원정석;  // 11/05 잠깐 쓰던 원정석 기본값
 // 예전 버전에서 글자로 넣은 상대팀·일시는 목록·달력 형식이 아니면 비움
 if (!Object.values(TEAMS).includes(state.opp)) state.opp = '';
 if (AWAY) state.opp = HOST;  // 원정 경기는 상대(홈 팀)가 정해져 있음
@@ -690,7 +690,9 @@ const defaultBlock = () => { if (!AWAY) return;
   const def = STADIUMS[STADIUM].block || {}, prev = state.blockDefaults || (STADIUM === 'suwon' ? { N9: 72, N10: 70 } : {});
   Object.entries(def).forEach(([id, v]) => { const r = state.rows[id]; if (r && (r.block == null || r.block === prev[id] && prev[id] !== v)) r.block = v; });
   state.blockDefaults = def; };
-const defaultOff = () => (AWAY && STADIUMS[STADIUM].unsold || []).forEach(id => { if (state.rows[id]) Object.assign(state.rows[id], { off: true, remain: null }); });
+// 안양 홈 기본 미판매: T1(11/25 제주전, 등급 목록에 없고 누르면 '구매 가능한 좌석이 없습니다'). 새 경기마다 미판매로 시작
+const HOME_OFF = ['T1'];
+const defaultOff = () => ((AWAY ? STADIUMS[STADIUM].unsold : HOME_OFF) || []).forEach(id => { if (state.rows[id]) Object.assign(state.rows[id], { off: true, remain: null }); });
 defaultBlock();  // 이 브라우저에 아직 막힌 좌석 값이 없는 칸
 const saveOff = () => { try { localStorage.setItem(OFFKEY, JSON.stringify(SECTIONS.filter(s => state.rows[s.id].off).map(s => s.id))); } catch {} };
 const syncOff = () => {
@@ -698,6 +700,10 @@ const syncOff = () => {
   try { v = JSON.parse(localStorage.getItem(OFFKEY)); } catch {}
   if (!Array.isArray(v)) { defaultOff(); return saveOff(); }  // 처음: 구장의 기본 미판매(인천 N7)와 지금 표시를 목록으로
   SECTIONS.forEach(s => { state.rows[s.id].off = v.includes(s.id); });
+  // 미판매 목록이 이미 저장된 브라우저도 새로 생긴 홈 기본 미판매는 한 번 켬 (사람이 다시 끄면 그대로)
+  if (!AWAY) { let seen = []; try { seen = JSON.parse(localStorage.getItem(OFFKEY + '-seen')) || []; } catch {}
+    HOME_OFF.filter(id => !seen.includes(id) && state.rows[id]).forEach(id => Object.assign(state.rows[id], { off: true, remain: null }));
+    try { localStorage.setItem(OFFKEY + '-seen', JSON.stringify(HOME_OFF)); } catch {} saveOff(); }
 };
 const localISO = (t = Date.now()) => new Date(t - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);  // "2026-11-27T12:00"
 state.at ||= localISO();
@@ -1230,7 +1236,7 @@ $('toMax').onclick = () => {
 // 새 경기: 잔여, 비교 기준을 비우고 원정석 최대는 평소 값으로 (넓게 열었던 날 값이 남지 않게)
 const newGame = () => { SECTIONS.forEach(s => { state.rows[s.id].remain = null; delete state.rows[s.id].block; delete state.rows[s.id].parts; }); state.groups = {}; if (!AWAY && state.rows.원정석) { state.rows.원정석.max = KNOWN_MAX.원정석; delete state.rows.원정석.fixed; } syncOff(); defaultOff(); saveOff(); state.base = null; state.pubSnap = null; state.crowd = null; state.crowdAway = null; state.awayGrade = null; defaultBlock(); };
 $('clear').onclick = () => {
-  if (!confirm('잔여와 비교 기준을 모두 지울까요?\n(최대 좌석은 그대로, 원정석은 1235로)')) return;
+  if (!confirm('잔여와 비교 기준을 모두 지울까요?\n(최대 좌석은 그대로, 원정석은 평소 값으로)')) return;
   newGame(); fillTable([]); save(); render();
 };
 // 다른 경기로 지운 숫자 되살리기 (마지막 한 번)
