@@ -410,7 +410,7 @@ const STADIUM = STADIUMS[new URLSearchParams(location.search).get('s')] ? new UR
 // 시험 페이지(11/17): ?s=<구장>&test=<원정 팀의 구장 키> (예: ?s=jeonbuk&test=seoul = 전북현대 vs FC서울). 안양 경기가 아닌 경기를 시험으로 집계, 발행, 공유하는 숨은 주소(사이트 어디에도 링크 없음)
 // 입력값(이 브라우저), 발행 데이터(data 브랜치 test/<구장>/)가 안양 현황판과 따로이고, 기본 주소의 최근 구장 따라가기, 경기별 기록, 링크 미리보기(og)에 들어가지 않음. 구장 총석(max.json)은 실제 구장 것을 같이 씀
 // 시험 페이지의 원정 팀: 원정 구장 팀(STADIUMS) 또는 구장이 없는 팀(GUESTS: 11/17 수원삼성 vs 경남FC 시험 ?s=suwon&test=gyeongnam)
-const GUESTS = { gyeongnam: { host: '경남FC', name: '경남', color: 'red' } };
+const GUESTS = { gyeongnam: { host: '경남FC', name: '경남', color: 'red' }, daejeon: { host: '대전하나시티즌', name: '대전', color: 'green' } };  // 대전: 11/28 서울 vs 대전 시험(11/25 일반 예매), 구단 색 중 초록(하나)
 const TESTKEY = AWAY && (STADIUMS[new URLSearchParams(location.search).get('test')] || GUESTS[new URLSearchParams(location.search).get('test')]) ? new URLSearchParams(location.search).get('test') : '', TG = TESTKEY && (STADIUMS[TESTKEY] || GUESTS[TESTKEY]), TEST = TG && TG.host;
 const VENUE = AWAY ? STADIUMS[STADIUM].venue : '안양종합운동장', HOST = AWAY ? STADIUMS[STADIUM].host : 'FC안양', DATA = (TEST ? 'test/' : '') + (AWAY ? STADIUM + '/' : ''), MAXDATA = AWAY ? STADIUM + '/' : '';
 const GUEST = TEST || 'FC안양', WANT = TEST ? TG.name : '안양';  // 원정 팀, 받은 글자에 있어야 할 원정 팀 이름
@@ -2330,7 +2330,7 @@ const toggleEdit = () => { try { localStorage.setItem(EDIT, editing ? '0' : '1')
 addEventListener('keydown', e => { if (!embed && e.ctrlKey && e.shiftKey && e.code === 'KeyE') { e.preventDefault(); toggleEdit(); } });
 $('viewMode').onclick = toggleEdit;
 // 시험 페이지(안양 경기가 아닌 경기의 시험 집계)로 가는 링크: 보기 화면에는 없고 입력 화면 '그 밖의 기능'에만. 새 시험 페이지를 만들면 여기에 [구장, 원정 팀] 한 줄
-const TEST_PAGES = [['jeonbuk', 'seoul'], ['incheon', 'ulsan']];
+const TEST_PAGES = [['jeonbuk', 'seoul'], ['incheon', 'ulsan'], ['seoul', 'daejeon']];
 $('testPages').innerHTML = [...TEST_PAGES.map(([s, t]) => [`?s=${s}&test=${t}`, `${STADIUMS[s].host} vs ${(STADIUMS[t] || GUESTS[t]).host}`]), ['./', 'FC안양 현황판 (시험 아님)']]
   .map(([q, n]) => `<a href="${q}#edit">${esc(nick(n))}</a>`).join(' · ');
 portrait.addEventListener('change', render);
