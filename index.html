@@ -134,7 +134,7 @@
     <div class="box flow">
       <div class="row"><div class="tabs"><button id="modeStatus" aria-pressed="true">현황 집계</button><button id="modeMax" aria-pressed="false">총석 집계</button></div><span class="grow"></span>
         <button id="viewMode">보기 화면으로</button><a class="btn" href="guide/" target="_blank">작업 가이드</a>
-        <a class="btn" id="scriptBtn" href="fc-anyang-send.user.js" target="_blank" rel="noopener">보내기 스크립트 설치/업데이트</a></div>
+        <a class="btn" id="scriptBtn" href="fc-anyang-send.user.js" target="_blank" rel="noopener">보내기 스크립트 설치/업데이트</a><small id="appVerTop" class="hint" style="align-self:center"></small></div>
       <p class="hint only-status"><b>현황 집계</b> ① 예매 화면에서 등급을 차례로 누르면 숫자가 들어옵니다 (안 들어오면 예매 화면 글자나 캡처를 Ctrl+V) → ② 아래 표 확인 → ③ <b>현황 발행</b>. 발행해야 누구나 보는 현황판에 올라갑니다.</p>
       <p class="hint only-max"><b>총석 집계</b> ① 예매 화면에서 구역을 눌러 좌석 그림을 캡처해 Ctrl+V (FC안양 경기가 아닌 날도 됩니다) → ② 아래 표의 총석 확인 → ③ <b>총석 발행</b>. 현황(잔여, 경기 정보, 발행한 현황판)은 바뀌지 않고, 발행한 총석은 모든 기기에서 기본 총석이 됩니다.</p>
       <div class="row"><label class="btn" for="file">캡처 고르기</label><button id="publish" class="main only-status">현황 발행</button><button id="publishMax" class="main only-max">총석 발행</button></div>
@@ -181,7 +181,7 @@
     </details>
   </div>
   <svg id="trend" role="img" aria-label="예매된 좌석 추이" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 280" font-family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif"></svg>
-  <p class="foot">FC안양 팬이 만든 비공식 현황판입니다. 티켓링크 화면의 잔여석을 사람이 확인해 올린 것이라 실제와 다를 수 있습니다.</p>
+  <p class="foot">FC안양 팬이 만든 비공식 현황판입니다. 티켓링크 화면의 잔여석을 사람이 확인해 올린 것이라 실제와 다를 수 있습니다.<span id="appVer"></span></p>
 </main>
 <script>
 // FULL: 만석 1만 1,542석 (2026-04-05 서울전 기사). 11/25 부터 총석은 구역 총석 합(stats), FULL 은 홈 표시(정보 없는 구역은 예매로 셈)와 입력 상한에만
@@ -282,7 +282,7 @@ const STADIUMS = {
   // c0 음수: 직선 부분이 경기장보다 조금 길고 모서리 칸이 작음 (원본 팔각형 비율). E 피치석 줄은 원본처럼 두껍게, 층 사이 통로는 좁게
   // unsold: 11/25 서울 vs 대전 좌석 그림(직접 셈)에서 판매 등급이 아니거나 통째로 회색인 구역(W센터석 C~E, VIP J~L, 2층 모서리, 북측 서포터즈 C·D, 남측 2층). 총석은 data seoul/max.json
   // dirs: 티켓링크 구역 이름이 '동측 B구역'(방향 + 글자). gradeCells: 등급 줄이 곧 칸(신한카드 E피치석)이면 그 아래 '동측 B구역' 줄은 그 칸 몫이라 EB 로 넣지 않음
-  seoul: { unsold: ['WC', 'WD', 'WE', 'WJ', 'WK', 'WL', 'WN', 'WX', 'EJ', 'ET', 'NC', 'ND', 'NG', 'NP', 'SG', 'SH', 'SJ', 'SK', 'SL', 'SM', 'SN', 'SP'], dirs: true, gradeCells: true,
+  seoul: { unsold: ['WC', 'WD', 'WE', 'WJ', 'WK', 'WL', 'WN', 'WX', 'EJ', 'ET', 'NC', 'ND', 'NG', 'NP', 'SG', 'SH', 'SJ', 'SK', 'SL', 'SM', 'SN', 'SP'], newUnsold: true, dirs: true, gradeCells: true,
     color: 'red', venue: '서울월드컵경기장', host: 'FC서울', name: '서울', geo: { kx: 0.9, c0: -6, chamfer: true, r: [12, 172], s: 1.32 },
     layout: () => {
       const T1 = [14, 100], T2 = [106, 172], ours = ['SC', 'SB', 'SA'], c = (p, l) => [...l].map(x => p + x);
@@ -706,14 +706,17 @@ const defaultOff = () => ((AWAY ? STADIUMS[STADIUM].unsold : HOME_OFF) || []).fo
 defaultBlock();  // 이 브라우저에 아직 막힌 좌석 값이 없는 칸
 const saveOff = () => { try { localStorage.setItem(OFFKEY, JSON.stringify(SECTIONS.filter(s => state.rows[s.id].off).map(s => s.id))); } catch {} };
 const syncOff = () => {
-  let v = null;
-  try { v = JSON.parse(localStorage.getItem(OFFKEY)); } catch {}
-  if (!Array.isArray(v)) { defaultOff(); return saveOff(); }  // 처음: 구장의 기본 미판매(인천 N7)와 지금 표시를 목록으로
+  let v = null, seen = null;
+  try { v = JSON.parse(localStorage.getItem(OFFKEY)); seen = JSON.parse(localStorage.getItem(OFFKEY + '-seen')); } catch {}
+  // 기본 미판매(구장 unsold, 안양 홈 HOME_OFF)를 이 브라우저가 본 적이 있는지 (OFFKEY-seen). 처음 보는 기본값만 한 번 켜고, 사람이 다시 끈 칸은 그대로 둠
+  const def = (AWAY ? STADIUMS[STADIUM].unsold : HOME_OFF) || [], keep = () => { try { localStorage.setItem(OFFKEY + '-seen', JSON.stringify([...new Set([...(seen || []), ...def])])); } catch {} };
+  if (!Array.isArray(v)) { defaultOff(); keep(); return saveOff(); }  // 처음: 구장의 기본 미판매(인천 N7)와 지금 표시를 목록으로
   SECTIONS.forEach(s => { state.rows[s.id].off = v.includes(s.id); });
-  // 미판매 목록이 이미 저장된 브라우저도 새로 생긴 홈 기본 미판매는 한 번 켬 (사람이 다시 끄면 그대로)
-  if (!AWAY) { let seen = []; try { seen = JSON.parse(localStorage.getItem(OFFKEY + '-seen')) || []; } catch {}
-    HOME_OFF.filter(id => !seen.includes(id) && state.rows[id]).forEach(id => Object.assign(state.rows[id], { off: true, remain: null }));
-    try { localStorage.setItem(OFFKEY + '-seen', JSON.stringify(HOME_OFF)); } catch {} saveOff(); }
+  // 본 기록이 없는 브라우저: 예전부터 있던 기본값(인천 N7 처럼 사람이 여닫는 칸)은 본 것으로 치고, 새로 넣은 기본값(newUnsold: 11/25 서울 22구역, 안양 홈 T1)만 켬
+  // (11/25: 그 전에 서울 시험 페이지를 연 브라우저가 빈 목록을 기억해 서울 미판매 22구역이 빈칸으로 보임)
+  if (!Array.isArray(seen)) seen = !AWAY || STADIUMS[STADIUM].newUnsold ? [] : def;
+  def.filter(id => !seen.includes(id) && state.rows[id]).forEach(id => Object.assign(state.rows[id], { off: true, remain: null }));
+  keep(); saveOff();
 };
 const localISO = (t = Date.now()) => new Date(t - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);  // "2026-11-27T12:00"
 state.at ||= localISO();
@@ -2184,6 +2187,8 @@ window.fcSeats = v => {
 const lamp = { installed: 0, version: 0, pings: {}, got: 0, zones: 0, rejected: '', seats: null };  // seats: 스크립트가 마지막으로 센 좌석과 그 결과
 // 보내기 스크립트 최신 판 (fc-anyang-send.user.js 의 @version 과 같게. 자동 시험이 맞춰 봄). 설치된 판이 낮으면 입력 화면 맨 위 버튼을 눈에 띄게
 const SCRIPT_VERSION = 18;
+// 현황판 판: 커밋할 때 tools/pre-commit.sh 가 이 줄을 커밋 시각(KST)으로 바꿈. 화면 아래와 입력 화면 맨 위에 보여 수정이 반영됐는지 알 수 있게 (11/25 사용자)
+const APP_VERSION = '2026.11.25 16:11';
 const hms = t => new Date(t).toTimeString().slice(0, 8);
 // Tampermonkey 저장소는 브라우저마다 따로: 티켓링크를 다른 브라우저에서 열면 신호가 안 옴 (램프에 이 브라우저 이름을 보여 줌)
 const BROWSER = (ua => /Whale\//.test(ua) ? '웨일' : /Edg\//.test(ua) ? '엣지' : /Chrome\//.test(ua) ? '크롬' : /Firefox\//.test(ua) ? '파이어폭스' : '이 브라우저')(navigator.userAgent);
@@ -2212,7 +2217,7 @@ function drawLamp() {
 // 진단 글: 숫자가 안 들어오거나 이상할 때 개발자에게 보낼 지금 상태 (주소, 브라우저, 스크립트 판, 램프, 예매 탭 신호와 좌석 그림 구조, 스크립트가 센 좌석, 상태 글, 받은 글자)
 const diagText = () => [`FC안양 현황판 진단 ${localISO().replace('T', ' ')} · ${location.search || '(홈)'} ${VENUE} · ${BROWSER}`,
   `보내기 스크립트: ${lamp.installed ? (lamp.version || '옛 ') + '판' : '신호 없음'} (최신 ${SCRIPT_VERSION}판) · 숫자 받음: ${lamp.got ? `${hms(lamp.got)} 구역 ${lamp.zones}개` : '없음'}${lamp.rejected ? ' · 안 받은 이유: ' + lamp.rejected : ''}`,
-  '램프: ' + $('lamp').innerText.replace(/\n/g, ' / '),
+  `현황판 판: ${APP_VERSION}`, '램프: ' + $('lamp').innerText.replace(/\n/g, ' / '),
   ...Object.values(lamp.pings).map(p => `예매 탭 ${p.site || ''} ${p.where || ''} ${hms(p.at)}${p.hidden ? ' (뒤 탭)' : ''}: ${p.state} · 경기장 '${p.venue || ''}' · 구역 줄 ${p.zones ?? '-'} · 화면에 없는 글자 ${(p.need || []).join(', ') || '없음'}\n  좌석 그림: ${p.shape || '-'}`),
   lamp.seats ? `스크립트 좌석 세기 ${hms(lamp.seats.at)}: 잔여 ${lamp.seats.remain} / 총석 ${lamp.seats.total} · 칸 속성의 이름 ${JSON.stringify(lamp.seats.own || [])} · 화면의 이름 ${JSON.stringify((lamp.seats.names || []).slice(0, 15))}\n  결과: ${lamp.seats.msg}` : '스크립트 좌석 세기: 받은 것 없음',
   '상태 글: ' + $('status').textContent, '받은 글자 (앞 3,000자):', raw.value.slice(0, 3000)].join('\n');
@@ -2328,6 +2333,10 @@ let editing = !embed && location.hash === '#edit';
 try { if (!embed) { editing ||= localStorage.getItem(EDIT) === '1'; if (editing) localStorage.setItem(EDIT, '1'); } } catch {}
 document.body.classList.toggle('editing', editing);
 document.body.classList.toggle('embed', embed); document.body.classList.toggle('away', AWAY);
+$('appVer').textContent = ` · 판 ${APP_VERSION}`; $('appVerTop').textContent = `판 ${APP_VERSION}`;
+// 입력 화면: 사이트에 더 새 판이 올라와 있으면 알림 (이 탭이 옛 판이면 새로 고침해야 수정이 반영됨). 주소 끝 ?v= 로 캐시를 피해 한 번만 받음
+if (editing) fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.text() : '').then(t => { const v = t.match(/const APP_VERSION = '([^']+)'/)?.[1];
+  if (v && v > APP_VERSION) { $('appVerTop').textContent = `판 ${APP_VERSION} · 새 판 ${v} 있음: 새로 고침(Ctrl+F5)`; $('appVerTop').style.color = '#b91c1c'; } }).catch(() => {});
 if (SELLER !== '티켓링크') document.querySelector('.foot').textContent = document.querySelector('.foot').textContent.replace('티켓링크', SELLER);  // 바닥 글의 예매처
 if (AWAY) {
   $('markHead').textContent = '매진 / 미판매';

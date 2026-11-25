@@ -1360,6 +1360,11 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     await p.context().close();
     check('여러 줄을 감싼 시야방해 상자 안 좌석도 셈: 안양 R10 126, R14 123', r === '126,123', r);
   } else console.log('SKIP  여러 줄 상자 (좌석스크린샷/시험 없음)');
+  // 현황판 판(11/25 사용자): 화면 아래, 입력 화면 맨 위, 진단 글에 커밋 시각 판 (tools/pre-commit.sh 가 커밋 때 바꿈)
+  p = await open(b);
+  r = await p.evaluate(() => [/^\d{4}\.\d{2}\.\d{2} \d{2}:\d{2}$/.test(APP_VERSION), document.querySelector('.foot').textContent.endsWith(`판 ${APP_VERSION}`), document.getElementById('appVerTop').textContent === `판 ${APP_VERSION}`, diagText().includes(`현황판 판: ${APP_VERSION}`)].join());
+  await p.context().close();
+  check('현황판 판: 화면 아래, 입력 화면 맨 위, 진단 글', r === 'true,true,true,true', r);
   // 서울(11/25 서울 vs 대전 목록): '동측 B구역' 방향 이름, E피치석 아래 구역 줄은 E피치석 몫(EB 아님), E석 'A 구역' + 'A구역', 서측 B·G 는 W피치석 + W석, 시험 페이지 원정석 남측 A~F, 기본 미판매
   p = await open(b, { url: URL + '?s=seoul&test=daejeon#edit' });
   r = await p.evaluate(() => { fcIngest('FC서울 vs 대전하나시티즌\n서울월드컵경기장 | 2026.11.28(토) 14:00\n등급 선택\n신한카드 E피치석 1344 석\n동측 B구역 477 석\n동측 C구역 340 석\nE석 8476 석\n동측 A 구역 231 석\n동측 A구역 22 석\n동측 B 구역 448 석\n동측 B구역 0 석\n동측 K구역 771 석\nW피치석 469 석\n서측 B구역 5 석\n서측 G구역 50 석\nW석 6767 석\n서측 B구역 2 석\n서측 G구역 412 석\n원정석 5344 석\n남측 A구역 594 석');
