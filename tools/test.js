@@ -1239,7 +1239,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     await p.setInputFiles('#file', fs.readdirSync(SHOTS).sort().map(f => path.join(SHOTS, f)));
     await p.evaluate(() => window.ocrDone);
     r = await p.evaluate(() => JSON.parse(JSON.stringify(state)));
-    const x = r.rows, want = { R10: 26, R11: 1, R12: 0, R14: 52, P: 204, T4: 58, T3: 30, 일반지정석: 1426, 스탠딩석: 18 };
+    const x = r.rows, want = { R10: 26, R11: 1, R12: 0, R14: 52, P: 204, T4: 58, T3: 30, 일반지정석: 1426, F1: 0 };  // 스탠딩석 18 은 11/25 부터 S1~S3 묶음 합계 (구역 줄이 없어 구역 잔여는 모름)
     const bad = Object.entries(want).filter(([k, v]) => x[k].remain !== v).map(([k, v]) => `${k} ${x[k].remain}(기대 ${v})`);
     check('실제 캡처 5장 인식 (11/1 부천전)', !bad.length && r.opp === '부천FC1995', bad.join(', ') + ' / ' + r.opp);
     await p.context().close();
