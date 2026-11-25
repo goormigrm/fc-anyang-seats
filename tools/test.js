@@ -1372,16 +1372,26 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   await p.context().close();
   // (11/25 사용자) 동측은 글자마다 앞쪽('동측 B구역': 신한카드 E피치석과 E석 0석 줄을 더함)과 뒤쪽('동측 B 구역') 두 칸, 서측 W피치석 아래 B·G 는 앞줄 칸, W석 아래는 뒷줄 칸
   // 서측 K·L 은 VIP 테이블석 여러 등급과 W센터석, M 은 테라 테이블석과 W석, D 는 W센터석과 W피치석을 더함. 북측 C 는 11/25 팔기 시작해 기본 미판매에서 뺌(D 는 그대로)
-  check('서울 목록: 방향 이름, 동측 앞쪽/뒤쪽 칸(붙여 쓴 이름/띄어 쓴 이름), 서측 W피치석은 앞줄 칸, 대전전 원정석 남측 A~F, 북측 D 기본 미판매, 서측 K·M·D 등급 더함', r === '477,340,22,231,448,,771,5,50,2,412,594,SA SB SC SD SE SF,false,true,false,7,true,true', r);
+  check('서울 목록: 방향 이름, 동측 앞쪽/뒤쪽 칸(붙여 쓴 이름/띄어 쓴 이름), 서측 W피치석은 앞줄 칸, 대전전 원정석 남측 A~F, 북측 C·D 판매(D 는 11/25 밤 사용자: 가장 먼저 매진되는 수호신 자리), 서측 K·M·D 등급 더함', r === '477,340,22,231,448,,771,5,50,2,412,594,SA SB SC SD SE SF,false,false,false,7,true,true', r);
   // 기본 미판매에서 뺀 칸(NC)은 기본값으로 꺼 둔 브라우저(본 기록에 NC)에서 한 번 켬, 사람이 끈 다른 칸(EK)은 그대로
   {
     const ctx = await b.newContext();
-    await ctx.addInitScript(() => { if (!sessionStorage.getItem('once')) { sessionStorage.setItem('once', 1); localStorage.setItem('fc-anyang-unsold-seoul-test', JSON.stringify(['NC', 'ND', 'EK'])); localStorage.setItem('fc-anyang-unsold-seoul-test-seen', JSON.stringify(['NC', 'ND'])); } });
+    await ctx.addInitScript(() => { if (!sessionStorage.getItem('once')) { sessionStorage.setItem('once', 1); localStorage.setItem('fc-anyang-unsold-seoul-test', JSON.stringify(['NC', 'ND', 'EK'])); localStorage.setItem('fc-anyang-unsold-seoul-test-seen2', JSON.stringify(['NC', 'ND', 'WC'])); } });
     const pg = await ctx.newPage(); await pg.goto(URL + '?s=seoul&test=daejeon#edit');
-    r = await pg.evaluate(() => [state.rows.NC.off, state.rows.ND.off, state.rows.EK.off, JSON.parse(localStorage.getItem('fc-anyang-unsold-seoul-test-seen')).includes('NC'), JSON.parse(localStorage.getItem('fc-anyang-unsold-seoul-test')).includes('NC')].join());
+    r = await pg.evaluate(() => [state.rows.NC.off, state.rows.ND.off, state.rows.EK.off, JSON.parse(localStorage.getItem('fc-anyang-unsold-seoul-test-seen2')).includes('NC'), JSON.parse(localStorage.getItem('fc-anyang-unsold-seoul-test')).includes('NC')].join());
     await pg.reload(); r += ' / ' + await pg.evaluate(() => state.rows.NC.off);
     await ctx.close();
-    check('기본 미판매에서 뺀 북측 C 는 기본값으로 꺼 둔 브라우저에서 켬(한 번만), 사람이 끈 EK 는 그대로', r === 'false,true,true,false,false / false', r);
+    check('기본 미판매에서 뺀 북측 C·D 는 기본값으로 꺼 둔 브라우저에서 켬(한 번만), 사람이 끈 EK 는 그대로', r === 'false,false,true,false,false / false', r);
+  }
+  // unsoldRev(서울 2): 예전 본 기록(-seen)만 있는 브라우저는 기본 미판매를 한 번 다시 (켜 둔 WC 도 미판매로, 사람이 끈 EK 는 그대로), 다시 열면 그대로
+  {
+    const ctx = await b.newContext();
+    await ctx.addInitScript(() => { if (!sessionStorage.getItem('once')) { sessionStorage.setItem('once', 1); localStorage.setItem('fc-anyang-unsold-seoul-test', JSON.stringify(['EK'])); localStorage.setItem('fc-anyang-unsold-seoul-test-seen', JSON.stringify(['WC', 'WD'])); } });
+    const pg = await ctx.newPage(); await pg.goto(URL + '?s=seoul&test=daejeon#edit');
+    r = await pg.evaluate(() => [state.rows.WC.off, state.rows.WD.off, state.rows.EK.off, state.rows.ND.off].join());
+    await pg.evaluate(() => { state.rows.WC.off = false; saveOff(); }); await pg.reload(); r += ' / ' + await pg.evaluate(() => state.rows.WC.off);
+    await ctx.close();
+    check('서울 기본 미판매 다시(unsoldRev 2): 켜 둔 WC·WD 도 미판매로 한 번, 그 뒤 사람이 켠 WC 는 그대로', r === 'true,true,true,false / false', r);
   }
   // 수원삼성(11/18 사용자): 원정석 쪽은 S4~S6(S1~S3 중립석은 홈 관중), 2층 맨 앞 2줄과 N8, N12 맨 뒤 10줄은 팔지 않는 줄(막힌 좌석 기본값)
   p = await open(b, { url: URL + '?s=suwon#edit' });

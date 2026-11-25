@@ -282,7 +282,12 @@ const STADIUMS = {
   // c0 음수: 직선 부분이 경기장보다 조금 길고 모서리 칸이 작음 (원본 팔각형 비율). E 피치석 줄은 원본처럼 두껍게, 층 사이 통로는 좁게
   // unsold: 11/25 서울 vs 대전 좌석 그림(직접 셈)에서 판매 등급이 아니거나 통째로 회색인 구역(W센터석 C~E, VIP J~L, 2층 모서리, 북측 서포터즈 C·D, 남측 2층). 총석은 data seoul/max.json
   // dirs: 티켓링크 구역 이름이 '동측 B구역'(방향 + 글자). 붙여 쓴 '동측 B구역'은 앞줄 EB앞, 띄어 쓴 '동측 B 구역'은 뒷줄 EB
-  seoul: { unsold: ['WC', 'WD', 'WE', 'WJ', 'WK', 'WL', 'WN', 'WX', 'EJ', 'ET', 'ND', 'NG', 'NP', 'SG', 'SH', 'SJ', 'SK', 'SL', 'SM', 'SN', 'SP'], newUnsold: true, dirs: true,
+  seoul: { unsold: ['WC', 'WD', 'WE', 'WJ', 'WK', 'WL', 'WN', 'WX', 'EJ', 'ET', 'NG', 'NP', 'SG', 'SH', 'SJ', 'SK', 'SL', 'SM', 'SN', 'SP'], newUnsold: true, dirs: true,
+    // block(11/25 사용자 '지금 1만 명 넘으면 잘못 센 것', 11/08 서울 vs 울산 13,037명 하이라이트 영상): 그 경기에 거의 비었거나 20~30% 만 찼는데
+    // 이번 좌석 그림에는 통째로 회색인 곳은 그때 찬 만큼만 판매로 보고 나머지는 막힌 좌석. 동측 A·B 뒷줄(원정석 옆, 거의 빔), 앞줄 D·E 와 뒷줄 D·E·H(약 25%),
+    // 북측 1층 E·F(서측 쪽, 약 30%), 서측 B 앞·뒤(같은 등급 G 는 13~43% 팔림, 약 30%). 북측 B·C·D 는 수호신 자리라 매진 그대로
+    // 서측 C·D·E 는 티켓링크에 처음부터 0석(W센터석, 벤치 뒤)이라 미판매. 켜면 울산전 때처럼 약 30% 만 판매로. unsoldRev: 기본 미판매를 이미 연 브라우저에도 한 번 다시 (11/25 밤)
+    block: { 'ED앞': 310, 'EE앞': 311, EA: 205, EB: 368, ED: 322, EE: 311, EH: 198, NE: 953, NF: 461, 'WB앞': 368, WB: 475, WC: 333, WD: 220, WE: 220 }, unsoldRev: 2,
     color: 'red', venue: '서울월드컵경기장', host: 'FC서울', name: '서울', geo: { kx: 0.9, c0: -6, chamfer: true, r: [12, 172], s: 1.32 },
     layout: () => {
       const T1 = [14, 100], T2 = [106, 172], F = [14, 48], B = [50, 100], ours = ['SC', 'SB', 'SA'], c = (p, l) => [...l].map(x => p + x);
@@ -717,9 +722,10 @@ defaultBlock();  // 이 브라우저에 아직 막힌 좌석 값이 없는 칸
 const saveOff = () => { try { localStorage.setItem(OFFKEY, JSON.stringify(SECTIONS.filter(s => state.rows[s.id].off).map(s => s.id))); } catch {} };
 const syncOff = () => {
   let v = null, seen = null;
-  try { v = JSON.parse(localStorage.getItem(OFFKEY)); seen = JSON.parse(localStorage.getItem(OFFKEY + '-seen')); } catch {}
+  const SEEN = OFFKEY + '-seen' + ((AWAY && STADIUMS[STADIUM].unsoldRev) || '');
+  try { v = JSON.parse(localStorage.getItem(OFFKEY)); seen = JSON.parse(localStorage.getItem(SEEN)); } catch {}
   // 기본 미판매(구장 unsold, 안양 홈 HOME_OFF)를 이 브라우저가 본 적이 있는지 (OFFKEY-seen). 처음 보는 기본값만 한 번 켜고, 사람이 다시 끈 칸은 그대로 둠
-  const def = (AWAY ? STADIUMS[STADIUM].unsold : HOME_OFF) || [], keep = () => { try { localStorage.setItem(OFFKEY + '-seen', JSON.stringify([...new Set([...(seen || []), ...def])])); } catch {} };
+  const def = (AWAY ? STADIUMS[STADIUM].unsold : HOME_OFF) || [], keep = () => { try { localStorage.setItem(SEEN, JSON.stringify([...new Set([...(seen || []), ...def])])); } catch {} };
   if (!Array.isArray(v)) { defaultOff(); keep(); return saveOff(); }  // 처음: 구장의 기본 미판매(인천 N7)와 지금 표시를 목록으로
   SECTIONS.forEach(s => { state.rows[s.id].off = v.includes(s.id); });
   // 본 기록이 없는 브라우저: 예전부터 있던 기본값(인천 N7 처럼 사람이 여닫는 칸)은 본 것으로 치고, 새로 넣은 기본값(newUnsold: 11/25 서울 22구역, 안양 홈 T1)만 켬
@@ -2204,7 +2210,7 @@ const lamp = { installed: 0, version: 0, pings: {}, got: 0, zones: 0, rejected: 
 // 보내기 스크립트 최신 판 (fc-anyang-send.user.js 의 @version 과 같게. 자동 시험이 맞춰 봄). 설치된 판이 낮으면 입력 화면 맨 위 버튼을 눈에 띄게
 const SCRIPT_VERSION = 18;
 // 현황판 판: 커밋할 때 tools/pre-commit.sh 가 이 줄을 커밋 시각(KST)으로 바꿈. 화면 아래와 입력 화면 맨 위에 보여 수정이 반영됐는지 알 수 있게 (11/25 사용자)
-const APP_VERSION = '2026.11.25 16:59';
+const APP_VERSION = '2026.11.25 17:56';
 const hms = t => new Date(t).toTimeString().slice(0, 8);
 // Tampermonkey 저장소는 브라우저마다 따로: 티켓링크를 다른 브라우저에서 열면 신호가 안 옴 (램프에 이 브라우저 이름을 보여 줌)
 const BROWSER = (ua => /Whale\//.test(ua) ? '웨일' : /Edg\//.test(ua) ? '엣지' : /Chrome\//.test(ua) ? '크롬' : /Firefox\//.test(ua) ? '파이어폭스' : '이 브라우저')(navigator.userAgent);
