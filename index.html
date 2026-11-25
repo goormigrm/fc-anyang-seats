@@ -869,7 +869,7 @@ function trendPoints() {
   const me = (state.opp || '') + state.date.slice(0, 10), t = stats();
   const pts = history.filter(p => (p.opponent || '') + String(p.kickoff || '').slice(0, 10) === me && typeof p.at === 'string' && Number.isInteger(p.booked))
     .map(p => ({ at: p.at.slice(0, 16), booked: p.booked, cap: p.cap || FULL, ab: p.awayBooked, ac: p.awayCap }));
-  if (t.empty.length < SECTIONS.length && t.cap && state.at) {
+  if (t.empty.length + t.off.length < SECTIONS.length && t.cap && state.at) {  // 미판매 칸만 있으면 숫자 없음 (11/25 홈 기본 미판매 T1 로 빈 경기에도 추이 점이 생기던 것)
     const now = new Date(state.at);  // 발행할 때처럼 10분 안의 점은 지금 숫자로 바꿔 보여 줌 (같은 시각 기록도: 지금 숫자에는 원정석 숫자가 있어서)
     return [...pts.filter(p => Math.abs(new Date(p.at) - now) >= 600e3), { at: state.at, booked: t.booked, cap: t.cap, ab: t.awayBooked, ac: t.awayCap }].sort((a, b) => a.at < b.at ? -1 : 1);
   }

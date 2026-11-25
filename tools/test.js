@@ -6,6 +6,7 @@ const { chromium, devices } = require('playwright');
 const fs = require('fs'), path = require('path'), { execSync } = require('child_process'), { pathToFileURL } = require('url');
 
 const ROOT = path.join(__dirname, '..'), URL = pathToFileURL(path.join(ROOT, 'index.html')).href, SHOTS = path.join(ROOT, '좌석스크린샷', '시험');
+const SV = +fs.readFileSync(path.join(ROOT, 'fc-anyang-send.user.js'), 'utf8').match(/@version\s+(\d+)/)[1];  // 보내기 스크립트 최신 판 (판을 올려도 시험을 안 고치게)
 const H = 'FC안양 vs 제주SK\n안양종합운동장 | 2026.11.28(토) 14:00\n등급 선택\n';
 const results = [];
 let lastCheck = Date.now();
@@ -57,8 +58,8 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   r = await ingest(p, H + '원정석\n1800 석\nR6구역\n137 석');
   check('최대보다 조금 많으면 최대를 늘림, 많이 넘으면 경고', r.state.rows.R6.max === 137 && r.state.rows.원정석.max === 1500 && /⚠ 잔여가 최대보다 많음: 원정석/.test(r.status), r.status);
 
-  r = await p.evaluate(() => { const before = state.rows.R10.remain; fcIngest('FC안양 vs 울산HD\n안양종합운동장 | 2026.12.05(토) 14:00\n예매하기\nS1구역\n6 석'); return { opp: state.opp, R10: state.rows.R10.remain, before }; });
-  check('현황판 구역 숫자 없는 화면은 무시 (다른 경기 일정, S1~ 만)', r.opp === '제주SK' && r.R10 === r.before, JSON.stringify(r));
+  r = await p.evaluate(() => { const before = state.rows.R10.remain; fcIngest('FC안양 vs 울산HD\n안양종합운동장 | 2026.12.05(토) 14:00\n예매하기\nS9구역\n6 석'); return { opp: state.opp, R10: state.rows.R10.remain, before }; });
+  check('현황판 구역 숫자 없는 화면은 무시 (다른 경기 일정, 현황판에 없는 S9 만)', r.opp === '제주SK' && r.R10 === r.before, JSON.stringify(r));
   r = await p.evaluate(() => { const before = state.rows.일반지정석.remain; fcIngest('울산HD vs FC안양\n울산문수축구경기장 | 2026.12.12(토) 14:00\n등급 선택\n지정석 S\n1200 석'); return { st: document.getElementById('status').innerText, v: state.rows.일반지정석.remain, before }; });
   check('원정 경기 화면은 무시 (안양종합운동장 아님)', r.v === r.before && /'안양종합운동장'가 없어 넘겼습니다/.test(r.st), JSON.stringify(r));
 
@@ -88,7 +89,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   {
     const pg = await open(b);
     r = await pg.evaluate(() => {
-      newGame(); Object.assign(state, { opp: '제주SK', date: '2026-11-28T14:00', at: '2026-11-26T14:00' }); state.rows.R10.remain = 26; state.rows.원정석.remain = 1000;
+      newGame(); Object.assign(state, { opp: '제주SK', date: '2026-11-28T14:00', at: '2026-11-26T14:00' }); state.rows.R10.remain = 26; state.rows.원정석.remain = 1000; state.rows.원정석.max = 1235;  /* 원정석 총석을 정해 둠 (평소 값 11/25 1235 -> 1500) */
       const pt = (at, booked, ab) => ({ at: at + ':00+09:00', opponent: '부천FC1995', kickoff: '2026-11-01T16:30:00+09:00', booked, cap: 11542, awayBooked: ab, awayCap: 1235, unknown: 0 });
       history = [pt('2026-10-29T10:00', 3000, 100), pt('2026-10-30T12:00', 3500, 150), pt('2026-10-31T16:00', 5000, 300)]; render();
       const out = { a: document.getElementById('trend').textContent, hid: getComputedStyle(document.getElementById('restore')).display };
@@ -252,7 +253,10 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     await p.evaluate(() => document.getElementById('stadiumWrap').scrollIntoView({ block: 'center' }));
     await p.mouse.click(...await wrapAt()); const z1 = await st();
     // 크게 보면 처음에는 잔디가 가운데: 손으로 밀듯이 R20 칸을 화면 안으로 옮긴 뒤 누름
-    const mid = sel => p.evaluate(sel => { const el = document.querySelector(sel); el.scrollIntoView({ block: 'center', inline: 'center' }); const r = el.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }, sel);
+    // 옮긴 뒤 위치가 멈출 때까지 기다렸다가 누름 (움직이는 중에 누르면 칸을 빗나가 가끔 실패하던 것, 11/25 4번에 1번)
+    const mid = sel => p.evaluate(async sel => { const el = document.querySelector(sel); el.scrollIntoView({ block: 'center', inline: 'center' });
+      let last = '', same = 0; for (let i = 0; i < 60 && same < 3; i++) { await new Promise(ok => requestAnimationFrame(ok)); const q = JSON.stringify(el.getBoundingClientRect()); same = q === last ? same + 1 : 0; last = q; }
+      const r = el.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }, sel);
     await p.mouse.click(...await mid('#stadium [data-z="R20"]')); const z2 = await st();
     await p.mouse.click(...await mid('#stadium rect[fill="url(#grass)"]')); const z3 = await st();
     check('휴대폰: 크게 본 상태에서 구역을 누르면 자세히(확대 그대로), 잔디를 누르면 원래대로', z1 === 'true|' && z2 === 'true|R20 · 정보 없음 · 총 123석' && z3 === 'false|', JSON.stringify({ z1, z2, z3 }));
@@ -353,7 +357,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       await pg.context().close();
       check('놀티켓 글자 받기(수원삼성): 경기장 이름 없어도 홈 팀 + 안양이면 받음, 숫자만 줄, 괄호 뺀 구역 이름, 오후 2시, 칸 없는 패밀리박스는 넘김, W13 = 2층 테이블', r.k?.ok && r.S1 === 12 && r.fam === false && r.z === 'W13,W13,W13' && r.E5 === 40 && r.date === '2026-11-29T14:00', JSON.stringify(r));
       // 수원삼성 총석(11/08 받은 자료, W13 772 는 2층 테이블 318 + 미판매 구역 454 로 나눔): 칸 62개 모두, 받은 잔여로 예매 수 (S1 546-12, E5 527-40)
-      check('수원삼성 총석: 칸 62개 모두, W13 2층 테이블 + 미판매 구역 = 받은 W13 772 (5석 이하 차이 허용), 캡처로 센 값과 같음, 예매 수 바로 나옴', r.max === 62 && r.none === '' && Math.abs(r.w13 - 772) <= 5 && r.m === '843,637,504,276,116,940' && r.cap === 546 + 527 + 3929 && r.booked === 534 + 487 + 3929 - 1191, JSON.stringify(r));  // + 2층 E석(E15~19) 묶음: 총석 3,929 - 묶음 잔여 1,191
+      check('수원삼성 총석: 칸 62개 모두, W13 2층 테이블 + 미판매 구역 = 받은 W13 772 (5석 이하 차이 허용), 캡처로 센 값과 같음, 예매 수 바로 나옴', r.max === 62 && r.none === '' && Math.abs(r.w13 - 772) <= 5 && r.m === '843,637,504,276,116,940' && r.cap === 546 + 527 + 3929 - 169 && r.booked === 534 + 487 + 3929 - 169 - 1191, JSON.stringify(r));  // + 2층 E석(E15~19) 묶음: 총석 3,929 - 막힌 앞 2줄 169(E15~E17 기본값) - 묶음 잔여 1,191
       const pb = await open(b, { url: URL + '?s=bucheon#edit' });
       r = await pb.evaluate(s => [fcIngest(s).why, fcIngest('FC안양 vs 부천FC1995\n안양종합운동장 | 2026.11.28(토) 14:00\n등급 선택\nR10구역\n20 석').why].join(' | '), sent.text.s);
       await pb.context().close();
@@ -397,9 +401,9 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
         const v = await view.evaluate(() => { const t = stats(); return [t.cap, t.booked, t.awayCap, t.awayBooked].join() + '|' + (document.getElementById('board').innerHTML.match(/≈/g) || []).length; });
         await view.context().close(); await pgq.context().close();
         // E 묶음 총석 3,929 - 1,191, S4 637 - 504, E5 527 - 14. 원정석 = S4, S5, S6 (1,912석) 잔여 1,538 -> S5, S6 은 (1,538 - 504) 를 나눔
-        const E = 3929, eb = 3929 - 1191;
+        const E = 3929 - (56 + 58 + 55), eb = E - 1191;  // 2층 앞 2줄 막힌 좌석 기본값(E15 56, E16 58, E17 55, 11/18)은 총석에서 뺌
         check('놀티켓 등급 묶음: 범위 묶음은 바로 예매 수에(≈ 추정), 범위 없는 원정석은 구역을 정해야 셈, 숫자 끝이 4 여도 그대로(S4 504, E5 14)',
-          r.k.ok && r.k.n === 4 && /원정석 1,538석: 어느 구역인지 정하지 않아/.test(r.st) && r.a === [E + 637 + 527, eb + 133 + 513, 637, 133].join() && r.btn === false && /^≈69% \(묶음 추정/.test(r.cell) && r.svg >= 5, JSON.stringify({ ...r, json: 0 }));
+          r.k.ok && r.k.n === 4 && /원정석 1,538석: 어느 구역인지 정하지 않아/.test(r.st) && r.a === [E + 637 + 527, eb + 133 + 513, 637, 133].join() && r.btn === false && /^≈68% \(묶음 추정/.test(r.cell) && r.svg >= 5, JSON.stringify({ ...r, json: 0 }));
         check('묶음 구역 정하기: 총석보다 잔여가 많으면 ⚠ 하고 세지 않음, 맞게 정하면 원정석 카드와 전체 예매에 들어감, 구역 하나를 따로 알아도 묶음 합은 그대로',
           /⚠ 원정석 잔여 1,538석이 그 구역 총석 합 1,275석보다 많습니다/.test(r.over) && r.b === [E + 637 + 527, eb + 133 + 513, 0, 0].join()
           && r.c === [E + 1912 + 527, eb + 374 + 513, 1912, 374].join() && r.card && r.d === r.c, JSON.stringify({ ...r, json: 0 }));
@@ -526,7 +530,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       ['pohang', 63, 7, H2('포항스틸러스', '포항스틸야드') + '청암E1구역\n100 석\nA1구역\n50 석\n데크석\n20 석\n퍼스트클래스석\n12 석\n퍼스트클래스 구역\n12 석\n프레스티지 테이블(1인)\n7 석\n프레스티지 테이블(2인)\n26 석\nT2 테이블(1인)\n1 석\nT2 테이블(2인)\n60 석', { E1: 100, A1: 50, 데크석: 20, 퍼스트클래스석: 12, 프레스티지테이블: 33, T2: 61 }, ''],
       ['seoul', 69, 3, H2('FC서울', '서울월드컵경기장') + 'E-A구역\n80 석\nSC구역\n40 석', { EA: 80, SC: 40 }, ''],
       ['ulsan', 106, 11, H2('울산HD', '울산문수축구경기장') + 'N1구역\n120 석\nE13구역\n50 석\n프리미엄 테이블석\n10 석', { N1: 120, E13: 50, 프리미엄테이블석: 10 }, ''],
-      ['suwon', 62, 13, H2('수원삼성', '수원월드컵경기장') + 'S3구역\n20 석\nE5구역\n40 석', { S3: 20, E5: 40 }, ''],
+      ['suwon', 62, 3, H2('수원삼성', '수원월드컵경기장') + 'S3구역\n20 석\nE5구역\n40 석', { S3: 20, E5: 40 }, ''],
       ['suwonfc', 38, 13, H2('수원FC', '수원종합운동장') + 'S7구역\n30 석\nVIP석\n5 석', { S7: 30, VIP석: 5 }, ''],
       ['bucheon', 42, 8, H2('부천FC1995', '부천종합운동장') + 'SA구역\n50 석\nGE가구역\n12 석', { SA: 50, GE가: 12 }, ''],
       ['gangwon', 42, 3, H2('강원FC', '강릉종합운동장') + 'S2구역\n15 석\n자유석A구역\n100 석\n테이블석\n4 석', { S2: 15, 자유석A: 100, 테이블석: 4 }, ''],
@@ -658,11 +662,12 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   // 확인된 총석(FS4 36)은 그 브라우저가 처음 본 잔여로 배운 추정값보다 우선, 사람이 넣은 값은 그대로
   {
     const ctx = await b.newContext();
-    await ctx.addInitScript(() => { if (!localStorage.getItem('fc-anyang-seat-status')) localStorage.setItem('fc-anyang-seat-status', JSON.stringify({ rows: { FS4: { remain: 20, max: 20, learned: true }, FS1: { remain: 5, max: 48 }, FS5: { remain: 9, max: 9, learned: true } } })); });
+    // 모르는 구역 예: 중립석은 코드에 총석이 없음 (총석 발행으로만. 11/25 FS5 는 36 확인)
+    await ctx.addInitScript(() => { if (!localStorage.getItem('fc-anyang-seat-status')) localStorage.setItem('fc-anyang-seat-status', JSON.stringify({ rows: { FS4: { remain: 20, max: 20, learned: true }, FS1: { remain: 5, max: 48 }, 중립석: { remain: 9, max: 9, learned: true } } })); });
     const pg = await ctx.newPage(); await pg.goto(URL + '#edit');
-    r = await pg.evaluate(() => [state.rows.FS4.max, !!state.rows.FS4.learned, state.rows.FS1.max, state.rows.FS5.max, !!state.rows.FS5.learned].join());
+    r = await pg.evaluate(() => [state.rows.FS4.max, !!state.rows.FS4.learned, state.rows.FS1.max, state.rows.중립석.max, !!state.rows.중립석.learned].join());
     await ctx.close();
-    check('확인된 총석 FS4 36 은 배운 추정값(20)보다 우선, 사람이 넣은 FS1 48 과 모르는 FS5 추정값은 그대로', r === '36,false,48,9,true', r);
+    check('확인된 총석 FS4 36 은 배운 추정값(20)보다 우선, 사람이 넣은 FS1 48 과 모르는 중립석 추정값은 그대로', r === '36,false,48,9,true', r);
   }
 
   // 수집 상태 램프: 신호 없음 / 켜짐 / 티켓링크 열림 / 예매 화면 감지 / 숫자 받음 / 다른 구장 / 신호 끊김 / 뒤 탭
@@ -723,7 +728,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       return out;
     });
     await pg.context().close();
-    check('진단 글 복사: 주소와 경기장, 스크립트 판, 램프, 예매 탭 신호와 좌석 그림 구조, 스크립트가 센 좌석과 결과, 받은 글자', /FC안양 현황판 진단 .*\?s=gimcheon#?.* 김천종합운동장/.test(r.diag) && /보내기 스크립트: 16판 \(최신 16판\) · 숫자 받음: .* 구역 1개/.test(r.diag) && /예매 탭 티켓링크 www\.ticketlink\.co\.kr\/reserve .*: seat · 경기장 '김천종합운동장'/.test(r.diag)
+    check('진단 글 복사: 주소와 경기장, 스크립트 판, 램프, 예매 탭 신호와 좌석 그림 구조, 스크립트가 센 좌석과 결과, 받은 글자', /FC안양 현황판 진단 .*\?s=gimcheon#?.* 김천종합운동장/.test(r.diag) && new RegExp(`보내기 스크립트: ${SV}판 \\(최신 ${SV}판\\) · 숫자 받음: .* 구역 1개`).test(r.diag) && /예매 탭 티켓링크 www\.ticketlink\.co\.kr\/reserve .*: seat · 경기장 '김천종합운동장'/.test(r.diag)
       && /좌석 그림: 캔버스 없음 · SVG 도형 0 · 작은 네모 i\.seat 30개/.test(r.diag) && /스크립트 좌석 세기 .*잔여 12 \/ 총석 30 · 칸 속성의 이름 \["N11구역"\]/.test(r.diag) && /결과: 보내기 스크립트가 좌석 그림을 셌습니다: N11/.test(r.diag) && /N11구역\n12 석/.test(r.diag) && /진단 글을 복사했습니다|아래 글자 칸에 넣었습니다/.test(r.st), r.diag + ' / ' + r.st);
     check('수집 램프: 두 줄로 접혀 있고 누르면 펼침(스크립트 좌석 세기 줄), 입력 화면 맨 위에 램프 자리', r.clamp.startsWith('2|') && r.more.startsWith('true|') && +r.more.split('|')[1] > +r.clamp.split('|')[1] && r.more.endsWith('|true') && r.pad === '76px', JSON.stringify({ clamp: r.clamp, more: r.more, pad: r.pad }));
     // 발행 점검: 발행하지 않고 토큰(쓰기 권한), 스크립트 판, 지금 발행본을 알려 줌
@@ -737,7 +742,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       return v + ' || ' + calls.join(',');
     };
     const ok = await chk(201, 'ghp_x'), bad = await chk(401, 'ghp_x'), none = await chk(201, '');
-    check('발행 점검: 토큰 쓰기 확인(파일 조각만 올림, 브랜치는 안 건드림), 만료된 토큰, 토큰 없음, 옛 스크립트, 지금 발행본', /토큰: 발행할 수 있음/.test(ok) && /⚠ 보내기 스크립트: 15판/.test(ok) && !/바로 발행/.test(ok) && /지금 발행본: 부천FC1995 11\.01 16:30 경기, 집계 11\.01 16:30/.test(ok) && ok.endsWith('|| POST blobs')
+    check('발행 점검: 토큰 쓰기 확인(파일 조각만 올림, 브랜치는 안 건드림), 만료된 토큰, 토큰 없음, 옛 스크립트, 지금 발행본', /토큰: 발행할 수 있음/.test(ok) && ok.includes(`⚠ 보내기 스크립트: ${SV - 1}판`) && !/바로 발행/.test(ok) && /지금 발행본: 부천FC1995 11\.01 16:30 경기, 집계 11\.01 16:30/.test(ok) && ok.endsWith('|| POST blobs')
       && /⚠ 토큰: 만료됐거나 잘못됐습니다/.test(bad) && /⚠ 토큰: 없음/.test(none) && none.endsWith('|| '), JSON.stringify({ ok, bad, none }));
     // 구역 글자가 칸 밖으로 나가지 않음: 가로로 쓴 글자(이름, 예매율)의 네 귀(조금 안쪽)가 그 칸 위에 있는지. 모서리가 세모꼴인 수원삼성, 서울, 비스듬한 좁은 칸이 많은 부천
     for (const sid of ['suwon', 'seoul', 'bucheon']) {
@@ -758,7 +763,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     pg = await open(b);
     await pg.waitForTimeout(300);
     r = await pg.evaluate(() => {
-      newGame(); Object.assign(state, { opp: '제주SK', date: '2026-11-28T14:00', at: '2026-11-26T14:00' }); state.rows.R10.remain = 26; state.rows.원정석.remain = 1000;
+      newGame(); Object.assign(state, { opp: '제주SK', date: '2026-11-28T14:00', at: '2026-11-26T14:00' }); state.rows.R10.remain = 26; state.rows.원정석.remain = 1000; state.rows.원정석.max = 1235;  /* 원정석 총석을 정해 둠 (평소 값 11/25 1235 -> 1500) */
       history = ['2026-11-20T11:00', '2026-11-22T20:00', '2026-11-24T09:30', '2026-11-25T18:00', '2026-11-26T09:00'].map((at, i) => ({ at: at + ':00+09:00', opponent: '제주SK', kickoff: '2026-11-28T14:00:00+09:00', booked: 8000 + i * 400, cap: 11542, awayBooked: 100 + i * 20, awayCap: 1235, unknown: 0 })); render();
       // 가로축 글자(날짜 줄)끼리 겹치지 않는지: 같은 높이의 글자 상자가 서로 닿지 않음
       const days = [...document.querySelectorAll('#trend text')].filter(t => /^\d\d\.\d\d\(.\)$/.test(t.textContent)).map(t => t.getBoundingClientRect()).filter(q => q.x < innerWidth / 2).sort((a, b) => a.x - b.x);
@@ -769,7 +774,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     // 예상 점선은 줄어든 구간을 늘이지 않음(11/18 인천 vs 울산 원정석 −52석 -> 예상 −268석): 원정석 300 -> 280 -> 235 는 예상 없음, 홈석은 늘어서 예상
     pg = await open(b); await pg.waitForTimeout(300);
     r = await pg.evaluate(() => {
-      newGame(); Object.assign(state, { opp: '제주SK', date: '2026-11-28T14:00', at: '2026-11-26T14:00' }); state.rows.R10.remain = 26; state.rows.원정석.remain = 1000;
+      newGame(); Object.assign(state, { opp: '제주SK', date: '2026-11-28T14:00', at: '2026-11-26T14:00' }); state.rows.R10.remain = 26; state.rows.원정석.remain = 1000; state.rows.원정석.max = 1235;  /* 원정석 총석을 정해 둠 (평소 값 11/25 1235 -> 1500) */
       history = ['2026-11-24T09:30', '2026-11-26T09:00'].map((at, i) => ({ at: at + ':00+09:00', opponent: '제주SK', kickoff: '2026-11-28T14:00:00+09:00', booked: 10500, cap: 11542, awayBooked: 300 - i * 20, awayCap: 1235, unknown: 0 })); render();
       return [...document.querySelectorAll('#trend text')].map(t => t.textContent).filter(t => t.startsWith('예상')).join('/'); });
     await pg.context().close();
@@ -1239,7 +1244,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     await p.setInputFiles('#file', fs.readdirSync(SHOTS).sort().map(f => path.join(SHOTS, f)));
     await p.evaluate(() => window.ocrDone);
     r = await p.evaluate(() => JSON.parse(JSON.stringify(state)));
-    const x = r.rows, want = { R10: 26, R11: 1, R12: 0, R14: 52, P: 204, T4: 58, T3: 30, 일반지정석: 1426, F1: 0 };  // 스탠딩석 18 은 11/25 부터 S1~S3 묶음 합계 (구역 줄이 없어 구역 잔여는 모름)
+    const x = r.rows, want = { R10: 26, R11: 1, R12: 0, R14: 52, P: 204, T4: 58, T3: 30, 일반지정석: 1426 };  // 스탠딩석 18 은 11/25 부터 S1~S3 묶음 합계 (구역 줄이 없어 구역 잔여는 모름)
     const bad = Object.entries(want).filter(([k, v]) => x[k].remain !== v).map(([k, v]) => `${k} ${x[k].remain}(기대 ${v})`);
     check('실제 캡처 5장 인식 (11/1 부천전)', !bad.length && r.opp === '부천FC1995', bad.join(', ') + ' / ' + r.opp);
     await p.context().close();
@@ -1354,19 +1359,19 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   } else console.log('SKIP  여러 줄 상자 (좌석스크린샷/시험 없음)');
   // 수원삼성(11/18 사용자): 원정석 쪽은 S4~S6(S1~S3 중립석은 홈 관중), 2층 맨 앞 2줄과 N8, N12 맨 뒤 10줄은 팔지 않는 줄(막힌 좌석 기본값)
   p = await open(b, { url: URL + '?s=suwon#edit' });
-  r = await p.evaluate(() => { const o = [SECTIONS.filter(x => x.ours).map(x => x.id).sort().join(' '), state.rows.N8.block, state.rows.E12.block, capOf(state.rows.N8), state.rows.S1.block ?? 0, state.rows.N9.block, state.rows.N10.block, state.rows.N11.block];
+  const rSw = await p.evaluate(() => { const o = [SECTIONS.filter(x => x.ours).map(x => x.id).sort().join(' '), state.rows.N8.block, state.rows.E12.block, capOf(state.rows.N8), state.rows.S1.block ?? 0, state.rows.N9.block, state.rows.N10.block, state.rows.N11.block];
     // 지난 기본값(N9 72)이 저장된 브라우저는 새 기본값으로, 사람이 바꾼 값(N10 0)은 그대로
     state.rows.N9.block = 72; state.rows.N10.block = 0; delete state.blockDefaults; defaultBlock(); o.push(state.rows.N9.block, state.rows.N10.block); return o.join(','); });
   await p.context().close();
   p = await open(b, { url: URL + '?s=suwon&test=gyeongnam#edit' });
-  r = await p.evaluate(() => { Object.assign(state, { date: '2026-11-21T14:00', at: '2026-11-18T14:15' }); const t = fileBase(); return t; });
+  const rName = await p.evaluate(() => { Object.assign(state, { date: '2026-11-21T14:00', at: '2026-11-18T14:15' }); const t = fileBase(); return t; });
   await p.context().close();
   p = await open(b, { url: URL + '?s=suwon#edit' });
   r = await p.evaluate(() => [['N8', 'N9', 'N10', 'E12'].map(id => blockShare(id).toFixed(2)).join('/'), document.querySelectorAll('#board path[fill="url(#hatch)"][stroke="none"]').length, state.rows.W13미판매구역.off].join(','));
   await p.context().close();
   check('수원 N8~N12: 막힌 좌석이 칸의 10% 넘으면 그만큼 빗금(N8 0.46, N9 0.88, N10 0.10, E12 는 없음), W13 미판매 구역은 기본 미판매', r === '0.46/0.88/0.10/0.00,5,true', r);
-  check('시험 페이지 저장 파일 이름은 실제 원정 팀 (수원삼성_경남FC, 안양 아님)', r === '수원삼성_경남FC_20261121_집계202611181415', r);
-  check('수원삼성: 원정석 쪽 S4~S6, 팔지 않는 줄 기본값(N8 434석 -> 판매 506석, E12 55석, N9, N11 827: 3~5열만, N10 70), 1층은 없음, 지난 기본값만 새 값으로', r === 'S4 S5 S6,434,55,506,0,827,70,827,827,0', r);
+  check('시험 페이지 저장 파일 이름은 실제 원정 팀 (수원삼성_경남FC, 안양 아님)', rName === '수원삼성_경남FC_20261121_집계202611181415', rName);
+  check('수원삼성: 원정석 쪽 S4~S6, 팔지 않는 줄 기본값(N8 434석 -> 판매 506석, E12 55석, N9, N11 827: 3~5열만, N10 70), 1층은 없음, 지난 기본값만 새 값으로', rSw === 'S4 S5 S6,434,55,506,0,827,70,827,827,0', rSw);
   const NOLD = path.join(ROOT, '좌석스크린샷', '시험_놀티켓');
   if (fs.existsSync(NOLD)) {
     // W13(2층 테이블석, 2인 테이블 짝)은 한 화면에 안 들어와 왼쪽, 오른쪽 두 장(가운데 블록이 겹침): 왼쪽 장의 잘린 가운데 블록은 떨어진 칸으로 빠져 122 + 196 = 318 (손으로 센 수)
