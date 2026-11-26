@@ -2212,7 +2212,7 @@ const lamp = { installed: 0, version: 0, pings: {}, got: 0, zones: 0, rejected: 
 // 보내기 스크립트 최신 판 (fc-anyang-send.user.js 의 @version 과 같게. 자동 시험이 맞춰 봄). 설치된 판이 낮으면 입력 화면 맨 위 버튼을 눈에 띄게
 const SCRIPT_VERSION = 18;
 // 현황판 판: 커밋할 때 tools/pre-commit.sh 가 이 줄을 커밋 시각(KST)으로 바꿈. 화면 아래와 입력 화면 맨 위에 보여 수정이 반영됐는지 알 수 있게 (11/25 사용자)
-const APP_VERSION = '2026.11.26 18:49';
+const APP_VERSION = '2026.11.26 19:05';
 const hms = t => new Date(t).toTimeString().slice(0, 8);
 // Tampermonkey 저장소는 브라우저마다 따로: 티켓링크를 다른 브라우저에서 열면 신호가 안 옴 (램프에 이 브라우저 이름을 보여 줌)
 const BROWSER = (ua => /Whale\//.test(ua) ? '웨일' : /Edg\//.test(ua) ? '엣지' : /Chrome\//.test(ua) ? '크롬' : /Firefox\//.test(ua) ? '파이어폭스' : '이 브라우저')(navigator.userAgent);
@@ -2343,6 +2343,8 @@ async function loadPublished() {
       base: d.sinceBase ? { at: local(d.sinceBase.at), rows: Object.fromEntries(SECTIONS.map(s => {
         const x = secs[s.id] || {}; return [s.id, num(x.remain) != null && Number.isInteger(x.sold) ? x.remain + x.sold : null]; })) } : null,
     });
+    // 보기 화면도 현황 발행 뒤에 올린 총석(max.json)이 더 새 값이면 그 총석으로 (11/26 사용자: 입력 화면은 WM 98%, 보기 화면은 발행본의 옛 총석 6석이라 0%)
+    if (!editing && maxPub && String(maxPub.updatedAt) > String(d.updatedAt)) for (const [id, v] of Object.entries(maxPub.max)) if (state.rows[id]) state.rows[id].max = v;
     render(); showAgo();
     return true;
   } catch { note('새 현황을 받지 못했습니다. 잠시 뒤 다시 받습니다.'); return false; }
@@ -2387,7 +2389,11 @@ if (editing) {
 }
 else {
   blank();
-  const view = () => { render(); loadPublished().then(loadHistory); setInterval(() => { loadPublished().then(loadHistory); if (FOLLOW) follow(); }, 300e3); setInterval(showAgo, 60e3); };
+  // 보기 화면은 총석 발행본(max.json)을 받아 두기만 함 (이 기기 입력값에 저장하지 않음: loadMax 는 저장까지 함)
+  const viewMax = () => fetchData('max.json', MAXDATA).then(r => r.ok ? r.json() : null).then(d => {
+    const max = Object.fromEntries(Object.entries(d?.max || {}).filter(([id, v]) => state.rows[id] && Number.isInteger(v) && v > 0)); if (Object.keys(max).length) maxPub = { ...d, max }; }).catch(() => {});
+  const pull = () => viewMax().then(loadPublished).then(loadHistory);
+  const view = () => { render(); pull(); setInterval(() => { pull(); if (FOLLOW) follow(); }, 300e3); setInterval(showAgo, 60e3); };
   if (!FOLLOW) view();  // 구장을 고른 주소(안양 홈은 ?s=anyang)는 그 구장만
   else Promise.race([newest(latest0), new Promise(ok => setTimeout(ok, 4000, STADIUM))]).then(id => id === STADIUM ? view() : go(id));
 }

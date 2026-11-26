@@ -242,6 +242,15 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   r = await p.evaluate(() => ({ panel: getComputedStyle(document.querySelector('.panel')).display, svg: document.getElementById('board').innerHTML, note: document.getElementById('note').innerText }));
   check('보기 화면: 발행본 그림(구역은 예매율), 입력 칸 숨김, 경과 시간', r.panel === 'none' && r.svg.includes('>20%<') && !r.svg.includes('980/1235') && /마지막 집계/.test(r.note), r.note);
   await p.context().close();
+  // 보기 화면: 현황 발행 뒤에 올린 총석(max.json)이 더 새 값이면 그 총석 (11/26 서울 WM: 입력 화면 98%, 보기 화면 0%), 더 옛 총석이면 발행본 그대로
+  for (const [at, want] of [['2026-11-27T13:00:00+09:00', '>50%<'], ['2026-11-27T11:00:00+09:00', '>20%<']]) {
+    p = await open(b, { url: URL, data: { 'latest.json': pub, 'history.json': [], 'max.json': { updatedAt: at, max: { 원정석: 1960 } } } });
+    await p.waitForFunction(() => document.getElementById('board').innerHTML.includes('제주SK'));
+    r = await p.evaluate(() => [state.rows.원정석.max, localStorage.getItem('fc-anyang-seat-status') === null].join());
+    const svg = await p.evaluate(() => document.getElementById('board').innerHTML);
+    check(`보기 화면 총석: max.json ${at.slice(11, 16)} (발행 12:00) -> ${want}, 이 기기 입력값에 저장 안 함`, svg.includes(want) && r === (want === '>50%<' ? '1960,true' : '1235,true'), r);
+    await p.context().close();
+  }
 
   p = await open(b, { url: URL });
   await p.waitForFunction(() => /없습니다|못했습니다/.test(document.getElementById('note').innerText));
