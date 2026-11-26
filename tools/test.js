@@ -116,6 +116,13 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   // 공식 관중: 기록, 요약 글, 추이의 관중 점
   r = await p.evaluate(() => { history = []; document.getElementById('crowd').value = '4464'; document.getElementById('crowd').dispatchEvent(new Event('input')); return { att: record().match.attendance, sum: summaryText(), chart: document.getElementById('trend').innerHTML.includes('공식 관중') }; });
   check('공식 관중: 기록, 요약 글, 추이 점', r.att === 4464 && /공식 관중 4,464명/.test(r.sum) && r.chart, JSON.stringify(r).slice(0, 200));
+  // 안양 홈 요약 글도 원정 화면처럼: 원정석 예매 줄, 원정 관중 대비, 미판매 줄 (11/26 사용자: 인천, 전북 시험 페이지에만 나옴)
+  r = await p.evaluate(() => { const c = document.getElementById('crowd'), ca = document.getElementById('crowdAway'); c.value = ''; c.dispatchEvent(new Event('input'));
+    Object.assign(state.rows.원정석, { remain: 1200, max: 1500, off: false }); state.rows.T1.off = true; const s1 = summaryText();
+    c.value = '4000'; c.dispatchEvent(new Event('input')); if (ca) { ca.value = '250'; ca.dispatchEvent(new Event('input')); } const s2 = summaryText();
+    c.value = ''; c.dispatchEvent(new Event('input')); if (ca) { ca.value = ''; ca.dispatchEvent(new Event('input')); }
+    return { a: /\n원정석 예매 300석 \/ 1,500석 \(20\.0%\)/.test(s1), off: /\n미판매: T1$/.test(s1), crowd: /그중 원정 250명 \(원정석 예매 300석 대비 [−-]50\)/.test(s2), card: /미판매 1개 구역/.test(document.getElementById('sums')?.innerText ?? document.body.innerText) }; });
+  check('안양 홈 요약 글: 원정석 예매 줄, 미판매 줄, 원정 관중 대비, 카드에 미판매 개수', r.a && r.off && r.crowd && r.card, JSON.stringify(r));
   // 구역 숫자 없이 발행(다른 브라우저에서 공식 관중만 넣음): 예매는 모름(null, 만석으로 올리지 않음). 다른 경기면 발행 안 함, 같은 경기 발행본이 있으면 묻고 그 구역 숫자를 불러와 공식 관중만 바꿈
   {
     const pubHome = { app: 'fc-anyang-seats', version: 1, updatedAt: '2026-11-01T16:30:00+09:00', match: { opponent: '부천FC1995', kickoff: '2026-11-01T16:30:00+09:00', attendance: null },
@@ -460,7 +467,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     out.more = document.querySelector('details.more').open + '|' + [...document.querySelectorAll('details.more button')].map(x => x.textContent).join(',');
     return out;
   });
-  check('입력 화면: 현황 집계는 할 일이 캡처 고르기와 현황 발행뿐, 드문 기능은 접혀 있음, 칸마다 가로 전체, 홈은 미판매 버튼 없음', r.status === '현황 집계,총석 집계,보기 화면으로,작업 가이드,스크립트,캡처 고르기,현황 발행,지금 | 구역,매진,잔여,최대,예매율 | true' && r.full && r.stacked && r.off === 0
+  check('입력 화면: 현황 집계는 할 일이 캡처 고르기와 현황 발행뿐, 드문 기능은 접혀 있음, 칸마다 가로 전체, 홈도 미판매 버튼(11/26: T1 기본 미판매를 표에서 바꿀 수 있게)', r.status === '현황 집계,총석 집계,보기 화면으로,작업 가이드,스크립트,캡처 고르기,현황 발행,지금 | 구역,매진,잔여,최대,예매율 | true' && r.full && r.stacked && r.off === 53
     && r.more === 'false|이 글자로 다시 채우기,진단 글 복사,새 경기: 잔여 모두 지우기,잔여를 최대로 복사,마지막 발행 지우기,발행 모두 지우기,발행 점검,토큰 설정,이번 집계 저장,저장한 집계 열기,지금 숫자를 기준으로,저장한 집계를 기준으로,비교 끄기', JSON.stringify(r));
   check('입력 화면: 총석 집계는 캡처 고르기와 총석 발행뿐, 표는 구역과 최대만, 경기 정보 숨김, 잔여 글자는 받지 않음, 현황 집계로 돌아옴', r.max.startsWith('현황 집계,총석 집계,보기 화면으로,작업 가이드,스크립트,캡처 고르기,총석 발행 | 구역,최대 | false | 구역별 총석 | 총석이 있는 구역 ') && /아직 발행한 총석이 없습니다/.test(r.max)
     && r.ing === '현황판이 총석 집계 화면이라 받지 않음|true' && r.back === false, JSON.stringify(r));

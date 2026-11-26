@@ -1012,7 +1012,7 @@ function build(story) {
   // noData: 구역 잔여가 하나도 없음, none: 예매를 낼 수 없음(잔여나 총석이 없음). 숫자가 없으면 '- / 0석', '잔여석 -석' 대신 빈칸, '정보 없음'
   const noData = emptyN + offN === SECTIONS.length, none = noData || !cap, num = x => none ? '-' : fmt(x), rate = x => none ? '-' : (x / cap * 100).toFixed(1);
   // 설명 줄: 원정은 미판매, 정보 없는 구역, 총석 모르는 구역을 뺀 합. 홈은 만석에서 남은 좌석을 빼서 정보 없는 구역이 예매로 들어감 (그대로 적음)
-  const excl = AWAY ? [offN ? `미판매 ${offN}` : '', emptyN && !none ? `정보 없음 ${emptyN}` : '', capMiss.length ? `총석 모름 ${capMiss.length}` : ''].filter(Boolean) : [];
+  const excl = [offN ? `미판매 ${offN}` : '', ...(AWAY ? [emptyN && !none ? `정보 없음 ${emptyN}` : '', capMiss.length ? `총석 모름 ${capMiss.length}` : ''] : [])].filter(Boolean);  // 홈도 미판매는 총석에서 뺌 (T1)
   const exclTxt = [excl.length ? `제외: ${excl.join(', ')}개 구역` : '', FULL && emptyN && !noData ? `정보 없는 구역 ${emptyN}개는 예매로 셈` : ''].filter(Boolean).join(' · ');
   const oPc = oCap ? (oBooked / oCap * 100).toFixed(1) : '';  // 원정석 쪽 (원정 경기는 안양 응원 쪽, 홈 경기는 원정석 칸)
   // 예매된 좌석 카드: 전체 / 홈석(원정석을 뺀 예매) / 총석 (11/17 피드백). 휴대폰, 스토리 카드는 폭이 좁아 홈석을 아랫줄에 (마지막 칸 = 스토리용 뒤 글자)
@@ -1021,7 +1021,7 @@ function build(story) {
     ['예매된 좌석', num(booked), none ? '' : home ? ` / 홈 ${home} / ${fmt(cap)}석` : ` / ${fmt(cap)}석`,
       [home ? '전체 / 홈석(원정석 뺌) / 총석' : FULL ? '구역 총석 합 기준' : '원정석 포함 판매 구역 전체', exclTxt, FULL ? '선택 중 좌석 포함' : ''].filter(Boolean).join(' · '),
       none ? '' : (home ? `홈 ${home} / ` : '') + `총 ${fmt(cap)}석`, '석'],  // 증감은 추이 그래프에서만. 스토리(휴대폰)는 큰 숫자 옆에 '석', 아랫줄에 홈 / 총석
-    ['예매율', rate(booked), '%', (noData ? '잔여석 정보 없음' : `잔여석 ${fmt(avail)}석`) + (AWAY ? ` · 매진 ${soldN}개${offN ? `, 미판매 ${offN}개` : ''} 구역` : ''), noData ? '' : `잔여 ${fmt(avail)}석`],
+    ['예매율', rate(booked), '%', (noData ? '잔여석 정보 없음' : `잔여석 ${fmt(avail)}석`) + ` · 매진 ${soldN}개${offN ? `, 미판매 ${offN}개` : ''} 구역`, noData ? '' : `잔여 ${fmt(avail)}석`],
     ['원정석 예매', oCap ? fmt(oBooked) : '-', oCap ? ` / ${fmt(oCap)}석` : '', oCap ? `원정석 ${oPc}% 예매 · 잔여 ${fmt(oCap - oBooked)}석` : '원정석 총석 정보 없음', oCap ? `${oPc}% 예매` : '']
 
   ];
@@ -1144,7 +1144,7 @@ const status = m => $('status').textContent = m;
 const note = m => $('note').textContent = $('pubNote').textContent = m;  // 입력 화면은 발행 칸에도 (맨 위 공유 칸은 스크롤하면 안 보임)
 const isCell = s => /^[A-Z]+\d/.test(s.id);
 [...SECTIONS].sort((a, b) => isCell(a) - isCell(b) || (isCell(a) ? a.id.localeCompare(b.id, 'en', { numeric: true }) : 0))
-  .forEach(s => tbody.insertAdjacentHTML('beforeend', `<tr data-id="${s.id}"><td>${s.name || s.id}</td><td><button data-a="out">매진</button>${AWAY ? ' <button data-a="off">미판매</button>' : ''}</td>`
+  .forEach(s => tbody.insertAdjacentHTML('beforeend', `<tr data-id="${s.id}"><td>${s.name || s.id}</td><td><button data-a="out">매진</button> <button data-a="off">미판매</button></td>`
     + `<td><input type="number" min="0" inputmode="numeric" data-k="remain"></td><td><input type="number" min="0" inputmode="numeric" data-k="max"><button data-a="unblock" hidden title="이번 경기 총석에서 뺀 막힌 좌석. 누르면 되돌립니다"></button></td><td></td></tr>`));
 Object.values(TEAMS).forEach(n => $('opp').add(new Option(nick(n), n)));
 for (let m = 600; m <= 1320; m += 30) $('time').add(new Option(`${String(m / 60 | 0).padStart(2, '0')}:${m % 60 ? '30' : '00'}`));  // 10:00~22:00, 30분 단위
@@ -1247,7 +1247,7 @@ tbody.addEventListener('input', e => {
   if (k === 'max') { delete r.learned; r.fixed = r.max != null; e.target.classList.remove('guess'); }  // 손으로 고치면 확정 (fixed: 자동 입력이 늘리지 않음)
   tr.classList.remove('hit'); save(); render();
 });
-tbody.addEventListener('click', e => {  // 매진: 잔여 0, 미판매(원정): 누를 때마다 켜고 끔, 켜면 잔여를 비움
+tbody.addEventListener('click', e => {  // 매진: 잔여 0, 미판매(홈은 T1 등): 누를 때마다 켜고 끔, 켜면 잔여를 비움
   const a = e.target.dataset?.a;
   if (!a) return;
   const tr = e.target.closest('tr'), r = state.rows[tr.dataset.id];
@@ -1367,12 +1367,14 @@ function summaryText() {
         none || !oCap ? '' : `원정석 예매 ${fmt(oBooked)}석 / ${fmt(oCap)}석 (${pc(oBooked, oCap)})`, none ? '' : since, gap],
       [t.soldOut.length ? '매진: ' + list(t.soldOut) : '', t.off.length ? '미판매: ' + list(t.off) : '']]);
   }
-  // 공식 관중이 나오면 둘째 단락 맨 위에, 집계 숫자는 '마지막 집계'로
+  // 공식 관중이 나오면 둘째 단락 맨 위에, 집계 숫자는 '마지막 집계'로. 원정석 예매 줄, 원정 관중 대비, 미판매 줄은 원정 화면과 같이 (11/26 사용자: 안양 요약 글에만 없었음)
+  const oCap = t.awayCap, oBooked = t.awayBooked, pc = (x, c) => (x / c * 100).toFixed(1) + '%', vsAway = oCap ? ` (원정석 예매 ${fmt(oBooked)}석 대비 ${signed(state.crowdAway - oBooked)})` : '';
   return out([[`FC안양 vs ${state.opp || '상대팀'}${state.date ? ' ' + fmtDate(state.date) : ''} 예매 현황 ${at}`],
-    [state.crowd != null ? `공식 관중 ${fmt(state.crowd)}명` + (none ? '' : ` (예매 ${fmt(t.booked)}석 대비 ${signed(state.crowd - t.booked)})`) + (state.crowdAway != null ? `, 그중 원정 ${fmt(state.crowdAway)}명` : '')
-      : state.crowdAway != null ? `원정 관중 ${fmt(state.crowdAway)}명` : '',
-      none ? '' : (state.crowd != null ? '마지막 집계 ' : '') + `예매 ${fmt(t.booked)}석 / ${fmt(t.cap)}석 (${(t.booked / t.cap * 100).toFixed(1)}%)`, none ? '' : since, gap],
-    [t.soldOut.length ? '매진: ' + list(t.soldOut) : '']]);
+    [state.crowd != null ? `공식 관중 ${fmt(state.crowd)}명` + (none ? '' : ` (예매 ${fmt(t.booked)}석 대비 ${signed(state.crowd - t.booked)})`) + (state.crowdAway != null ? `, 그중 원정 ${fmt(state.crowdAway)}명${vsAway}` : '')
+      : state.crowdAway != null ? `원정 관중 ${fmt(state.crowdAway)}명${vsAway}` : '',
+      none ? '' : (state.crowd != null ? '마지막 집계 ' : '') + `예매 ${fmt(t.booked)}석 / ${fmt(t.cap)}석 (${pc(t.booked, t.cap)})`,
+      none || !oCap ? '' : `원정석 예매 ${fmt(oBooked)}석 / ${fmt(oCap)}석 (${pc(oBooked, oCap)})`, none ? '' : since, gap],
+    [t.soldOut.length ? '매진: ' + list(t.soldOut) : '', t.off.length ? '미판매: ' + list(t.off) : '']]);
 }
 // 다른 사이트에 붙여 넣는 iframe 코드: 어느 화면에서 눌러도 홈, 원정 중 가장 최근 경기를 따라가는 ?embed (경기마다 코드를 바꾸지 않게)
 const embedCode = () => `<iframe src="${location.origin + location.pathname}${TEST ? `?s=${STADIUM}&test=${TESTKEY}&embed` : '?embed'}" title="FC안양 예매 현황" style="width:100%;aspect-ratio:1280/1062;border:0" loading="lazy"></iframe>`;
@@ -1397,7 +1399,7 @@ function record() {
     awayCapacity: t.awayCap || null, awayBooked: t.awayCap ? t.awayBooked : null,  // 원정석 쪽 (홈 경기 원정석, 원정 경기 안양 응원 쪽). 홈석 = 전체 - 원정석
     ...(AWAY && { awayRemain: state.awayGrade ?? null, groups: Object.entries(state.groups).map(([name, g]) => ({ name, ids: g.ids, remain: g.remain })) }),  // groups: 놀티켓 등급 묶음 (묶음 잔여만 아는 구역은 sections[].remainGuess)
     sinceBase: state.base ? { at: kst(state.base.at), booked: t.soldSum } : null,
-    soldOut: t.soldOut, unknown: t.empty, ...(AWAY && { unsold: t.off }),
+    soldOut: t.soldOut, unknown: t.empty, unsold: t.off,
     sections: SECTIONS.map(s => ({ id: s.id, name: nameOf(s.id), grade: GRADES.find(g => g.ids.includes(s.id))?.name ?? null,  // 원정 구장은 등급표가 없음
       remain: state.rows[s.id].remain, ...(t.est[s.id] != null && { remainGuess: Math.round(t.est[s.id]) }), max: state.rows[s.id].max, ...(state.rows[s.id].block && { blocked: state.rows[s.id].block }),  // blocked: 이번 경기 총석에서 뺀 막힌 좌석
       ...(state.rows[s.id].learned && { maxGuess: true }), ...(state.rows[s.id].off && { unsold: true }), sold: state.base ? sold(s.id) : null })),
@@ -2210,7 +2212,7 @@ const lamp = { installed: 0, version: 0, pings: {}, got: 0, zones: 0, rejected: 
 // 보내기 스크립트 최신 판 (fc-anyang-send.user.js 의 @version 과 같게. 자동 시험이 맞춰 봄). 설치된 판이 낮으면 입력 화면 맨 위 버튼을 눈에 띄게
 const SCRIPT_VERSION = 18;
 // 현황판 판: 커밋할 때 tools/pre-commit.sh 가 이 줄을 커밋 시각(KST)으로 바꿈. 화면 아래와 입력 화면 맨 위에 보여 수정이 반영됐는지 알 수 있게 (11/25 사용자)
-const APP_VERSION = '2026.11.25 18:06';
+const APP_VERSION = '2026.11.26 18:49';
 const hms = t => new Date(t).toTimeString().slice(0, 8);
 // Tampermonkey 저장소는 브라우저마다 따로: 티켓링크를 다른 브라우저에서 열면 신호가 안 옴 (램프에 이 브라우저 이름을 보여 줌)
 const BROWSER = (ua => /Whale\//.test(ua) ? '웨일' : /Edg\//.test(ua) ? '엣지' : /Chrome\//.test(ua) ? '크롬' : /Firefox\//.test(ua) ? '파이어폭스' : '이 브라우저')(navigator.userAgent);
