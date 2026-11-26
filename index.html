@@ -307,7 +307,7 @@ const STADIUMS = {
       arc(c('W', 'WVUTSRQP'), 4, 5, T2);
       arc(['WA', 'NF'], 5, 6, T1); arc(['WN', 'NP'], 5, 6, T2);
       arc(c('N', 'EDCB'), 6, 7, T1); arc(c('N', 'NMLKJH'), 6, 7, T2);
-      SECTIONS.forEach(x => { const m = x.id.match(/^([EW][A-H])앞$/); if (m) x.name = m[1] + ' 앞'; });
+      SECTIONS.forEach(x => { const m = x.id.match(/^([EW][A-H])앞$/); if (m) x.name = m[1] + ' 앞'; if (x.id === 'WK' || x.id === 'WL') x.name = 'VIP ' + x.id[1]; });  // 서측 K·L = VIP 테이블석 (11/26 사용자: 그림에서 VIP 가 어디인지 모름)
       // 여러 등급이 같은 칸으로 오면 등급마다 더함: 동측 앞쪽 B~G 는 신한카드 E피치석과 E석('동측 B구역' 0석), 서측 D·E 는 W피치석과 W센터석,
       // K·L 은 VIP 테이블석 2인, 1인, 법인 2인, 법인 1인과 W센터석, J 는 테라 라이트 테이블석과 W석, M 은 테라 테이블석과 W석 (11/25 사용자 목록)
       SECTIONS.forEach(x => { if (/^E[A-H]앞$/.test(x.id) || ['WJ', 'WK', 'WL', 'WM'].includes(x.id)) x.mix = []; });
@@ -2223,7 +2223,7 @@ const lamp = { installed: 0, version: 0, pings: {}, got: 0, zones: 0, rejected: 
 // 보내기 스크립트 최신 판 (fc-anyang-send.user.js 의 @version 과 같게. 자동 시험이 맞춰 봄). 설치된 판이 낮으면 입력 화면 맨 위 버튼을 눈에 띄게
 const SCRIPT_VERSION = 18;
 // 현황판 판: 커밋할 때 tools/pre-commit.sh 가 이 줄을 커밋 시각(KST)으로 바꿈. 화면 아래와 입력 화면 맨 위에 보여 수정이 반영됐는지 알 수 있게 (11/25 사용자)
-const APP_VERSION = '2026.11.26 19:43';
+const APP_VERSION = '2026.11.26 20:06';
 const hms = t => new Date(t).toTimeString().slice(0, 8);
 // Tampermonkey 저장소는 브라우저마다 따로: 티켓링크를 다른 브라우저에서 열면 신호가 안 옴 (램프에 이 브라우저 이름을 보여 줌)
 const BROWSER = (ua => /Whale\//.test(ua) ? '웨일' : /Edg\//.test(ua) ? '엣지' : /Chrome\//.test(ua) ? '크롬' : /Firefox\//.test(ua) ? '파이어폭스' : '이 브라우저')(navigator.userAgent);

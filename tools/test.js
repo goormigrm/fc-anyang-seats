@@ -1385,7 +1385,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   // 서울(11/25 서울 vs 대전 목록): '동측 B구역' 방향 이름, E석 'A 구역' + 'A구역', 서측 B·G 는 W피치석 + W석, 시험 페이지 원정석 남측 A~F, 기본 미판매
   p = await open(b, { url: URL + '?s=seoul&test=daejeon#edit' });
   r = await p.evaluate(() => { fcIngest('FC서울 vs 대전하나시티즌\n서울월드컵경기장 | 2026.11.28(토) 14:00\n등급 선택\n신한카드 E피치석 1344 석\n동측 B구역 477 석\n동측 C구역 340 석\nE석 8476 석\n동측 A 구역 231 석\n동측 A구역 22 석\n동측 B 구역 448 석\n동측 B구역 0 석\n동측 K구역 771 석\nVIP테이블석(2인) 3 석\n서측 K구역 3 석\n서측 L구역 0 석\nVIP테이블석(1인) 2 석\n서측 K구역 2 석\n테라 테이블석 4 석\n서측 M구역 4 석\n테라 라이트 테이블석 0 석\nW센터석 7 석\n서측 D구역 6 석\n서측 K구역 1 석\nW피치석 469 석\n서측 B구역 5 석\n서측 D구역 1 석\n서측 G구역 50 석\nW석 6767 석\n서측 B구역 2 석\n서측 G구역 412 석\n서측 M구역 3 석\n원정석 5344 석\n남측 A구역 594 석');
-    const v = id => state.rows[id].remain; return [v('EB앞'), v('EC앞'), v('EA앞'), v('EA'), v('EB'), v('EC'), v('EK'), v('WB앞'), v('WG앞'), v('WB'), v('WG'), v('SA'), SECTIONS.filter(s => s.ours).map(s => s.id).sort().join(' '), state.rows.NC.off, state.rows.ND.off, !!state.rows.E피치석, v('WM'), /WK에 잔여 5석/.test(document.getElementById('status').innerText), /WD에 잔여 1석/.test(document.getElementById('status').innerText) && /W센터에 잔여 7석/.test(document.getElementById('status').innerText)].join(); });
+    const v = id => state.rows[id].remain; return [v('EB앞'), v('EC앞'), v('EA앞'), v('EA'), v('EB'), v('EC'), v('EK'), v('WB앞'), v('WG앞'), v('WB'), v('WG'), v('SA'), SECTIONS.filter(s => s.ours).map(s => s.id).sort().join(' '), state.rows.NC.off, state.rows.ND.off, !!state.rows.E피치석, v('WM'), /VIP K에 잔여 5석/.test(document.getElementById('status').innerText), /WD에 잔여 1석/.test(document.getElementById('status').innerText) && /W센터에 잔여 7석/.test(document.getElementById('status').innerText)].join(); });
   await p.context().close();
   // (11/25 사용자) 동측은 글자마다 앞쪽('동측 B구역': 신한카드 E피치석과 E석 0석 줄을 더함)과 뒤쪽('동측 B 구역') 두 칸, 서측 W피치석 아래 B·G 는 앞줄 칸, W석 아래는 뒷줄 칸
   // 서측 K·L 은 VIP 테이블석 여러 등급과 W센터석, M 은 테라 테이블석과 W석, D 는 W센터석과 W피치석을 더함. 북측 C 는 11/25 팔기 시작해 기본 미판매에서 뺌(D 는 그대로)
@@ -1397,7 +1397,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     'VIP테이블석(법인) (2인) 4 석', '서측 K구역 4 석', '서측 L구역 0 석', 'VIP테이블석(법인) (1인) 8 석', '서측 K구역 0 석', '서측 L구역 8 석',
     '테라 테이블석 16 석', '서측 M구역 16 석', '테라 라이트 테이블석 32 석', '서측 J구역 32 석', 'W센터석 64 석', '서측 D구역 10 석', '서측 E구역 20 석', '서측 K구역 30 석', '서측 L구역 4 석',
     'W피치석 8 석', '서측 D구역 1 석', '서측 E구역 2 석', '서측 F구역 5 석', 'W석 106 석', '서측 J구역 100 석', '서측 M구역 6 석'].join('\n'));
-    const st = document.getElementById('status').innerText; return [/WK에 잔여 5석/, /WL에 잔여 10석/, /WJ에 잔여 132석/, /WD에 잔여 1석/, /WE에 잔여 2석/, /W센터에 잔여 64석/].map(x => x.test(st)).join() + ',' + state.rows.WM.remain + ',' + state.rows.WF.remain; });
+    const st = document.getElementById('status').innerText; return [/VIP K에 잔여 5석/, /VIP L에 잔여 10석/, /WJ에 잔여 132석/, /WD에 잔여 1석/, /WE에 잔여 2석/, /W센터에 잔여 64석/].map(x => x.test(st)).join() + ',' + state.rows.WM.remain + ',' + state.rows.WF.remain; });
   await p.context().close();
   check('서울 서측 색으로 읽기: K 5(VIP 2인 1 + 법인 2인 4), L 10, J 132(테라 라이트 32 + W석 100), D 1, E 2(W피치석), W센터 64(ㅗ 칸: D 10 + E 20 + K 30 + L 4), M 22(테라 테이블 16 + W석 6), F 5', r === 'true,true,true,true,true,true,22,5', r);
   // 기본 미판매에서 뺀 칸(NC)은 기본값으로 꺼 둔 브라우저(본 기록에 NC)에서 한 번 켬, 사람이 끈 다른 칸(EK)은 그대로
