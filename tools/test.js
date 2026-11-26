@@ -67,9 +67,10 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   check('원정 경기 화면은 무시 (안양종합운동장 아님)', r.v === r.before && /'안양종합운동장'가 없어 넘겼습니다/.test(r.st), JSON.stringify(r));
 
   // 비교 기준('○○ 이후 +N석')은 마지막으로 발행한 숫자 (11/18 사용자: 그 경기 첫 발행인데 앞 캡처 기준 '이후 N석'이 나옴)
+  // 집계, 발행 시각은 지난 날짜로 (11/27 08:53 에 '발행 09:00'이 미래라 실패)
   r = await p.evaluate(() => { const H = 'FC안양 vs 제주SK\n안양종합운동장 | 2026.11.28(토) 14:00\nR10구역\n', o = [];
-    Object.assign(state, { at: '2026-11-27T08:00', base: null, pubAt: null, pubSnap: null }); fcIngest(H + '22 석'); o.push(state.base?.rows?.R10 ?? '', /이후/.test(summaryText()));
-    Object.assign(state, { at: '2026-11-27T09:00', pubAt: '2026-11-27T09:00' }); state.pubSnap = snap(); fcIngest(H + '20 석'); o.push(state.base?.rows?.R10, /11\.27 09:00 이후 \+2석/.test(summaryText())); return o.join(); });
+    Object.assign(state, { at: '2026-11-20T08:00', base: null, pubAt: null, pubSnap: null }); fcIngest(H + '22 석'); o.push(state.base?.rows?.R10 ?? '', /이후/.test(summaryText()));
+    Object.assign(state, { at: '2026-11-20T09:00', pubAt: '2026-11-20T09:00' }); state.pubSnap = snap(); fcIngest(H + '20 석'); o.push(state.base?.rows?.R10, /11\.20 09:00 이후 \+2석/.test(summaryText())); return o.join(); });
   check('같은 경기 새 집계: 발행 안 한 앞 캡처는 비교 기준이 아님, 발행한 숫자 다음 캡처는 그 숫자(22)가 기준', r === ',false,22,true', r);
 
   r = await ingest(p, 'FC안양 vs 울산HD\n안양종합운동장 | 2026.12.05(토) 14:00\n등급 선택\nR10구역\n100 석');

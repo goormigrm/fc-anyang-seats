@@ -482,14 +482,18 @@ if (AWAY) STADIUMS[STADIUM].layout();
 else {
 cells(Rs(15, 26), -265, -270, 530 / 12, 80);
 cells(['R9', 'R8', 'R7', 'R6', 'T1', 'T2', 'R5', 'R4', 'R3', 'R2', 'R1'], -265, 190, 530 / 11, 80);
-// S쪽: 바깥부터 R11~R13, 스탠딩석 S1~S3(각 R11, R12, R13 앞), 퍼스트 스탠딩(FS7이 R14 쪽, FS1이 R10 쪽), 퍼스트석 F1~F7(맨 앞 한 줄, FS 와 같은 순서)
-// (실제로는 FS, F 줄이 R14~R10 앞 전체에 걸쳐 있음. 11/25 제주전 좌석 그림으로 스탠딩석, 퍼스트석을 구역별 칸으로 나눔: 전에는 등급 합계 한 칸)
-cells(['R14'], -460, -170, 180, 45);
-cells(['R13', 'R12', 'R11'], -490, -125, 60, 250 / 3, true);
-cells(['S3', 'S2', 'S1'], -430, -125, 30, 250 / 3, true);
-cells(Rs(1, 7, 'FS').reverse(), -400, -125, 90, 250 / 7, true);
-cells(Rs(1, 7, 'F').reverse(), -310, -125, 30, 250 / 7, true);
-cells(['R10'], -460, 125, 180, 45);
+// S쪽 (11/27 사용자: 티켓링크 예매 화면 좌석도와 같게). 세로 열은 바깥부터 가변·서포터즈(R) · 스탠딩(S) · 퍼스트 스탠딩(FS) · 퍼스트(F)
+// 위아래 끝 줄은 FS7, FS1 이 S 열부터 FS 열까지 넓게(F7, F1 은 그 옆). R14, R10 은 R 열과 S 열에 걸쳐 넓게, 그 옆이 FS6, FS2
+// 가운데 세 줄은 R13·S3·FS5, R12·S2·FS4, R11·S1·FS3. F 는 FS 와 같은 줄마다 하나 (위 F7 ~ 아래 F1)
+{ const xR = -490, xS = -415, xFS = -375, xF = -320, xE = -280, top = -170, strip = 25, row = 58;
+  const ys = [top + strip, top + strip + row, top + strip + 2 * row, top + strip + 3 * row, top + strip + 4 * row, top + strip + 5 * row];  // R14 ~ R10 줄 위쪽
+  const put = (id, x0, x1, y0, h) => SECTIONS.push({ id, rect: [CX + x0, CY + y0, x1 - x0, h] });
+  put('FS7', xS, xF, top, strip); put('F7', xF, xE, top, strip);
+  put('R14', xR, xFS, ys[0], row); put('FS6', xFS, xF, ys[0], row); put('F6', xF, xE, ys[0], row);
+  [['R13', 'S3', 'FS5', 'F5'], ['R12', 'S2', 'FS4', 'F4'], ['R11', 'S1', 'FS3', 'F3']].forEach(([r, st, fs, f], i) => {
+    put(r, xR, xS, ys[i + 1], row); put(st, xS, xFS, ys[i + 1], row); put(fs, xFS, xF, ys[i + 1], row); put(f, xF, xE, ys[i + 1], row); });
+  put('R10', xR, xFS, ys[4], row); put('FS2', xFS, xF, ys[4], row); put('F2', xF, xE, ys[4], row);
+  put('FS1', xS, xF, ys[5], strip); put('F1', xF, xE, ys[5], strip); }
 }
 if (TEST && TG.ours) SECTIONS.forEach(s => { s.ours = TG.ours.includes(s.id); });  // 시험 페이지 원정 팀의 원정석 구역
 // 스크린샷 좌석도에서 센 구역별 좌석 수 (센 남은 좌석이 화면의 잔여석과 모두 일치). 11/1 부천전, FS1은 10/24 전북전, 원정석은 평소 값(넓게 여는 날은 최대 1713석, 표에서 바꿈)
@@ -2223,7 +2227,7 @@ const lamp = { installed: 0, version: 0, pings: {}, got: 0, zones: 0, rejected: 
 // 보내기 스크립트 최신 판 (fc-anyang-send.user.js 의 @version 과 같게. 자동 시험이 맞춰 봄). 설치된 판이 낮으면 입력 화면 맨 위 버튼을 눈에 띄게
 const SCRIPT_VERSION = 18;
 // 현황판 판: 커밋할 때 tools/pre-commit.sh 가 이 줄을 커밋 시각(KST)으로 바꿈. 화면 아래와 입력 화면 맨 위에 보여 수정이 반영됐는지 알 수 있게 (11/25 사용자)
-const APP_VERSION = '2026.11.26 20:06';
+const APP_VERSION = '2026.11.27 08:53';
 const hms = t => new Date(t).toTimeString().slice(0, 8);
 // Tampermonkey 저장소는 브라우저마다 따로: 티켓링크를 다른 브라우저에서 열면 신호가 안 옴 (램프에 이 브라우저 이름을 보여 줌)
 const BROWSER = (ua => /Whale\//.test(ua) ? '웨일' : /Edg\//.test(ua) ? '엣지' : /Chrome\//.test(ua) ? '크롬' : /Firefox\//.test(ua) ? '파이어폭스' : '이 브라우저')(navigator.userAgent);
