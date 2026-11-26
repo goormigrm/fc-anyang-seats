@@ -58,7 +58,8 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   check('경기 정보 읽기', r.state.opp === '제주SK' && r.state.date === '2026-11-28T14:00');
 
   r = await ingest(p, H + '원정석\n1800 석\nR6구역\n137 석');
-  check('최대보다 조금 많으면 최대를 늘림, 많이 넘으면 경고', r.state.rows.R6.max === 137 && r.state.rows.원정석.max === 1500 && /⚠ 잔여가 최대보다 많음: 원정석/.test(r.status), r.status);
+  // 11/26 사용자: 티켓링크 잔여는 확실한 정보라 총석보다 많으면 총석을 잔여로 (원정석 1500 -> 1800, 많이 넘어도)
+  check('잔여가 총석보다 많으면 총석을 잔여로 늘리고 알림', r.state.rows.R6.max === 137 && r.state.rows.원정석.max === 1800 && /총석을 잔여로 늘림: .*원정석 1,500 → 1,800/.test(r.status) && !/⚠ 잔여가 최대보다 많음/.test(r.status), r.status);
 
   r = await p.evaluate(() => { const before = state.rows.R10.remain; fcIngest('FC안양 vs 울산HD\n안양종합운동장 | 2026.12.05(토) 14:00\n예매하기\nS9구역\n6 석'); return { opp: state.opp, R10: state.rows.R10.remain, before }; });
   check('현황판 구역 숫자 없는 화면은 무시 (다른 경기 일정, 현황판에 없는 S9 만)', r.opp === '제주SK' && r.R10 === r.before, JSON.stringify(r));
@@ -1025,7 +1026,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       return { none, max: state.rows.일반지정석.max, st: document.getElementById('status').innerText };
     });
     await pg.context().close();
-    check('요약 글: 구역 숫자가 없으면 예매 줄 없음, 사람이 넣은 최대(1500)는 잔여 1550 이 와도 그대로 두고 ⚠', !/11,542석 \/ 11,542석/.test(r.none) && /구역별 잔여석 정보가 아직 없습니다/.test(r.none) && r.max === 1500 && /⚠ 잔여가 최대보다 많음: 일반지정석/.test(r.st), JSON.stringify(r));
+    check('요약 글: 구역 숫자가 없으면 예매 줄 없음, 사람이 넣은 최대(1500)도 잔여 1550 이 오면 1550 으로 (11/26)', !/11,542석 \/ 11,542석/.test(r.none) && /구역별 잔여석 정보가 아직 없습니다/.test(r.none) && r.max === 1550 && /총석을 잔여로 늘림: 일반지정석 1,500 → 1,550/.test(r.st), JSON.stringify(r));
     // 발행본의 추정 최대(maxGuess)는 불러와도 추정으로 남음
     pg = await open(b, { url: URL, data: { 'latest.json': { app: 'fc-anyang-seats', version: 1, updatedAt: '2026-11-27T12:00:00+09:00', match: { opponent: '제주SK', kickoff: '2026-11-28T14:00:00+09:00' }, sections: [{ id: '일반지정석', remain: 1000, max: 1426, maxGuess: true }, { id: 'R10', remain: 0, max: 126 }] } } });
     await pg.waitForFunction(() => /마지막 집계/.test(document.getElementById('note').innerText));
@@ -1416,6 +1417,15 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     r = await pg.evaluate(() => [state.rows.EA.block ?? '-', state.rows.EB.block].join());
     await ctx.close();
     check('기본값에서 뺀 막힌 좌석: 기본값 그대로인 EA 205 는 지움, 사람이 바꾼 EB 100 은 그대로', r === '-,100', r);
+  }
+  // 잔여가 총석보다 많으면: 막힌 좌석이 있으면 막힌 좌석부터 줄이고(EA 300 - 막힌 100 에 잔여 250 -> 막힌 50), 총석보다도 많으면 총석을 잔여로(WW 727 -> 742)
+  {
+    const ctx = await b.newContext(), pg = await ctx.newPage(); await pg.goto(URL + '?s=seoul&test=daejeon#edit');
+    r = await pg.evaluate(() => { state.date = '2026-11-28T14:00'; Object.assign(state.rows.EA, { max: 300, block: 100 }); state.rows.WW.max = 727;
+      fcIngest('FC서울 vs 대전하나시티즌\n서울월드컵경기장 | 2026.11.28(토) 14:00\n등급 선택\nE석 250 석\n동측 A 구역 250 석\nW석 742 석\n서측 W구역 742 석');
+      return [state.rows.EA.max, state.rows.EA.block, state.rows.WW.max, /총석을 잔여로 늘림: .*WW 727 → 742/.test(document.getElementById('status').innerText)].join(); });
+    await ctx.close();
+    check('잔여 > 총석: 막힌 좌석부터 줄임(EA 막힌 100 -> 50), 총석을 잔여로(WW 727 -> 742)', r === '300,50,742,true', r);
   }
   // 수원삼성(11/18 사용자): 원정석 쪽은 S4~S6(S1~S3 중립석은 홈 관중), 2층 맨 앞 2줄과 N8, N12 맨 뒤 10줄은 팔지 않는 줄(막힌 좌석 기본값)
   p = await open(b, { url: URL + '?s=suwon#edit' });

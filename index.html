@@ -1186,14 +1186,20 @@ function apply({ found, mix = {}, totals, filled = [], unknown = [], grades = []
   // 잔여는 실제 좌석 수를 넘을 수 없어서. 크게 넘으면(원정석을 넓게 연 날, 잘못 읽은 숫자) 아래에서 경고
   // 배운 값(learned)은 실제보다 작을 수 있는 아래 한계라 더 큰 잔여가 오면 그대로 늘림
   // 원정 구장은 늦게 본 잔여가 최대로 들어가 색이 틀어지므로 배우지 않음
-  // 사람이 표에 직접 넣은 최대(fixed)는 늘리지 않고 아래에서 ⚠ 만 (사람이 넣은 값이 자동 입력보다 우선)
+  // 사람이 표에 직접 넣은 최대(fixed)는 배우기로 늘리지 않음. 잔여가 총석보다 많을 때는 아래 raised 가 늘림 (11/26)
   const learned = AWAY ? [] : ids.filter(id => { const r = state.rows[id], v = found[id]; return v > 0 && (r.max == null || (!r.fixed && v > r.max && (r.learned || v <= r.max * 1.1))); });
   learned.forEach(id => { const r = state.rows[id]; if (r.max == null || r.learned) r.learned = true; r.max = found[id]; });
+  // 잔여가 총석(막힌 좌석 뺀)보다 많으면 총석을 잔여에 맞춤: 홈, 원정, 사람이 넣은 총석 모두 (11/26 사용자: 티켓링크 잔여는 확실한 정보,
+  // 총석은 경기마다 바뀌고 좌석 그림 세기가 틀릴 수 있음. 서울 WW 잔여 742 > 727). 막힌 좌석이 있으면 막힌 좌석부터 줄임
+  const raised = ids.filter(id => { const r = state.rows[id]; return r.max != null && r.remain != null && r.remain > capOf(r); }).map(id => {
+    const r = state.rows[id], was = capOf(r);
+    if (r.block && r.remain <= r.max) r.block = r.max - r.remain; else { r.max = r.remain; delete r.block; }
+    return `${nameOf(id)} ${fmt(was)} → ${fmt(r.remain)}`; });
   if (ids.length && opp && !AWAY) state.opp = opp;  // 좌석 숫자가 없는 화면(다른 경기 일정 등)으로는 경기 정보도 안 바꿈
   if (got && date) state.date = date;
   const live = kept.filter(id => found[id] > 0);
   // 등급 합계와 구역 합 비교: 잘못 읽은 숫자나 빠진 구역을 알려 줌
-  const notes = [...pre, ...filled.map(id => `${nameOf(id)}: 등급 합계로 채움`),
+  const notes = [...pre, ...filled.map(id => `${nameOf(id)}: 등급 합계로 채움`), ...(raised.length ? [`잔여가 총석보다 많아 총석을 잔여로 늘림: ${raised.join(', ')}`] : []),
     ...(kept.length > live.length ? [`미판매로 둔 구역은 그대로 둠: ${kept.filter(id => !live.includes(id)).map(nameOf).join(', ')}`] : []),
     ...live.map(id => `미판매로 둔 ${nameOf(id)}에 잔여 ${found[id]}석이 보입니다. 판매를 시작했으면 표에서 미판매를 끄세요 (그 뒤 숫자를 받음).`),
     ...(half.length ? [`${half.map(nameOf).join(', ')}: 테이블석과 일반석 중 ${state.rows[half[0]].parts.테이블 != null ? '테이블석' : '일반석'}만 받음. ${state.rows[half[0]].parts.테이블 != null ? '일반 등급(E 일반 등)' : '테이블 등급'}도 눌러야 블록 전체 잔여가 됩니다`] : []),
@@ -2212,7 +2218,7 @@ const lamp = { installed: 0, version: 0, pings: {}, got: 0, zones: 0, rejected: 
 // 보내기 스크립트 최신 판 (fc-anyang-send.user.js 의 @version 과 같게. 자동 시험이 맞춰 봄). 설치된 판이 낮으면 입력 화면 맨 위 버튼을 눈에 띄게
 const SCRIPT_VERSION = 18;
 // 현황판 판: 커밋할 때 tools/pre-commit.sh 가 이 줄을 커밋 시각(KST)으로 바꿈. 화면 아래와 입력 화면 맨 위에 보여 수정이 반영됐는지 알 수 있게 (11/25 사용자)
-const APP_VERSION = '2026.11.26 19:05';
+const APP_VERSION = '2026.11.26 19:13';
 const hms = t => new Date(t).toTimeString().slice(0, 8);
 // Tampermonkey 저장소는 브라우저마다 따로: 티켓링크를 다른 브라우저에서 열면 신호가 안 옴 (램프에 이 브라우저 이름을 보여 줌)
 const BROWSER = (ua => /Whale\//.test(ua) ? '웨일' : /Edg\//.test(ua) ? '엣지' : /Chrome\//.test(ua) ? '크롬' : /Firefox\//.test(ua) ? '파이어폭스' : '이 브라우저')(navigator.userAgent);
