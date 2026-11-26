@@ -547,7 +547,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       ['jeonbuk', 104, 11, H2('전북현대', '전주월드컵경기장') + 'S원정\n500 석\nS-1C구역\n120 석\nE일반2A구역\n30 석\n1A구역\n7 석', { S1C: 120, E2A: 30 }, '1A'],
       ['incheon', 62, 7, H2('인천유나이티드', '인천축구전용경기장') + '원정석\n1142 석\nN1구역\n144 석\nE3구역\n90 석\nW5구역\n10 석', { N1: 144, E3: 90, W5: 10 }, ''],
       ['pohang', 63, 7, H2('포항스틸러스', '포항스틸야드') + '청암E1구역\n100 석\nA1구역\n50 석\n데크석\n20 석\n퍼스트클래스석\n12 석\n퍼스트클래스 구역\n12 석\n프레스티지 테이블(1인)\n7 석\n프레스티지 테이블(2인)\n26 석\nT2 테이블(1인)\n1 석\nT2 테이블(2인)\n60 석', { E1: 100, A1: 50, 데크석: 20, 퍼스트클래스석: 12, 프레스티지테이블: 33, T2: 61 }, ''],
-      ['seoul', 78, 3, H2('FC서울', '서울월드컵경기장') + 'E-A구역\n80 석\nSC구역\n40 석', { EA: 80, SC: 40 }, ''],
+      ['seoul', 79, 3, H2('FC서울', '서울월드컵경기장') + 'E-A구역\n80 석\nSC구역\n40 석', { EA: 80, SC: 40 }, ''],
       ['ulsan', 106, 11, H2('울산HD', '울산문수축구경기장') + 'N1구역\n120 석\nE13구역\n50 석\n프리미엄 테이블석\n10 석', { N1: 120, E13: 50, 프리미엄테이블석: 10 }, ''],
       ['suwon', 62, 3, H2('수원삼성', '수원월드컵경기장') + 'S3구역\n20 석\nE5구역\n40 석', { S3: 20, E5: 40 }, ''],
       ['suwonfc', 38, 13, H2('수원FC', '수원종합운동장') + 'S7구역\n30 석\nVIP석\n5 석', { S7: 30, VIP석: 5 }, ''],
@@ -1385,11 +1385,11 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   // 서울(11/25 서울 vs 대전 목록): '동측 B구역' 방향 이름, E석 'A 구역' + 'A구역', 서측 B·G 는 W피치석 + W석, 시험 페이지 원정석 남측 A~F, 기본 미판매
   p = await open(b, { url: URL + '?s=seoul&test=daejeon#edit' });
   r = await p.evaluate(() => { fcIngest('FC서울 vs 대전하나시티즌\n서울월드컵경기장 | 2026.11.28(토) 14:00\n등급 선택\n신한카드 E피치석 1344 석\n동측 B구역 477 석\n동측 C구역 340 석\nE석 8476 석\n동측 A 구역 231 석\n동측 A구역 22 석\n동측 B 구역 448 석\n동측 B구역 0 석\n동측 K구역 771 석\nVIP테이블석(2인) 3 석\n서측 K구역 3 석\n서측 L구역 0 석\nVIP테이블석(1인) 2 석\n서측 K구역 2 석\n테라 테이블석 4 석\n서측 M구역 4 석\n테라 라이트 테이블석 0 석\nW센터석 7 석\n서측 D구역 6 석\n서측 K구역 1 석\nW피치석 469 석\n서측 B구역 5 석\n서측 D구역 1 석\n서측 G구역 50 석\nW석 6767 석\n서측 B구역 2 석\n서측 G구역 412 석\n서측 M구역 3 석\n원정석 5344 석\n남측 A구역 594 석');
-    const v = id => state.rows[id].remain; return [v('EB앞'), v('EC앞'), v('EA앞'), v('EA'), v('EB'), v('EC'), v('EK'), v('WB앞'), v('WG앞'), v('WB'), v('WG'), v('SA'), SECTIONS.filter(s => s.ours).map(s => s.id).sort().join(' '), state.rows.NC.off, state.rows.ND.off, !!state.rows.E피치석, v('WM'), /WK에 잔여 6석/.test(document.getElementById('status').innerText), /WD에 잔여 7석/.test(document.getElementById('status').innerText)].join(); });
+    const v = id => state.rows[id].remain; return [v('EB앞'), v('EC앞'), v('EA앞'), v('EA'), v('EB'), v('EC'), v('EK'), v('WB앞'), v('WG앞'), v('WB'), v('WG'), v('SA'), SECTIONS.filter(s => s.ours).map(s => s.id).sort().join(' '), state.rows.NC.off, state.rows.ND.off, !!state.rows.E피치석, v('WM'), /WK에 잔여 5석/.test(document.getElementById('status').innerText), /WD에 잔여 1석/.test(document.getElementById('status').innerText) && /W센터에 잔여 7석/.test(document.getElementById('status').innerText)].join(); });
   await p.context().close();
   // (11/25 사용자) 동측은 글자마다 앞쪽('동측 B구역': 신한카드 E피치석과 E석 0석 줄을 더함)과 뒤쪽('동측 B 구역') 두 칸, 서측 W피치석 아래 B·G 는 앞줄 칸, W석 아래는 뒷줄 칸
   // 서측 K·L 은 VIP 테이블석 여러 등급과 W센터석, M 은 테라 테이블석과 W석, D 는 W센터석과 W피치석을 더함. 북측 C 는 11/25 팔기 시작해 기본 미판매에서 뺌(D 는 그대로)
-  check('서울 목록: 방향 이름, 동측 앞쪽/뒤쪽 칸(붙여 쓴 이름/띄어 쓴 이름), 서측 W피치석은 앞줄 칸, 대전전 원정석 남측 A~F, 북측 C·D 판매(D 는 11/25 밤 사용자: 가장 먼저 매진되는 수호신 자리), 서측 K·M·D 등급 더함', r === '477,340,22,231,448,,771,5,50,2,412,594,SA SB SC SD SE SF,false,false,false,7,true,true', r);
+  check('서울 목록: 방향 이름, 동측 앞쪽/뒤쪽 칸(붙여 쓴 이름/띄어 쓴 이름), 서측 W피치석은 앞줄 칸, 대전전 원정석 남측 A~F, 북측 C·D 판매(D 는 11/25 밤 사용자: 가장 먼저 매진되는 수호신 자리), 서측 K·M 등급 더함, W센터석은 ㅗ 칸(W센터)', r === '477,340,22,231,448,,771,5,50,2,412,594,SA SB SC SD SE SF,false,false,false,7,true,true', r);
   // 서울 서측 1층 색으로 읽기(11/26 사용자 색 좌석도): VIP 2인, 1인, 법인 2인, 법인 1인, W센터석 -> K·L, 테라 라이트 테이블석 + W석 -> J, 테라 테이블석 + W석 -> M, W센터석 + W피치석 -> D·E
   p = await open(b, { url: URL + '?s=seoul&test=daejeon#edit' });
   r = await p.evaluate(() => { fcIngest(['FC서울 vs 대전하나시티즌', '서울월드컵경기장 | 2026.11.28(토) 14:00', '등급 선택',
@@ -1397,9 +1397,9 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     'VIP테이블석(법인) (2인) 4 석', '서측 K구역 4 석', '서측 L구역 0 석', 'VIP테이블석(법인) (1인) 8 석', '서측 K구역 0 석', '서측 L구역 8 석',
     '테라 테이블석 16 석', '서측 M구역 16 석', '테라 라이트 테이블석 32 석', '서측 J구역 32 석', 'W센터석 64 석', '서측 D구역 10 석', '서측 E구역 20 석', '서측 K구역 30 석', '서측 L구역 4 석',
     'W피치석 8 석', '서측 D구역 1 석', '서측 E구역 2 석', '서측 F구역 5 석', 'W석 106 석', '서측 J구역 100 석', '서측 M구역 6 석'].join('\n'));
-    const st = document.getElementById('status').innerText; return [/WK에 잔여 35석/, /WL에 잔여 14석/, /WJ에 잔여 132석/, /WD에 잔여 11석/, /WE에 잔여 22석/].map(x => x.test(st)).join() + ',' + state.rows.WM.remain + ',' + state.rows.WF.remain; });
+    const st = document.getElementById('status').innerText; return [/WK에 잔여 5석/, /WL에 잔여 10석/, /WJ에 잔여 132석/, /WD에 잔여 1석/, /WE에 잔여 2석/, /W센터에 잔여 64석/].map(x => x.test(st)).join() + ',' + state.rows.WM.remain + ',' + state.rows.WF.remain; });
   await p.context().close();
-  check('서울 서측 색으로 읽기: K 35(VIP 2인 1 + 법인 2인 4 + W센터석 30), L 14, J 132(테라 라이트 32 + W석 100), D 11, E 22, M 22(테라 테이블 16 + W석 6), F 5', r === 'true,true,true,true,true,22,5', r);
+  check('서울 서측 색으로 읽기: K 5(VIP 2인 1 + 법인 2인 4), L 10, J 132(테라 라이트 32 + W석 100), D 1, E 2(W피치석), W센터 64(ㅗ 칸: D 10 + E 20 + K 30 + L 4), M 22(테라 테이블 16 + W석 6), F 5', r === 'true,true,true,true,true,true,22,5', r);
   // 기본 미판매에서 뺀 칸(NC)은 기본값으로 꺼 둔 브라우저(본 기록에 NC)에서 한 번 켬, 사람이 끈 다른 칸(EK)은 그대로
   {
     const ctx = await b.newContext();
