@@ -262,9 +262,10 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   // 휴대폰: 경기장만 키움
   // 포항 기본 미판매 = 11/21 포항 vs 안양 발행의 미판매 (시험 페이지 포항 vs 광주에도, 11/27 사용자)
   p = await open(b, { url: URL + '?s=pohang&test=gwangju#edit' });
-  r = await p.evaluate(() => SECTIONS.filter(s => state.rows[s.id].off).map(s => s.id).sort().join(' ') + ' | ' + state.rows.S25.block);
+  r = await p.evaluate(() => SECTIONS.filter(s => state.rows[s.id].off).map(s => s.id).sort().join(' ') + ' | ' + [!!state.rows.E21.off, !!state.rows.E22.off, !!state.rows.라운지.off].join());
   await p.context().close();
-  check('포항 시험 페이지: 기본 미판매 E26, E27, S21, 라운지, S22, S26, S25 막힌 줄 20', r === 'E26 E27 S21 S22 S26 라운지 | 20', r);
+  // 11/27 사용자: 포항 vs 광주 시험 발행의 미판매가 기본값 (E21, E22, 라운지는 판매)
+  check('포항 시험 페이지: 기본 미판매 15구역, E21, E22, 라운지는 판매', r === 'A21 A22 A23 E26 E27 N21 N22 N27 N28 S21 S22 S23 S24 S25 S26 | false,false,false', r);
   // 휴대폰은 입력 화면을 열지 않음(#edit, 기억한 값), 기억한 값은 지움 (11/27 사용자)
   {
     const ctx = await b.newContext({ ...devices['iPhone 13'] });
