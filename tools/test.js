@@ -106,7 +106,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     // 도형 안의 한 점 (둥근 띠 모양 칸은 테두리 상자 가운데가 칸 밖일 수 있어 상자 안을 훑음)
     const at = sel => pg.evaluate(sel => { const el = document.querySelector(sel), r = el.getBoundingClientRect();
       for (const fy of [0.5, 0.3, 0.7, 0.1, 0.9]) for (const fx of [0.5, 0.3, 0.7, 0.1, 0.9]) { const x = r.x + r.width * fx, y = r.y + r.height * fy; if (document.elementsFromPoint(x, y).includes(el)) return [x, y]; } }, sel);
-    const tip = () => pg.evaluate(() => document.getElementById('tip').hidden ? '' : document.getElementById('tip').textContent);
+    const tip = () => pg.evaluate(() => document.getElementById('tip').hidden ? '' : document.getElementById('tip').firstChild.textContent);  // 입력 화면의 '미판매로' 버튼 글자는 빼고
     await pg.evaluate(() => scrollTo(0, 0));
     await pg.mouse.click(...await at('#board [data-z="R10"]')); const t1 = await tip();
     await pg.mouse.click(...await at('#board [data-z="원정석"]')); const t2 = await tip();
@@ -732,6 +732,29 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     && /^bad:.*다른 구장/.test(r.bad) && /^wait:.*마지막 신호/.test(r.stale) && /^live:/.test(r.hidden) && /김천종합운동장 없음/.test(r.rejected)
     && /^live:/.test(r.two) && /^open:.*화면에 없는 글자: 등급 선택, N석/.test(r.need);
   check('수집 상태 램프 (꺼짐, 노랑, 파랑, 초록, 깜빡임, 빨강, 끊김, 뒤 탭, 거부 이유, 탭 둘, 없는 글자)', lampOk, JSON.stringify(r));
+  // 입력 화면에서 현황판 구역을 누르면 자세히 창의 '미판매로' 버튼으로 바로 미판매 (다시 누르면 '판매로'), 보기 화면에는 버튼 없음 (11/27 사용자)
+  {
+    const pg = await open(b, { url: URL + '?s=ulsan&test=jeonbuk#edit' });
+    const at = async id => { const bb = await pg.locator(`#board [data-z="${id}"]`).first().boundingBox(); return [bb.x + bb.width / 2, bb.y + bb.height / 2]; };
+    await pg.mouse.click(...await at('E5')); const t1 = await pg.locator('#tip').innerText();
+    await pg.click('#tip .tipOff'); const off1 = await pg.evaluate(() => [state.rows.E5.off, JSON.parse(localStorage.getItem('fc-anyang-unsold-ulsan-test')).includes('E5'), document.getElementById('tip').hidden].join());
+    await pg.mouse.click(...await at('E5')); const t2 = await pg.locator('#tip').innerText(); await pg.click('#tip .tipOff');
+    const off2 = await pg.evaluate(() => !!state.rows.E5.off);
+    await pg.context().close();
+    const vw = await open(b, { url: URL + '?s=ulsan&test=jeonbuk' });
+    const bb = await vw.locator('#board [data-z="E5"]').first().boundingBox(); await vw.mouse.click(bb.x + bb.width / 2, bb.y + bb.height / 2);
+    const t3 = await vw.evaluate(() => [document.getElementById('tip').hidden, !!document.querySelector('#tip .tipOff')].join());
+    await vw.context().close();
+    r = [/미판매로/.test(t1), off1, /판매로/.test(t2), off2, t3].join(' | ');
+    check('입력 화면: 구역을 눌러 자세히 창의 미판매로 / 판매로 버튼, 보기 화면엔 버튼 없음', r === 'true | true,true,true | true | false | false,false', r);
+  }
+  // 울산: 보내기 스크립트가 '울산 문수 월드컵경기장'의 마지막 낱말 '월드컵경기장'만 보내도 다른 구장이 아님 (11/27 사용자 램프 화면)
+  {
+    const pg = await open(b, { url: URL + '?s=ulsan&test=jeonbuk#edit' });
+    r = await pg.evaluate(() => { fcPing({ state: 'seat', venue: '월드컵경기장', zones: 3, at: Date.now() }); const a = document.getElementById('lamp').className; fcPing({ state: 'seat', venue: '김천종합운동장', at: Date.now() }); return [a, document.getElementById('lamp').className].join(' | '); });
+    await pg.context().close();
+    check("울산 램프: 경기장 '월드컵경기장'은 같은 구장, '김천종합운동장'은 다른 구장", /seat/.test(r.split(' | ')[0]) && !/bad/.test(r.split(' | ')[0]) && /bad/.test(r.split(' | ')[1]), r);
+  }
   r = await p.evaluate(() => { const v = getComputedStyle(document.getElementById('lamp')); return v.display + ' ' + v.position; });
   check('램프는 입력 화면 위에 고정', r === 'flex fixed', r);
   await p.context().close();

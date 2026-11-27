@@ -81,6 +81,7 @@
   [data-z] { cursor: pointer; }
   #tip { position: fixed; z-index: 60; max-width: 280px; padding: 8px 12px; border-radius: 10px; background: #1f2937; color: #fff; font-size: 13px; font-weight: 600; line-height: 1.4;
     box-shadow: 0 4px 14px #0000004d; pointer-events: none; transform: translate(-50%, calc(-100% - 12px)); }
+  #tip .tipOff { margin-left: 6px; padding: 2px 8px; border-radius: 6px; border: 0; background: #fff; color: #1f2937; font: inherit; font-size: 12px; cursor: pointer; }
   td button[data-a=unblock] { margin-left: 4px; padding: 0 6px; color: #b42318; border-color: #f1c4c0; }
   /* 수집 상태 램프: 꺼짐(회색) 스크립트 없음, 노랑 설치됨/기다림, 파랑 티켓링크 열림, 초록 예매 화면 감지/수집 중, 빨강 다른 구장 */
   #lamp { position: fixed; top: 10px; right: 10px; z-index: 50; display: none; align-items: center; gap: 10px; max-width: min(420px, calc(100vw - 20px)); box-sizing: border-box;
@@ -338,7 +339,8 @@ const STADIUMS = {
       SECTIONS.forEach(x => { const n = { 밤겔피크닉존: '밤겔', 게이밍체어존: '게이밍', 프리미엄석: '프리미엄' }[x.id]; if (n) x.name = n; });
       // 서측 테이블석(11/27 사용자 좌석도): 1층 프리미엄석(테이블 A~P) = 프리미엄 테이블석 (2인), (3인), (4인), 치킨존(테이블 Q~T) = 치킨존 (2인), (3인).
       // 2층 테이블 T21~T28(2층 테이블석 W구역 2인, 3인), 3층 T31~T34(3층 테이블석 W구역). 여러 등급이 같은 칸으로 오면 등급마다 더함
-      SECTIONS.forEach(x => { if (x.id === '프리미엄석') x.alias = ['프리미엄테이블석']; if (/^(프리미엄석|치킨존|T[23]\d|E1[5-9]|E20)$/.test(x.id)) x.mix = []; });  // E15~E20 = 2층 테이블석 E구역 (2인), (3인)
+      SECTIONS.forEach(x => { if (x.id === '프리미엄석') x.alias = ['프리미엄테이블석']; if (x.id === '밤겔피크닉존') x.alias = ['밤켈피크닉존'];
+        if (/^(프리미엄석|치킨존|밤겔피크닉존|게이밍체어존|T[23]\d|E1[5-9]|E20)$/.test(x.id)) x.mix = []; });  // E15~E20 = 2층 테이블석 E구역 (2인), (3인) + 그 뒤 일반석. 피크닉존 (3인)·(4인)·(6인), 게이밍 체어존 (3인)·(4인)
     } },
   // 인천축구전용경기장 (11/17 티켓링크 좌석 화면): 위 E 안쪽 E2·E3~E8·E9, 바깥 E11~E19. 오른쪽 S 안쪽 S2~S6(스탠딩), 바깥 S8~S12. 아래 W 안쪽 W2~W5·V1~V3·W6~W10,
   // 그 바깥 BOX1~11(스카이박스, 목록에 없어 회색), 맨 바깥 W11~W14·(회색)·W15~W18. 왼쪽 N = 원정석 N1(아래 모서리)~N7, 1층뿐이라 안쪽 층 두께(바깥은 비움). N1 은 좌석이 가장 적어 가장 작게.
@@ -441,6 +443,8 @@ const STADIUM = STADIUMS[new URLSearchParams(location.search).get('s')] ? new UR
 const GUESTS = { gyeongnam: { host: '경남FC', name: '경남', color: 'red' }, gwangju: { host: '광주FC', name: '광주', color: 'yellow' }, daejeon: { host: '대전하나시티즌', name: '대전', color: 'green', ours: ['SA', 'SB', 'SC', 'SD', 'SE', 'SF'] } };  // ours: 그 경기 원정석 구역 (11/25 대전전 원정석 = 남측 A~F)  // 대전: 11/28 서울 vs 대전 시험(11/25 일반 예매), 구단 색 중 초록(하나)
 const TESTKEY = AWAY && (STADIUMS[new URLSearchParams(location.search).get('test')] || GUESTS[new URLSearchParams(location.search).get('test')]) ? new URLSearchParams(location.search).get('test') : '', TG = TESTKEY && (STADIUMS[TESTKEY] || GUESTS[TESTKEY]), TEST = TG && TG.host;
 const VENUE = AWAY ? STADIUMS[STADIUM].venue : '안양종합운동장', HOST = AWAY ? STADIUMS[STADIUM].host : 'FC안양', DATA = (TEST ? 'test/' : '') + (AWAY ? STADIUM + '/' : ''), MAXDATA = AWAY ? STADIUM + '/' : '';
+// 보내기 스크립트가 보내는 경기장 이름은 마지막 낱말뿐일 수 있음('울산 문수 월드컵경기장' -> '월드컵경기장', 11/27 램프 '다른 구장 예매 화면'): 빈칸을 빼고 서로 포함하면 같은 구장
+const VENUES = [VENUE, ...(AWAY && STADIUMS[STADIUM].venueAlt || [])], sameVenue = v => { const f = x => x.replace(/\s/g, ''); return !!v && VENUES.some(w => f(w).includes(f(v)) || f(v).includes(f(w))); };
 const GUEST = TEST || 'FC안양', WANT = TEST ? TG.name : '안양';  // 원정 팀, 받은 글자에 있어야 할 원정 팀 이름
 const KEY = 'fc-anyang-seat-status' + (AWAY ? '-' + STADIUM : '') + (TEST ? '-test' : ''), FULL = AWAY ? 0 : 11542, W = 1280, H = 1062, FONT = "'Malgun Gothic','Apple SD Gothic Neo',sans-serif";
 // 지도: 경기장 중심 (CX, CY), 직선 반길이 L, 스탠드 안쪽/바깥 반지름 RI/RO
@@ -1276,7 +1280,7 @@ tbody.addEventListener('click', e => {  // 매진: 잔여 0, 미판매(홈은 T1
   const tr = e.target.closest('tr'), r = state.rows[tr.dataset.id];
   if (a === 'unblock') delete r.block;  // 막힌 좌석으로 뺀 것 되돌림
   else if (a === 'out') { Object.assign(r, { remain: 0, off: false }); delete r.parts; }
-  else { Object.assign(r, r.off ? { off: false } : { off: true, remain: null }); delete r.parts; }
+  else toggleOff(tr.dataset.id, false);
   saveOff(); fillTable(); tr.classList.remove('hit'); save(); render();
 });
 const changed = () => {
@@ -2191,7 +2195,7 @@ function ingest(text) {
   // 경기장 이름으로 확인. 놀티켓 화면엔 경기장 이름이 없어 원정은 '홈 팀 이름 + 안양'이어도 받음 (안양 홈 경기 글자는 넘김)
   // 원정 화면은 FC안양 경기 글자만 (같은 경기장의 다른 팀 경기 글자가 안양 원정 숫자를 지우지 않게). 놀티켓은 경기장 이름이 아예 없을 때만 홈 팀 이름으로 확인 (다른 경기장 이름이 적혀 있으면 넘김)
   const venues = text.match(/[가-힣]+(?:운동장|경기장|스타디움|구장|야드)/g) || [];
-  const flat = v => v.replace(/\s/g, ''), venueOk = [VENUE, ...(AWAY && STADIUMS[STADIUM].venueAlt || [])].some(v => flat(text).includes(flat(v))) || SELLER === '놀티켓' && !venues.length && text.includes(STADIUMS[STADIUM].name);
+  const flat = v => v.replace(/\s/g, ''), venueOk = VENUES.some(v => flat(text).includes(flat(v))) || SELLER === '놀티켓' && !venues.length && text.includes(STADIUMS[STADIUM].name);
   if (!venueOk) { status(`받은 글자에 '${VENUE}'가 없어 넘겼습니다 (다른 구장, 다른 화면). 받은 내용은 맨 아래 '그 밖의 기능'의 받은 글자에 있습니다.`); return { why: `받은 글자에 ${VENUE} 없음` }; }
   if (AWAY && !text.replace(/안양종합운동장/g, '').includes(WANT)) { status(`받은 글자가 ${GUEST} 경기가 아니라 넘겼습니다 (${VENUE}의 다른 경기). 받은 내용은 맨 아래 '그 밖의 기능'의 받은 글자에 있습니다.`); return { why: `받은 글자가 ${GUEST} 경기가 아님` }; }
   const p = parseText(text), fresh = !state.at || Math.abs(Date.now() - new Date(state.at)) > 600e3;  // 손으로 바꾼 집계 시각이 미래여도
@@ -2215,7 +2219,7 @@ window.fcSeats = v => {
   const status = (msg, quiet) => { lamp.seats = { at: Date.now(), remain: v.remain, total: v.total, own: v.own, names: v.names, msg }; drawLamp(); if (!quiet) $('status').textContent = msg; };  // 결과를 램프와 진단 글에도 남김
   if (Date.now() - lamp.got > 600e3) return status('이 현황판이 최근 10분 안에 받은 글자가 없어 넘김', true);
   // 다른 구장 예매 화면이 센 칸이면 넘김 (16판부터 경기장 이름이 옴. 홈 현황판이 김천 S11 칸 수를 T3 에 넣던 것). 화면의 구역 이름이 하나도 이 현황판 칸이 아니어도 넘김
-  if (v.venue && !v.venue.replace(/\s/g, '').includes(VENUE.replace(/\s/g, ''))) return status(`보내기 스크립트가 센 좌석 그림이 ${v.venue} 것이라 넘김`, true);
+  if (v.venue && !sameVenue(v.venue)) return status(`보내기 스크립트가 센 좌석 그림이 ${v.venue} 것이라 넘김`, true);
   const ids = l => [...new Set((Array.isArray(l) ? l : []).map(n => zoneId(String(n))).filter(Boolean))], one = l => l.length === 1 ? l[0] : null, names = ids(v.names);
   if (v.names?.length && !names.length && !ids(v.own).length) return status('보내기 스크립트가 센 좌석 그림의 구역 이름이 이 현황판에 없어 넘김', true);
   const id = one(ids(v.own)) || one(names) || one((names.length ? names : SECTIONS.map(s => s.id)).filter(id => !state.rows[id].off && state.rows[id].remain === v.remain));
@@ -2235,14 +2239,14 @@ const lamp = { installed: 0, version: 0, pings: {}, got: 0, zones: 0, rejected: 
 // 보내기 스크립트 최신 판 (fc-anyang-send.user.js 의 @version 과 같게. 자동 시험이 맞춰 봄). 설치된 판이 낮으면 입력 화면 맨 위 버튼을 눈에 띄게
 const SCRIPT_VERSION = 18;
 // 현황판 판: 커밋할 때 tools/pre-commit.sh 가 이 줄을 커밋 시각(KST)으로 바꿈. 화면 아래와 입력 화면 맨 위에 보여 수정이 반영됐는지 알 수 있게 (11/25 사용자)
-const APP_VERSION = '2026.11.27 16:44';
+const APP_VERSION = '2026.11.27 16:58';
 const hms = t => new Date(t).toTimeString().slice(0, 8);
 // Tampermonkey 저장소는 브라우저마다 따로: 티켓링크를 다른 브라우저에서 열면 신호가 안 옴 (램프에 이 브라우저 이름을 보여 줌)
 const BROWSER = (ua => /Whale\//.test(ua) ? '웨일' : /Edg\//.test(ua) ? '엣지' : /Chrome\//.test(ua) ? '크롬' : /Firefox\//.test(ua) ? '파이어폭스' : '이 브라우저')(navigator.userAgent);
 function drawLamp() {
   const now = Date.now(), all = Object.values(lamp.pings), last = Math.max(0, ...all.map(p => p.at));
   const fresh = all.filter(p => now - p.at < (p.hidden ? 90e3 : 20e3));  // 뒤에 있는 탭은 신호가 늦어 오래 기다림
-  const venueOk = p => p.venue && (p.venue.includes(VENUE) || VENUE.includes(p.venue));
+  const venueOk = p => p.venue && sameVenue(p.venue);
   const p = fresh.find(p => p.state === 'seat' && venueOk(p)) || fresh.find(p => p.state === 'seat') || fresh[0];
   const [cls, msg] =
     p?.state === 'seat' && p.venue && !venueOk(p) ? ['bad', `다른 구장 예매 화면 (${p.venue}) · 이 화면은 ${VENUE}`]
@@ -2282,7 +2286,13 @@ addEventListener('paste', e => {
   else if (!e.target.closest?.('input, textarea') && (/\d\s*석/.test(s) || SELLER === '놀티켓' && /\n[ \t]*[\d,]+[ \t]*(\n|$)/.test(s))) { e.preventDefault(); ingest(s); }  // 놀티켓은 '석' 없이 숫자만 있는 줄
 });
 
+// 미판매 켜고 끄기 (표의 미판매 버튼, 입력 화면에서 현황판 구역을 누른 자세히 창의 버튼). 켜면 잔여를 비움
+function toggleOff(id, redraw = true) {
+  const r = state.rows[id]; Object.assign(r, r.off ? { off: false } : { off: true, remain: null }); delete r.parts;
+  if (redraw) { saveOff(); fillTable(); save(); render(); }
+}
 // 구역을 누르면 자세히: "E15 · 남은 19 / 총 843 · 예매율 97%" (보기, 입력, 퍼간 화면). 구역을 눌렀으면 true
+// 입력 화면에서는 자세히 창에 '미판매로' / '판매로' 버튼 (11/27 사용자: 좌석 그림을 눌러 바로 미판매를 넣게)
 function zoneTip(e) {
   const id = document.elementsFromPoint(e.clientX, e.clientY).map(el => el.getAttribute('data-z')).find(Boolean), tip = $('tip'), r = state.rows[id];
   tip.hidden = !r;
@@ -2290,6 +2300,12 @@ function zoneTip(e) {
   const est = groupEst()[id], rem = r.remain ?? (est == null ? null : Math.round(est)), cap = capOf(r), total = cap ? `총 ${fmt(cap)}석` + (r.block ? ` (막힌 ${fmt(r.block)}석 뺌)` : '') : '';
   tip.textContent = nick(nameOf(id)) + ' · ' + (r.off ? '미판매 (이번 경기 판매 안 함)' : rem == null ? '정보 없음' + (total && ` · ${total}`) : r.remain === 0 ? '매진' + (total && ` · ${total}`)
     : `잔여 ${r.remain == null ? '약 ' : ''}${fmt(rem)}석` + (cap ? ` / ${total} · 예매율 ${r.remain == null ? '≈' : ''}${Math.floor((1 - Math.min(rem, cap) / cap) * 100)}%` : ' · 총석 정보 없음'));
+  if (editing && !embed) {
+    const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'tipOff'; btn.textContent = r.off ? '판매로' : '미판매로';
+    btn.onclick = ev => { ev.stopPropagation(); toggleOff(id); tip.hidden = true; status(`${nameOf(id)}: ${state.rows[id].off ? '미판매로 바꿈' : '판매로 바꿈 (잔여는 다음 집계에서 받음)'}`); };
+    tip.append(' ', btn);
+  }
+  tip.style.pointerEvents = editing && !embed ? 'auto' : '';
   Object.assign(tip.style, { left: Math.max(150, Math.min(innerWidth - 150, e.clientX)) + 'px', top: Math.max(60, e.clientY) + 'px' });
   return true;
 }
