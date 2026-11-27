@@ -266,6 +266,11 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   await p.context().close();
   // 11/27 사용자: 포항 vs 광주 시험 발행의 미판매가 기본값 (E21, E22, 라운지는 판매)
   check('포항 시험 페이지: 기본 미판매 15구역, E21, E22, 라운지는 판매', r === 'A21 A22 A23 E26 E27 N21 N22 N27 N28 S21 S22 S23 S24 S25 S26 | false,false,false', r);
+  // 울산 기본 미판매 N5, N16, N33, N34 (11/27 사용자: 좌석 그림이 안 열림)
+  p = await open(b, { url: URL + '?s=ulsan&test=jeonbuk#edit' });
+  r = await p.evaluate(() => SECTIONS.filter(s => state.rows[s.id].off).map(s => s.id).sort().join(' '));
+  await p.context().close();
+  check('울산 시험 페이지: 기본 미판매 N16 N33 N34 N5', r === 'N16 N33 N34 N5', r);
   // 휴대폰은 입력 화면을 열지 않음(#edit, 기억한 값), 기억한 값은 지움 (11/27 사용자)
   {
     const ctx = await b.newContext({ ...devices['iPhone 13'] });
