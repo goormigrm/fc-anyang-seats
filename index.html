@@ -133,7 +133,7 @@
     <!-- 입력 화면: 맨 위에서 할 일을 고름. 현황 집계(숫자 받기 -> 표 확인 -> 현황 발행) / 총석 집계(좌석 그림 캡처 -> 총석 확인 -> 총석 발행). 드문 기능은 맨 아래 '그 밖의 기능'에 접어 둠 -->
     <div class="box flow">
       <div class="row"><div class="tabs"><button id="modeStatus" aria-pressed="true">현황 집계</button><button id="modeMax" aria-pressed="false">총석 집계</button></div><span class="grow"></span>
-        <button id="viewMode">보기 화면으로</button><a class="btn" href="guide/" target="_blank">작업 가이드</a>
+        <button id="viewMode">편집 나가기</button><a class="btn" href="guide/" target="_blank">작업 가이드</a>
         <a class="btn" id="scriptBtn" href="fc-anyang-send.user.js" target="_blank" rel="noopener">보내기 스크립트 설치/업데이트</a><small id="appVerTop" class="hint" style="align-self:center"></small></div>
       <p class="hint only-status"><b>현황 집계</b> ① 예매 화면에서 등급을 차례로 누르면 숫자가 들어옵니다 (안 들어오면 예매 화면 글자나 캡처를 Ctrl+V) → ② 아래 표 확인 → ③ <b>현황 발행</b>. 발행해야 누구나 보는 현황판에 올라갑니다.</p>
       <p class="hint only-max"><b>총석 집계</b> ① 예매 화면에서 구역을 눌러 좌석 그림을 캡처해 Ctrl+V (FC안양 경기가 아닌 날도 됩니다) → ② 아래 표의 총석 확인 → ③ <b>총석 발행</b>. 현황(잔여, 경기 정보, 발행한 현황판)은 바뀌지 않고, 발행한 총석은 모든 기기에서 기본 총석이 됩니다.</p>
@@ -2227,7 +2227,7 @@ const lamp = { installed: 0, version: 0, pings: {}, got: 0, zones: 0, rejected: 
 // 보내기 스크립트 최신 판 (fc-anyang-send.user.js 의 @version 과 같게. 자동 시험이 맞춰 봄). 설치된 판이 낮으면 입력 화면 맨 위 버튼을 눈에 띄게
 const SCRIPT_VERSION = 18;
 // 현황판 판: 커밋할 때 tools/pre-commit.sh 가 이 줄을 커밋 시각(KST)으로 바꿈. 화면 아래와 입력 화면 맨 위에 보여 수정이 반영됐는지 알 수 있게 (11/25 사용자)
-const APP_VERSION = '2026.11.27 08:53';
+const APP_VERSION = '2026.11.27 09:25';
 const hms = t => new Date(t).toTimeString().slice(0, 8);
 // Tampermonkey 저장소는 브라우저마다 따로: 티켓링크를 다른 브라우저에서 열면 신호가 안 옴 (램프에 이 브라우저 이름을 보여 줌)
 const BROWSER = (ua => /Whale\//.test(ua) ? '웨일' : /Edg\//.test(ua) ? '엣지' : /Chrome\//.test(ua) ? '크롬' : /Firefox\//.test(ua) ? '파이어폭스' : '이 브라우저')(navigator.userAgent);
@@ -2370,8 +2370,10 @@ const EDIT = 'fc-anyang-edit';
 // ?embed: 다른 사이트 iframe 용 (현황판만, 입력 화면 안 열림), ?embed=trend 면 추이도
 // ?embed 는 다른 페이지 안(iframe)에서만 현황판만 보임. 링크로 바로 열면(휴대폰 새 창 등) 보통 보기 화면 (세로판, 공유, 추이)
 const params = new URLSearchParams(location.search), embed = params.has('embed') && window.self !== window.top;
-let editing = !embed && location.hash === '#edit';
-try { if (!embed) { editing ||= localStorage.getItem(EDIT) === '1'; if (editing) localStorage.setItem(EDIT, '1'); } } catch {}
+// 휴대폰(손가락 화면, 짧은 변 820px 이하)은 입력 화면을 열지 않음: #edit, 기억한 값, Ctrl+Shift+E 모두 (11/27 사용자)
+const MOBILE = matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) <= 820;
+let editing = !embed && !MOBILE && location.hash === '#edit';
+try { if (MOBILE) localStorage.removeItem(EDIT); else if (!embed) { editing ||= localStorage.getItem(EDIT) === '1'; if (editing) localStorage.setItem(EDIT, '1'); } } catch {}
 document.body.classList.toggle('editing', editing);
 document.body.classList.toggle('embed', embed); document.body.classList.toggle('away', AWAY);
 $('appVer').textContent = ` · 판 ${APP_VERSION}`; $('appVerTop').textContent = `판 ${APP_VERSION}`;
@@ -2386,7 +2388,7 @@ if (AWAY) {
   $('seatHint').textContent = `빈칸 = 정보 없음, 0 = 매진, 미판매 = 이번 경기에 팔지 않는 구역(빗금). 최대 = 구역 총석 (${STADIUMS[STADIUM].max ? '넣어 둠, ' : '아직 없음: '}구역 좌석 그림을 잘라 넣으면 셈). 총석을 모르는 구역은 예매율을 못 냅니다.`;
 } document.body.classList.toggle('embed-trend', params.get('embed') === 'trend');
 const toggleEdit = () => { try { localStorage.setItem(EDIT, editing ? '0' : '1'); } catch {} location.replace(location.pathname + location.search); };
-addEventListener('keydown', e => { if (!embed && e.ctrlKey && e.shiftKey && e.code === 'KeyE') { e.preventDefault(); toggleEdit(); } });
+addEventListener('keydown', e => { if (!embed && !MOBILE && e.ctrlKey && e.shiftKey && e.code === 'KeyE') { e.preventDefault(); toggleEdit(); } });
 $('viewMode').onclick = toggleEdit;
 // 시험 페이지(안양 경기가 아닌 경기의 시험 집계)로 가는 링크: 보기 화면에는 없고 입력 화면 '그 밖의 기능'에만. 새 시험 페이지를 만들면 여기에 [구장, 원정 팀] 한 줄
 const TEST_PAGES = [['jeonbuk', 'seoul'], ['incheon', 'gangwon'], ['seoul', 'daejeon']];  // 인천 vs 울산(11/21)은 끝남: 같은 test/incheon 자리를 강원전(11/29)이 씀

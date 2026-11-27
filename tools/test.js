@@ -260,6 +260,16 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   await p.context().close();
 
   // 휴대폰: 경기장만 키움
+  // 휴대폰은 입력 화면을 열지 않음(#edit, 기억한 값), 기억한 값은 지움 (11/27 사용자)
+  {
+    const ctx = await b.newContext({ ...devices['iPhone 13'] });
+    await ctx.addInitScript(() => { try { localStorage.setItem('fc-anyang-edit', '1'); } catch {} });
+    const pg = await ctx.newPage(); await ctx.route(/raw\.githubusercontent\.com|api\.github\.com/, r => r.fulfill({ status: 404, body: '' }));
+    await pg.goto(URL + '#edit'); await pg.waitForTimeout(300);
+    r = await pg.evaluate(() => [editing, document.body.classList.contains('editing'), getComputedStyle(document.querySelector('.panel.edit')).display].join());
+    await ctx.close();
+    check('휴대폰: #edit 과 기억한 입력 화면 값이 있어도 보기 화면', r === 'false,false,none', r);
+  }
   p = await open(b, { url: URL, device: 'iPhone 13' });
   r = await p.evaluate(() => { const top = () => document.querySelector('.share').getBoundingClientRect().top + scrollY, a = top(), w = document.getElementById('stadiumWrap'); w.click(); return { a, b: top(), zoom: w.classList.contains('zoom'), wide: document.documentElement.scrollWidth <= document.documentElement.clientWidth }; });
   check('휴대폰: 경기장만 확대, 버튼 위치 그대로, 가로 넘침 없음', r.zoom && Math.abs(r.a - r.b) < 2 && r.wide, JSON.stringify(r));
@@ -478,9 +488,9 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     out.more = document.querySelector('details.more').open + '|' + [...document.querySelectorAll('details.more button')].map(x => x.textContent).join(',');
     return out;
   });
-  check('입력 화면: 현황 집계는 할 일이 캡처 고르기와 현황 발행뿐, 드문 기능은 접혀 있음, 칸마다 가로 전체, 홈도 미판매 버튼(11/26: T1 기본 미판매를 표에서 바꿀 수 있게)', r.status === '현황 집계,총석 집계,보기 화면으로,작업 가이드,스크립트,캡처 고르기,현황 발행,지금 | 구역,매진,잔여,최대,예매율 | true' && r.full && r.stacked && r.off === 53
+  check('입력 화면: 현황 집계는 할 일이 캡처 고르기와 현황 발행뿐, 드문 기능은 접혀 있음, 칸마다 가로 전체, 홈도 미판매 버튼(11/26: T1 기본 미판매를 표에서 바꿀 수 있게)', r.status === '현황 집계,총석 집계,편집 나가기,작업 가이드,스크립트,캡처 고르기,현황 발행,지금 | 구역,매진,잔여,최대,예매율 | true' && r.full && r.stacked && r.off === 53
     && r.more === 'false|이 글자로 다시 채우기,진단 글 복사,새 경기: 잔여 모두 지우기,잔여를 최대로 복사,마지막 발행 지우기,발행 모두 지우기,발행 점검,토큰 설정,이번 집계 저장,저장한 집계 열기,지금 숫자를 기준으로,저장한 집계를 기준으로,비교 끄기', JSON.stringify(r));
-  check('입력 화면: 총석 집계는 캡처 고르기와 총석 발행뿐, 표는 구역과 최대만, 경기 정보 숨김, 잔여 글자는 받지 않음, 현황 집계로 돌아옴', r.max.startsWith('현황 집계,총석 집계,보기 화면으로,작업 가이드,스크립트,캡처 고르기,총석 발행 | 구역,최대 | false | 구역별 총석 | 총석이 있는 구역 ') && /아직 발행한 총석이 없습니다/.test(r.max)
+  check('입력 화면: 총석 집계는 캡처 고르기와 총석 발행뿐, 표는 구역과 최대만, 경기 정보 숨김, 잔여 글자는 받지 않음, 현황 집계로 돌아옴', r.max.startsWith('현황 집계,총석 집계,편집 나가기,작업 가이드,스크립트,캡처 고르기,총석 발행 | 구역,최대 | false | 구역별 총석 | 총석이 있는 구역 ') && /아직 발행한 총석이 없습니다/.test(r.max)
     && r.ing === '현황판이 총석 집계 화면이라 받지 않음|true' && r.back === false, JSON.stringify(r));
   await p.context().close();
 
