@@ -2227,7 +2227,7 @@ const lamp = { installed: 0, version: 0, pings: {}, got: 0, zones: 0, rejected: 
 // 보내기 스크립트 최신 판 (fc-anyang-send.user.js 의 @version 과 같게. 자동 시험이 맞춰 봄). 설치된 판이 낮으면 입력 화면 맨 위 버튼을 눈에 띄게
 const SCRIPT_VERSION = 18;
 // 현황판 판: 커밋할 때 tools/pre-commit.sh 가 이 줄을 커밋 시각(KST)으로 바꿈. 화면 아래와 입력 화면 맨 위에 보여 수정이 반영됐는지 알 수 있게 (11/25 사용자)
-const APP_VERSION = '2026.11.27 09:25';
+const APP_VERSION = '2026.11.27 15:06';
 const hms = t => new Date(t).toTimeString().slice(0, 8);
 // Tampermonkey 저장소는 브라우저마다 따로: 티켓링크를 다른 브라우저에서 열면 신호가 안 옴 (램프에 이 브라우저 이름을 보여 줌)
 const BROWSER = (ua => /Whale\//.test(ua) ? '웨일' : /Edg\//.test(ua) ? '엣지' : /Chrome\//.test(ua) ? '크롬' : /Firefox\//.test(ua) ? '파이어폭스' : '이 브라우저')(navigator.userAgent);
@@ -2391,7 +2391,7 @@ const toggleEdit = () => { try { localStorage.setItem(EDIT, editing ? '0' : '1')
 addEventListener('keydown', e => { if (!embed && !MOBILE && e.ctrlKey && e.shiftKey && e.code === 'KeyE') { e.preventDefault(); toggleEdit(); } });
 $('viewMode').onclick = toggleEdit;
 // 시험 페이지(안양 경기가 아닌 경기의 시험 집계)로 가는 링크: 보기 화면에는 없고 입력 화면 '그 밖의 기능'에만. 새 시험 페이지를 만들면 여기에 [구장, 원정 팀] 한 줄
-const TEST_PAGES = [['jeonbuk', 'seoul'], ['incheon', 'gangwon'], ['seoul', 'daejeon']];  // 인천 vs 울산(11/21)은 끝남: 같은 test/incheon 자리를 강원전(11/29)이 씀
+const TEST_PAGES = [['jeonbuk', 'seoul'], ['incheon', 'gangwon'], ['seoul', 'daejeon'], ['ulsan', 'jeonbuk']];  // 인천 vs 울산(11/21)은 끝남: 같은 test/incheon 자리를 강원전(11/29)이 씀
 $('testPages').innerHTML = [...TEST_PAGES.map(([s, t]) => [`?s=${s}&test=${t}`, `${STADIUMS[s].host} vs ${(STADIUMS[t] || GUESTS[t]).host}`]), ['./', 'FC안양 현황판 (시험 아님)']]
   .map(([q, n]) => `<a href="${q}#edit">${esc(nick(n))}</a>`).join(' · ');
 portrait.addEventListener('change', render);
