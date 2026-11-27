@@ -565,7 +565,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
       ['incheon', 62, 7, H2('인천유나이티드', '인천축구전용경기장') + '원정석\n1142 석\nN1구역\n144 석\nE3구역\n90 석\nW5구역\n10 석', { N1: 144, E3: 90, W5: 10 }, ''],
       ['pohang', 63, 7, H2('포항스틸러스', '포항스틸야드') + '청암E1구역\n100 석\nA1구역\n50 석\n데크석\n20 석\n퍼스트클래스석\n12 석\n퍼스트클래스 구역\n12 석\n프레스티지 테이블(1인)\n7 석\n프레스티지 테이블(2인)\n26 석\nT2 테이블(1인)\n1 석\nT2 테이블(2인)\n60 석', { E1: 100, A1: 50, 데크석: 20, 퍼스트클래스석: 12, 프레스티지테이블: 33, T2: 61 }, ''],
       ['seoul', 79, 3, H2('FC서울', '서울월드컵경기장') + 'E-A구역\n80 석\nSC구역\n40 석', { EA: 80, SC: 40 }, ''],
-      ['ulsan', 106, 11, H2('울산HD', '울산문수축구경기장') + 'N1구역\n120 석\nE13구역\n50 석\n프리미엄 테이블석\n10 석', { N1: 120, E13: 50, 프리미엄테이블석: 10 }, ''],
+      ['ulsan', 117, 11, H2('울산HD', '울산문수축구경기장') + 'N1구역\n120 석\nE13구역\n50 석\n프리미엄 테이블석\n10 석', { N1: 120, E13: 50, 프리미엄석: 10 }, ''],
       ['suwon', 62, 3, H2('수원삼성', '수원월드컵경기장') + 'S3구역\n20 석\nE5구역\n40 석', { S3: 20, E5: 40 }, ''],
       ['suwonfc', 38, 13, H2('수원FC', '수원종합운동장') + 'S7구역\n30 석\nVIP석\n5 석', { S7: 30, VIP석: 5 }, ''],
       ['bucheon', 42, 8, H2('부천FC1995', '부천종합운동장') + 'SA구역\n50 석\nGE가구역\n12 석', { SA: 50, GE가: 12 }, ''],
@@ -1587,9 +1587,17 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
     await pg.context().close();
     check("포항 구역 범위 등급('W1~W2 294 석')은 W2 구역 잔여가 아님 (W1 148, W2 W4 모름, E1 290)", r === '148,,,290', r);
     pg = await open(b, { url: URL + '?s=ulsan#edit' });
-    r = await pg.evaluate(H => { fcIngest(H + '휠체어석\n0 석\n프리미엄 테이블석\n10 석\n2층 테이블석\n30 석'); return [state.rows.프리미엄테이블석.remain, state.rows['2층테이블석'].remain].join(); }, AH('울산HD', '울산문수축구경기장'));
+    // 11/27 울산 서측 테이블석: 프리미엄 테이블석 (2인), (3인), (4인) 은 프리미엄석에 더함, '2층 테이블석 W구역(2인)'은 '구역'이 있어도 등급 줄, 그 아래 '2층 T21구역'은 T21 (11/27 사용자 목록 캡처)
+    r = await pg.evaluate(H => { fcIngest(H + '휠체어석\n0 석\n프리미엄 테이블석(2인) 4 석\n프리미엄석 4 석\n프리미엄 테이블석(3인) 6 석\n프리미엄석 6 석\n치킨존(2인) 2 석\n치킨존(3인) 3 석\n2층 테이블석 W구역(2인)\n5 석\n2층 T21구역\n3 석\n2층 T27구역\n2 석\n2층 테이블석 W구역(3인)\n6 석\n2층 T23구역\n6 석');
+      return [state.rows.프리미엄석.remain, state.rows.치킨존.remain, state.rows.T21.remain, state.rows.T27.remain, state.rows.T23.remain].join(); }, AH('울산HD', '울산문수축구경기장'));
     await pg.context().close();
-    check('접힌 휠체어석(0석) 다음 등급, 숫자로 시작하는 등급(2층 테이블석)도 받음', r === '10,30', r);
+    check('울산 서측 테이블석: 프리미엄 2인 + 3인 = 10, 치킨존 2인 + 3인 = 5, 2층 테이블석 W구역 아래 T21 3, T27 2, T23 6 (접힌 휠체어석 다음)', r === '10,5,3,2,6', r);
+    // 티켓링크 머리글 경기장 이름이 '울산 문수 월드컵경기장' (11/27 사용자 화면), 2층 테이블석 E구역 (2인) + (3인) = E15
+    pg = await open(b, { url: URL + '?s=ulsan&test=jeonbuk#edit' });
+    r = await pg.evaluate(() => { const ok = fcIngest('울산 HD FC vs 전북현대모터스\n울산 문수 월드컵경기장 | 2026.11.29(일) 14:00\n등급 선택\n2층 테이블석 E구역(2인)\n2 석\n2층 E15구역\n2 석\n2층 테이블석 E구역(3인)\n3 석\n2층 E15구역\n3 석');
+      return [state.rows.E15.remain, /경기장/.test(document.getElementById('status').innerText) && /없어 넘겼/.test(document.getElementById('status').innerText)].join(); });
+    await pg.context().close();
+    check("울산: 머리글 '울산 문수 월드컵경기장'도 받음, 2층 테이블석 E구역 2인 + 3인 = E15 5", r === '5,false', r);
     pg = await open(b, { url: URL + '?s=jeonbuk#edit' });
     r = await pg.evaluate(H => { const o = [];
       fcIngest(H + 'E 테이블\n150 석\n✓ E-2B\n13 석'); fcIngest(H + 'E 일반\n7155 석\n✓ E-2B\n40 석'); o.push(state.rows.E2B.remain);
