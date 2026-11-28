@@ -1,0 +1,707 @@
+{
+ "app": "fc-anyang-seats",
+ "version": 1,
+ "updatedAt": "2026-11-27T17:41:00+09:00",
+ "match": {
+  "opponent": "FC서울",
+  "kickoff": "2026-11-28T14:00:00+09:00",
+  "venue": "서울월드컵경기장",
+  "home": "FC서울",
+  "away": "대전하나시티즌",
+  "test": true,
+  "competition": "K리그1",
+  "attendance": null,
+  "awayAttendance": null
+ },
+ "capacity": 46521,
+ "available": 25473,
+ "booked": 21048,
+ "awayCapacity": 6179,
+ "awayBooked": 1023,
+ "awayRemain": 5156,
+ "groups": [],
+ "sinceBase": {
+  "at": "2026-11-27T08:51:00+09:00",
+  "booked": 229
+ },
+ "soldOut": [
+  "WE",
+  "WD",
+  "WC",
+  "WL",
+  "WK",
+  "WJ",
+  "W센터"
+ ],
+ "unknown": [],
+ "unsold": [
+  "NG",
+  "ET",
+  "EJ",
+  "SP",
+  "SN",
+  "SM",
+  "SL",
+  "SK",
+  "SJ",
+  "SH",
+  "SG",
+  "WX",
+  "WN",
+  "NP"
+ ],
+ "sections": [
+  {
+   "id": "EG앞",
+   "name": "EG 앞",
+   "grade": null,
+   "remain": 359,
+   "max": 541,
+   "sold": 0
+  },
+  {
+   "id": "EF앞",
+   "name": "EF 앞",
+   "grade": null,
+   "remain": 131,
+   "max": 476,
+   "sold": 0
+  },
+  {
+   "id": "EE앞",
+   "name": "EE 앞",
+   "grade": null,
+   "remain": 4,
+   "max": 416,
+   "sold": 0
+  },
+  {
+   "id": "ED앞",
+   "name": "ED 앞",
+   "grade": null,
+   "remain": 2,
+   "max": 416,
+   "sold": 0
+  },
+  {
+   "id": "EC앞",
+   "name": "EC 앞",
+   "grade": null,
+   "remain": 325,
+   "max": 476,
+   "sold": 0
+  },
+  {
+   "id": "EB앞",
+   "name": "EB 앞",
+   "grade": null,
+   "remain": 477,
+   "max": 544,
+   "sold": 0
+  },
+  {
+   "id": "EG",
+   "name": "EG",
+   "grade": null,
+   "remain": 582,
+   "max": 950,
+   "sold": 12
+  },
+  {
+   "id": "EF",
+   "name": "EF",
+   "grade": null,
+   "remain": 220,
+   "max": 756,
+   "sold": 22
+  },
+  {
+   "id": "EE",
+   "name": "EE",
+   "grade": null,
+   "remain": 18,
+   "max": 756,
+   "sold": 11
+  },
+  {
+   "id": "ED",
+   "name": "ED",
+   "grade": null,
+   "remain": 51,
+   "max": 756,
+   "sold": 17
+  },
+  {
+   "id": "EC",
+   "name": "EC",
+   "grade": null,
+   "remain": 419,
+   "max": 756,
+   "sold": 30
+  },
+  {
+   "id": "EB",
+   "name": "EB",
+   "grade": null,
+   "remain": 46,
+   "max": 973,
+   "sold": 2
+  },
+  {
+   "id": "ES",
+   "name": "ES",
+   "grade": null,
+   "remain": 740,
+   "max": 750,
+   "sold": 0
+  },
+  {
+   "id": "ER",
+   "name": "ER",
+   "grade": null,
+   "remain": 752,
+   "max": 761,
+   "sold": 0
+  },
+  {
+   "id": "EQ",
+   "name": "EQ",
+   "grade": null,
+   "remain": 729,
+   "max": 757,
+   "sold": 0
+  },
+  {
+   "id": "EP",
+   "name": "EP",
+   "grade": null,
+   "remain": 698,
+   "max": 798,
+   "sold": 14
+  },
+  {
+   "id": "EN",
+   "name": "EN",
+   "grade": null,
+   "remain": 729,
+   "max": 773,
+   "sold": 8
+  },
+  {
+   "id": "EM",
+   "name": "EM",
+   "grade": null,
+   "remain": 752,
+   "max": 758,
+   "sold": 4
+  },
+  {
+   "id": "EL",
+   "name": "EL",
+   "grade": null,
+   "remain": 761,
+   "max": 762,
+   "sold": 0
+  },
+  {
+   "id": "EK",
+   "name": "EK",
+   "grade": null,
+   "remain": 771,
+   "max": 771,
+   "sold": 0
+  },
+  {
+   "id": "NA",
+   "name": "NA",
+   "grade": null,
+   "remain": 448,
+   "max": 879,
+   "sold": 29
+  },
+  {
+   "id": "EH앞",
+   "name": "EH 앞",
+   "grade": null,
+   "remain": 2,
+   "max": 46,
+   "sold": 0
+  },
+  {
+   "id": "EH",
+   "name": "EH",
+   "grade": null,
+   "remain": 114,
+   "max": 848,
+   "sold": 2
+  },
+  {
+   "id": "NG",
+   "name": "NG",
+   "grade": null,
+   "remain": null,
+   "max": null,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "ET",
+   "name": "ET",
+   "grade": null,
+   "remain": null,
+   "max": null,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "EA앞",
+   "name": "EA 앞",
+   "grade": null,
+   "remain": 7,
+   "max": 45,
+   "sold": 4
+  },
+  {
+   "id": "EA",
+   "name": "EA",
+   "grade": null,
+   "remain": 48,
+   "max": 300,
+   "sold": 26
+  },
+  {
+   "id": "SF",
+   "name": "SF",
+   "grade": null,
+   "remain": 684,
+   "max": 726,
+   "sold": 0
+  },
+  {
+   "id": "EJ",
+   "name": "EJ",
+   "grade": null,
+   "remain": null,
+   "max": null,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "SP",
+   "name": "SP",
+   "grade": null,
+   "remain": null,
+   "max": null,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "SE",
+   "name": "SE",
+   "grade": null,
+   "remain": 1295,
+   "max": 1334,
+   "sold": 4
+  },
+  {
+   "id": "SD",
+   "name": "SD",
+   "grade": null,
+   "remain": 857,
+   "max": 1044,
+   "sold": 8
+  },
+  {
+   "id": "SC",
+   "name": "SC",
+   "grade": null,
+   "remain": 567,
+   "max": 1109,
+   "sold": 18
+  },
+  {
+   "id": "SB",
+   "name": "SB",
+   "grade": null,
+   "remain": 1181,
+   "max": 1370,
+   "sold": 4
+  },
+  {
+   "id": "SN",
+   "name": "SN",
+   "grade": null,
+   "remain": null,
+   "max": null,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "SM",
+   "name": "SM",
+   "grade": null,
+   "remain": null,
+   "max": null,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "SL",
+   "name": "SL",
+   "grade": null,
+   "remain": null,
+   "max": null,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "SK",
+   "name": "SK",
+   "grade": null,
+   "remain": null,
+   "max": null,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "SJ",
+   "name": "SJ",
+   "grade": null,
+   "remain": null,
+   "max": null,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "SH",
+   "name": "SH",
+   "grade": null,
+   "remain": null,
+   "max": null,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "SA",
+   "name": "SA",
+   "grade": null,
+   "remain": 572,
+   "max": 596,
+   "sold": 4
+  },
+  {
+   "id": "WH",
+   "name": "WH",
+   "grade": null,
+   "remain": 841,
+   "max": 876,
+   "sold": 2
+  },
+  {
+   "id": "SG",
+   "name": "SG",
+   "grade": null,
+   "remain": null,
+   "max": null,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "WX",
+   "name": "WX",
+   "grade": null,
+   "remain": null,
+   "max": null,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "WG앞",
+   "name": "WG 앞",
+   "grade": null,
+   "remain": 416,
+   "max": 532,
+   "sold": 16
+  },
+  {
+   "id": "WF",
+   "name": "WF",
+   "grade": null,
+   "remain": 2,
+   "max": 490,
+   "sold": 6
+  },
+  {
+   "id": "WE",
+   "name": "WE",
+   "grade": null,
+   "remain": 0,
+   "max": 336,
+   "sold": 0
+  },
+  {
+   "id": "WD",
+   "name": "WD",
+   "grade": null,
+   "remain": 0,
+   "max": 336,
+   "sold": 0
+  },
+  {
+   "id": "WC",
+   "name": "WC",
+   "grade": null,
+   "remain": 0,
+   "max": 490,
+   "sold": 0
+  },
+  {
+   "id": "WB앞",
+   "name": "WB 앞",
+   "grade": null,
+   "remain": 4,
+   "max": 532,
+   "sold": 1
+  },
+  {
+   "id": "WG",
+   "name": "WG",
+   "grade": null,
+   "remain": 351,
+   "max": 661,
+   "sold": 15
+  },
+  {
+   "id": "WM",
+   "name": "WM",
+   "grade": null,
+   "remain": 3,
+   "max": 829,
+   "sold": 3
+  },
+  {
+   "id": "WL",
+   "name": "VIP L",
+   "grade": null,
+   "remain": 0,
+   "max": 537,
+   "sold": 0
+  },
+  {
+   "id": "WK",
+   "name": "VIP K",
+   "grade": null,
+   "remain": 0,
+   "max": 537,
+   "sold": 0
+  },
+  {
+   "id": "WJ",
+   "name": "WJ",
+   "grade": null,
+   "remain": 0,
+   "max": 588,
+   "sold": 0
+  },
+  {
+   "id": "WB",
+   "name": "WB",
+   "grade": null,
+   "remain": 1,
+   "max": 604,
+   "sold": -1
+  },
+  {
+   "id": "W센터",
+   "name": "W센터",
+   "grade": null,
+   "remain": 0,
+   "max": 202,
+   "sold": 0
+  },
+  {
+   "id": "WW",
+   "name": "WW",
+   "grade": null,
+   "remain": 742,
+   "max": 742,
+   "sold": 0
+  },
+  {
+   "id": "WV",
+   "name": "WV",
+   "grade": null,
+   "remain": 1046,
+   "max": 1110,
+   "sold": 0
+  },
+  {
+   "id": "WU",
+   "name": "WU",
+   "grade": null,
+   "remain": 433,
+   "max": 445,
+   "sold": 0
+  },
+  {
+   "id": "WT",
+   "name": "WT",
+   "grade": null,
+   "remain": 528,
+   "max": 630,
+   "sold": 2
+  },
+  {
+   "id": "WS",
+   "name": "WS",
+   "grade": null,
+   "remain": 346,
+   "max": 593,
+   "sold": 6
+  },
+  {
+   "id": "WR",
+   "name": "WR",
+   "grade": null,
+   "remain": 371,
+   "max": 450,
+   "sold": 3
+  },
+  {
+   "id": "WQ",
+   "name": "WQ",
+   "grade": null,
+   "remain": 1020,
+   "max": 1138,
+   "sold": 0
+  },
+  {
+   "id": "WP",
+   "name": "WP",
+   "grade": null,
+   "remain": 734,
+   "max": 749,
+   "sold": 3
+  },
+  {
+   "id": "WA",
+   "name": "WA",
+   "grade": null,
+   "remain": 147,
+   "max": 1099,
+   "sold": 17
+  },
+  {
+   "id": "NF",
+   "name": "NF",
+   "grade": null,
+   "remain": 18,
+   "max": 717,
+   "sold": -6
+  },
+  {
+   "id": "WN",
+   "name": "WN",
+   "grade": null,
+   "remain": null,
+   "max": null,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "NP",
+   "name": "NP",
+   "grade": null,
+   "remain": null,
+   "max": null,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "NE",
+   "name": "NE",
+   "grade": null,
+   "remain": 5,
+   "max": 1354,
+   "sold": 1
+  },
+  {
+   "id": "ND",
+   "name": "ND",
+   "grade": null,
+   "remain": 39,
+   "max": 947,
+   "sold": -38
+  },
+  {
+   "id": "NC",
+   "name": "NC",
+   "grade": null,
+   "remain": 43,
+   "max": 947,
+   "sold": -43
+  },
+  {
+   "id": "NB",
+   "name": "NB",
+   "grade": null,
+   "remain": 30,
+   "max": 1355,
+   "sold": -19
+  },
+  {
+   "id": "NN",
+   "name": "NN",
+   "grade": null,
+   "remain": 682,
+   "max": 744,
+   "sold": 11
+  },
+  {
+   "id": "NM",
+   "name": "NM",
+   "grade": null,
+   "remain": 704,
+   "max": 751,
+   "sold": 2
+  },
+  {
+   "id": "NL",
+   "name": "NL",
+   "grade": null,
+   "remain": 588,
+   "max": 717,
+   "sold": 7
+  },
+  {
+   "id": "NK",
+   "name": "NK",
+   "grade": null,
+   "remain": 555,
+   "max": 721,
+   "sold": 21
+  },
+  {
+   "id": "NJ",
+   "name": "NJ",
+   "grade": null,
+   "remain": 724,
+   "max": 752,
+   "sold": 3
+  },
+  {
+   "id": "NH",
+   "name": "NH",
+   "grade": null,
+   "remain": 759,
+   "max": 767,
+   "sold": -2
+  }
+ ],
+ "summary": "FC서울 vs 대전하나시티즌 2026.11.28(토) 14:00 예매 현황 (시험 집계) (11.27 17:41 기준)\n\n예매 21,048석 / 46,521석 (45.2%)\n원정석 예매 1,023석 / 6,179석 (16.6%)\n11.27 08:51 이후 +229석\n\n매진: VIP K, VIP L, WC, WD, WE, WJ, W센터\n미판매: EJ, ET, NG, NP, SG, SH, SJ, SK, SL, SM, SN, SP, WN, WX",
+ "images": {
+  "board": "https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/test/seoul/latest.png",
+  "story": "https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/test/seoul/latest-story.png"
+ },
+ "history": "https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/test/seoul/history.json"
+}

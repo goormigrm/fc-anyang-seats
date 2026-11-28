@@ -1,0 +1,579 @@
+{
+ "app": "fc-anyang-seats",
+ "version": 1,
+ "updatedAt": "2026-11-28T12:07:00+09:00",
+ "match": {
+  "opponent": "포항스틸러스",
+  "kickoff": "2026-11-28T16:30:00+09:00",
+  "venue": "포항스틸야드",
+  "home": "포항스틸러스",
+  "away": "광주FC",
+  "test": true,
+  "competition": "K리그1",
+  "attendance": null,
+  "awayAttendance": null
+ },
+ "capacity": 10639,
+ "available": 2645,
+ "booked": 7994,
+ "awayCapacity": 948,
+ "awayBooked": 142,
+ "awayRemain": 44,
+ "groups": [],
+ "sinceBase": {
+  "at": "2026-11-28T09:16:00+09:00",
+  "booked": 205
+ },
+ "soldOut": [
+  "T4",
+  "라운지",
+  "프리미엄테이블1",
+  "프리미엄테이블2",
+  "W3",
+  "W4",
+  "프레스티지테이블",
+  "W23",
+  "T1",
+  "T2",
+  "N3",
+  "N4"
+ ],
+ "unknown": [],
+ "unsold": [
+  "N28",
+  "S21",
+  "S22",
+  "S23",
+  "S24",
+  "S25",
+  "A21",
+  "A22",
+  "A23",
+  "S26",
+  "N27"
+ ],
+ "sections": [
+  {
+   "id": "E1",
+   "name": "E1",
+   "grade": null,
+   "remain": 10,
+   "max": 352,
+   "sold": 1
+  },
+  {
+   "id": "E2",
+   "name": "E2",
+   "grade": null,
+   "remain": 18,
+   "max": 368,
+   "sold": 2
+  },
+  {
+   "id": "E3",
+   "name": "E3",
+   "grade": null,
+   "remain": 8,
+   "max": 350,
+   "sold": 1
+  },
+  {
+   "id": "E4",
+   "name": "E4",
+   "grade": null,
+   "remain": 26,
+   "max": 640,
+   "sold": 8
+  },
+  {
+   "id": "E5",
+   "name": "E5",
+   "grade": null,
+   "remain": 12,
+   "max": 350,
+   "sold": 6
+  },
+  {
+   "id": "E6",
+   "name": "E6",
+   "grade": null,
+   "remain": 65,
+   "max": 368,
+   "sold": 17
+  },
+  {
+   "id": "E7",
+   "name": "E7",
+   "grade": null,
+   "remain": 75,
+   "max": 350,
+   "sold": 11
+  },
+  {
+   "id": "E21",
+   "name": "E21",
+   "grade": null,
+   "remain": 6,
+   "max": 174,
+   "sold": 11
+  },
+  {
+   "id": "E22",
+   "name": "E22",
+   "grade": null,
+   "remain": 25,
+   "max": 216,
+   "sold": 11
+  },
+  {
+   "id": "E23",
+   "name": "E23",
+   "grade": null,
+   "remain": 9,
+   "max": 192,
+   "sold": -1
+  },
+  {
+   "id": "E24",
+   "name": "E24",
+   "grade": null,
+   "remain": 27,
+   "max": 369,
+   "sold": -3
+  },
+  {
+   "id": "E25",
+   "name": "E25",
+   "grade": null,
+   "remain": 21,
+   "max": 192,
+   "sold": 8
+  },
+  {
+   "id": "E26",
+   "name": "E26",
+   "grade": null,
+   "remain": 2,
+   "max": 216,
+   "sold": 3
+  },
+  {
+   "id": "E27",
+   "name": "E27",
+   "grade": null,
+   "remain": 61,
+   "max": 174,
+   "sold": 19
+  },
+  {
+   "id": "T4",
+   "name": "T4",
+   "grade": null,
+   "remain": 0,
+   "max": 132,
+   "sold": 0
+  },
+  {
+   "id": "N28",
+   "name": "N28",
+   "grade": null,
+   "remain": null,
+   "max": 335,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "데크석",
+   "name": "데크석",
+   "grade": null,
+   "remain": 68,
+   "max": 88,
+   "sold": 0
+  },
+  {
+   "id": "S21",
+   "name": "S21",
+   "grade": null,
+   "remain": null,
+   "max": 302,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "바테이블",
+   "name": "바테이블",
+   "grade": null,
+   "remain": 58,
+   "max": 110,
+   "sold": 5
+  },
+  {
+   "id": "라운지",
+   "name": "라운지",
+   "grade": null,
+   "remain": 0,
+   "max": 21,
+   "sold": 0
+  },
+  {
+   "id": "S3",
+   "name": "S3",
+   "grade": null,
+   "remain": 232,
+   "max": 234,
+   "sold": 0
+  },
+  {
+   "id": "S4",
+   "name": "S4",
+   "grade": null,
+   "remain": 231,
+   "max": 242,
+   "sold": 0
+  },
+  {
+   "id": "S5",
+   "name": "S5",
+   "grade": null,
+   "remain": 63,
+   "max": 65,
+   "sold": 0
+  },
+  {
+   "id": "A1",
+   "name": "A1",
+   "grade": null,
+   "remain": 262,
+   "max": 300,
+   "sold": 2
+  },
+  {
+   "id": "A2",
+   "name": "A2",
+   "grade": null,
+   "remain": 284,
+   "max": 354,
+   "sold": 4
+  },
+  {
+   "id": "A3",
+   "name": "A3",
+   "grade": null,
+   "remain": 216,
+   "max": 246,
+   "sold": 2
+  },
+  {
+   "id": "S22",
+   "name": "S22",
+   "grade": null,
+   "remain": null,
+   "max": 334,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "S23",
+   "name": "S23",
+   "grade": null,
+   "remain": null,
+   "max": 180,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "S24",
+   "name": "S24",
+   "grade": null,
+   "remain": null,
+   "max": 156,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "S25",
+   "name": "S25",
+   "grade": null,
+   "remain": null,
+   "max": 60,
+   "blocked": 20,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "A21",
+   "name": "A21",
+   "grade": null,
+   "remain": null,
+   "max": 165,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "A22",
+   "name": "A22",
+   "grade": null,
+   "remain": null,
+   "max": 216,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "A23",
+   "name": "A23",
+   "grade": null,
+   "remain": null,
+   "max": 337,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "원정테이블",
+   "name": "원정T",
+   "grade": null,
+   "remain": 44,
+   "max": 48,
+   "sold": 0
+  },
+  {
+   "id": "T5",
+   "name": "T5",
+   "grade": null,
+   "remain": 92,
+   "max": 102,
+   "sold": 2
+  },
+  {
+   "id": "S26",
+   "name": "S26",
+   "grade": null,
+   "remain": null,
+   "max": 296,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "W1",
+   "name": "W1",
+   "grade": null,
+   "remain": 106,
+   "max": 153,
+   "sold": 6
+  },
+  {
+   "id": "W2",
+   "name": "W2",
+   "grade": null,
+   "remain": 21,
+   "max": 160,
+   "sold": 4
+  },
+  {
+   "id": "프리미엄테이블1",
+   "name": "프리미엄1",
+   "grade": null,
+   "remain": 0,
+   "max": 115,
+   "sold": 0
+  },
+  {
+   "id": "프리미엄테이블2",
+   "name": "프리미엄2",
+   "grade": null,
+   "remain": 0,
+   "max": 115,
+   "sold": 0
+  },
+  {
+   "id": "W3",
+   "name": "W3",
+   "grade": null,
+   "remain": 0,
+   "max": 160,
+   "sold": 0
+  },
+  {
+   "id": "W4",
+   "name": "W4",
+   "grade": null,
+   "remain": 0,
+   "max": 153,
+   "sold": 0
+  },
+  {
+   "id": "프레스티지테이블",
+   "name": "프레스티지",
+   "grade": null,
+   "remain": 0,
+   "max": 44,
+   "sold": 0
+  },
+  {
+   "id": "퍼스트클래스석",
+   "name": "퍼스트",
+   "grade": null,
+   "remain": 2,
+   "max": 20,
+   "sold": 0
+  },
+  {
+   "id": "W21",
+   "name": "W21",
+   "grade": null,
+   "remain": 52,
+   "max": 174,
+   "sold": 18
+  },
+  {
+   "id": "W22",
+   "name": "W22",
+   "grade": null,
+   "remain": 15,
+   "max": 216,
+   "sold": 3
+  },
+  {
+   "id": "W23",
+   "name": "W23",
+   "grade": null,
+   "remain": 0,
+   "max": 216,
+   "sold": 1
+  },
+  {
+   "id": "W24",
+   "name": "W24",
+   "grade": null,
+   "remain": 3,
+   "max": 174,
+   "sold": -1
+  },
+  {
+   "id": "T1",
+   "name": "T1",
+   "grade": null,
+   "remain": 0,
+   "max": 102,
+   "sold": 0
+  },
+  {
+   "id": "N21",
+   "name": "N21",
+   "grade": null,
+   "remain": 119,
+   "max": 307,
+   "sold": 8
+  },
+  {
+   "id": "T2",
+   "name": "T2",
+   "grade": null,
+   "remain": 0,
+   "max": 115,
+   "sold": 0
+  },
+  {
+   "id": "N1",
+   "name": "N1",
+   "grade": null,
+   "remain": 2,
+   "max": 300,
+   "sold": 0
+  },
+  {
+   "id": "N2",
+   "name": "N2",
+   "grade": null,
+   "remain": 2,
+   "max": 235,
+   "sold": 0
+  },
+  {
+   "id": "N3",
+   "name": "N3",
+   "grade": null,
+   "remain": 0,
+   "max": 154,
+   "sold": 0
+  },
+  {
+   "id": "N4",
+   "name": "N4",
+   "grade": null,
+   "remain": 0,
+   "max": 233,
+   "sold": 1
+  },
+  {
+   "id": "N5",
+   "name": "N5",
+   "grade": null,
+   "remain": 4,
+   "max": 248,
+   "sold": 2
+  },
+  {
+   "id": "T3",
+   "name": "T3",
+   "grade": null,
+   "remain": 12,
+   "max": 156,
+   "sold": 0
+  },
+  {
+   "id": "N22",
+   "name": "N22",
+   "grade": null,
+   "remain": 179,
+   "max": 332,
+   "sold": 22
+  },
+  {
+   "id": "N23",
+   "name": "N23",
+   "grade": null,
+   "remain": 121,
+   "max": 207,
+   "sold": 9
+  },
+  {
+   "id": "N24",
+   "name": "N24",
+   "grade": null,
+   "remain": 2,
+   "max": 63,
+   "sold": 0
+  },
+  {
+   "id": "N25",
+   "name": "N25",
+   "grade": null,
+   "remain": 5,
+   "max": 63,
+   "sold": 0
+  },
+  {
+   "id": "N26",
+   "name": "N26",
+   "grade": null,
+   "remain": 85,
+   "max": 171,
+   "sold": 23
+  },
+  {
+   "id": "N27",
+   "name": "N27",
+   "grade": null,
+   "remain": null,
+   "max": 335,
+   "unsold": true,
+   "sold": 0
+  }
+ ],
+ "summary": "포항스틸러스 vs 광주FC 2026.11.28(토) 16:30 예매 현황 (시험 집계) (11.28 12:07 기준)\n\n예매 7,994석 / 10,639석 (75.1%)\n원정석 예매 142석 / 948석 (15.0%)\n11.28 09:16 이후 +205석\n\n매진: N3, N4, T1, T2, T4, W3, W4, W23, 라운지, 프레스티지, 프리미엄1, 프리미엄2\n미판매: A21, A22, A23, N27, N28, S21, S22, S23, S24, S25, S26",
+ "images": {
+  "board": "https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/test/pohang/latest.png",
+  "story": "https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/test/pohang/latest-story.png"
+ },
+ "history": "https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/test/pohang/history.json"
+}

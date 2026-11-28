@@ -1,0 +1,1035 @@
+{
+ "app": "fc-anyang-seats",
+ "version": 1,
+ "updatedAt": "2026-11-28T10:03:00+09:00",
+ "match": {
+  "opponent": "울산HD",
+  "kickoff": "2026-11-29T14:00:00+09:00",
+  "venue": "울산문수축구경기장",
+  "home": "울산HD",
+  "away": "전북현대",
+  "test": true,
+  "competition": "K리그1",
+  "attendance": null,
+  "awayAttendance": null
+ },
+ "capacity": 28618,
+ "available": 15374,
+ "booked": 13244,
+ "awayCapacity": 3610,
+ "awayBooked": 873,
+ "awayRemain": 2737,
+ "groups": [],
+ "sinceBase": {
+  "at": "2026-11-27T17:11:00+09:00",
+  "booked": 244
+ },
+ "soldOut": [
+  "밤겔피크닉존",
+  "E2",
+  "E3",
+  "E5",
+  "E7",
+  "게이밍체어존",
+  "S1",
+  "S2",
+  "S3",
+  "S4",
+  "S5",
+  "S6",
+  "S7",
+  "S8",
+  "W2",
+  "W3",
+  "치킨존",
+  "프리미엄석",
+  "W13",
+  "T21",
+  "T22",
+  "T23",
+  "T24",
+  "T25",
+  "T26",
+  "T27",
+  "T28",
+  "T32",
+  "T33"
+ ],
+ "unknown": [],
+ "unsold": [
+  "N5",
+  "N16",
+  "S32",
+  "S33",
+  "S34",
+  "W31",
+  "W32",
+  "W35",
+  "W36",
+  "W37",
+  "T31",
+  "T34",
+  "W38",
+  "N33",
+  "N34"
+ ],
+ "sections": [
+  {
+   "id": "밤겔피크닉존",
+   "name": "밤겔",
+   "grade": null,
+   "remain": 0,
+   "max": 58,
+   "sold": 0
+  },
+  {
+   "id": "E1",
+   "name": "E1",
+   "grade": null,
+   "remain": 1,
+   "max": 280,
+   "sold": 0
+  },
+  {
+   "id": "E2",
+   "name": "E2",
+   "grade": null,
+   "remain": 0,
+   "max": 360,
+   "sold": 0
+  },
+  {
+   "id": "E3",
+   "name": "E3",
+   "grade": null,
+   "remain": 0,
+   "max": 340,
+   "sold": 0
+  },
+  {
+   "id": "E4",
+   "name": "E4",
+   "grade": null,
+   "remain": 6,
+   "max": 360,
+   "sold": 2
+  },
+  {
+   "id": "E5",
+   "name": "E5",
+   "grade": null,
+   "remain": 0,
+   "max": 360,
+   "sold": 2
+  },
+  {
+   "id": "E6",
+   "name": "E6",
+   "grade": null,
+   "remain": 4,
+   "max": 360,
+   "sold": 0
+  },
+  {
+   "id": "E7",
+   "name": "E7",
+   "grade": null,
+   "remain": 0,
+   "max": 340,
+   "sold": 2
+  },
+  {
+   "id": "E8",
+   "name": "E8",
+   "grade": null,
+   "remain": 4,
+   "max": 360,
+   "sold": 0
+  },
+  {
+   "id": "E9",
+   "name": "E9",
+   "grade": null,
+   "remain": 2,
+   "max": 280,
+   "sold": 1
+  },
+  {
+   "id": "게이밍체어존",
+   "name": "게이밍",
+   "grade": null,
+   "remain": 0,
+   "max": 89,
+   "sold": 0
+  },
+  {
+   "id": "S1",
+   "name": "S1",
+   "grade": null,
+   "remain": 0,
+   "max": 218,
+   "sold": 0
+  },
+  {
+   "id": "S2",
+   "name": "S2",
+   "grade": null,
+   "remain": 0,
+   "max": 358,
+   "sold": 0
+  },
+  {
+   "id": "S3",
+   "name": "S3",
+   "grade": null,
+   "remain": 0,
+   "max": 380,
+   "sold": 0
+  },
+  {
+   "id": "S4",
+   "name": "S4",
+   "grade": null,
+   "remain": 0,
+   "max": 230,
+   "sold": 0
+  },
+  {
+   "id": "S5",
+   "name": "S5",
+   "grade": null,
+   "remain": 0,
+   "max": 230,
+   "sold": 0
+  },
+  {
+   "id": "S6",
+   "name": "S6",
+   "grade": null,
+   "remain": 0,
+   "max": 380,
+   "sold": 0
+  },
+  {
+   "id": "S7",
+   "name": "S7",
+   "grade": null,
+   "remain": 0,
+   "max": 351,
+   "sold": 0
+  },
+  {
+   "id": "S8",
+   "name": "S8",
+   "grade": null,
+   "remain": 0,
+   "max": 218,
+   "sold": 0
+  },
+  {
+   "id": "W1",
+   "name": "W1",
+   "grade": null,
+   "remain": 1,
+   "max": 268,
+   "sold": 1
+  },
+  {
+   "id": "W2",
+   "name": "W2",
+   "grade": null,
+   "remain": 0,
+   "max": 178,
+   "sold": 0
+  },
+  {
+   "id": "W3",
+   "name": "W3",
+   "grade": null,
+   "remain": 0,
+   "max": 300,
+   "sold": 3
+  },
+  {
+   "id": "W4",
+   "name": "W4",
+   "grade": null,
+   "remain": 1,
+   "max": 288,
+   "sold": 0
+  },
+  {
+   "id": "치킨존",
+   "name": "치킨존",
+   "grade": null,
+   "remain": 0,
+   "max": 100,
+   "sold": 0
+  },
+  {
+   "id": "프리미엄석",
+   "name": "프리미엄",
+   "grade": null,
+   "remain": 0,
+   "max": 390,
+   "sold": 0
+  },
+  {
+   "id": "W5",
+   "name": "W5",
+   "grade": null,
+   "remain": 4,
+   "max": 288,
+   "sold": -1
+  },
+  {
+   "id": "W6",
+   "name": "W6",
+   "grade": null,
+   "remain": 12,
+   "max": 300,
+   "sold": -6
+  },
+  {
+   "id": "W7",
+   "name": "W7",
+   "grade": null,
+   "remain": 3,
+   "max": 178,
+   "sold": 2
+  },
+  {
+   "id": "W8",
+   "name": "W8",
+   "grade": null,
+   "remain": 7,
+   "max": 268,
+   "sold": -1
+  },
+  {
+   "id": "N1",
+   "name": "N1",
+   "grade": null,
+   "remain": 142,
+   "max": 218,
+   "sold": 1
+  },
+  {
+   "id": "N2",
+   "name": "N2",
+   "grade": null,
+   "remain": 114,
+   "max": 358,
+   "sold": 6
+  },
+  {
+   "id": "N3",
+   "name": "N3",
+   "grade": null,
+   "remain": 141,
+   "max": 380,
+   "sold": -6
+  },
+  {
+   "id": "N4",
+   "name": "N4",
+   "grade": null,
+   "remain": 192,
+   "max": 400,
+   "sold": 3
+  },
+  {
+   "id": "N5",
+   "name": "N5",
+   "grade": null,
+   "remain": null,
+   "max": null,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "N6",
+   "name": "N6",
+   "grade": null,
+   "remain": 142,
+   "max": 380,
+   "sold": 25
+  },
+  {
+   "id": "N7",
+   "name": "N7",
+   "grade": null,
+   "remain": 252,
+   "max": 358,
+   "sold": 10
+  },
+  {
+   "id": "N8",
+   "name": "N8",
+   "grade": null,
+   "remain": 155,
+   "max": 218,
+   "sold": 12
+  },
+  {
+   "id": "E11",
+   "name": "E11",
+   "grade": null,
+   "remain": 255,
+   "max": 261,
+   "sold": 2
+  },
+  {
+   "id": "E12",
+   "name": "E12",
+   "grade": null,
+   "remain": 300,
+   "max": 303,
+   "sold": 0
+  },
+  {
+   "id": "E13",
+   "name": "E13",
+   "grade": null,
+   "remain": 148,
+   "max": 177,
+   "sold": 7
+  },
+  {
+   "id": "E14",
+   "name": "E14",
+   "grade": null,
+   "remain": 62,
+   "max": 177,
+   "sold": 53
+  },
+  {
+   "id": "E15",
+   "name": "E15",
+   "grade": null,
+   "remain": 10,
+   "max": 177,
+   "sold": 6
+  },
+  {
+   "id": "E16",
+   "name": "E16",
+   "grade": null,
+   "remain": 8,
+   "max": 177,
+   "sold": 3
+  },
+  {
+   "id": "E17",
+   "name": "E17",
+   "grade": null,
+   "remain": 6,
+   "max": 177,
+   "sold": 0
+  },
+  {
+   "id": "E18",
+   "name": "E18",
+   "grade": null,
+   "remain": 6,
+   "max": 177,
+   "sold": 1
+  },
+  {
+   "id": "E19",
+   "name": "E19",
+   "grade": null,
+   "remain": 4,
+   "max": 177,
+   "sold": 0
+  },
+  {
+   "id": "E20",
+   "name": "E20",
+   "grade": null,
+   "remain": 1,
+   "max": 177,
+   "sold": 0
+  },
+  {
+   "id": "E21",
+   "name": "E21",
+   "grade": null,
+   "remain": 10,
+   "max": 177,
+   "sold": 0
+  },
+  {
+   "id": "E22",
+   "name": "E22",
+   "grade": null,
+   "remain": 28,
+   "max": 177,
+   "sold": 26
+  },
+  {
+   "id": "E23",
+   "name": "E23",
+   "grade": null,
+   "remain": 107,
+   "max": 300,
+   "sold": 7
+  },
+  {
+   "id": "E24",
+   "name": "E24",
+   "grade": null,
+   "remain": 238,
+   "max": 259,
+   "sold": 0
+  },
+  {
+   "id": "S11",
+   "name": "S11",
+   "grade": null,
+   "remain": 211,
+   "max": 230,
+   "sold": 0
+  },
+  {
+   "id": "S12",
+   "name": "S12",
+   "grade": null,
+   "remain": 270,
+   "max": 281,
+   "sold": 0
+  },
+  {
+   "id": "S13",
+   "name": "S13",
+   "grade": null,
+   "remain": 165,
+   "max": 180,
+   "sold": 0
+  },
+  {
+   "id": "S14",
+   "name": "S14",
+   "grade": null,
+   "remain": 115,
+   "max": 180,
+   "sold": 6
+  },
+  {
+   "id": "S15",
+   "name": "S15",
+   "grade": null,
+   "remain": 61,
+   "max": 180,
+   "sold": 8
+  },
+  {
+   "id": "S16",
+   "name": "S16",
+   "grade": null,
+   "remain": 73,
+   "max": 180,
+   "sold": 2
+  },
+  {
+   "id": "S17",
+   "name": "S17",
+   "grade": null,
+   "remain": 127,
+   "max": 180,
+   "sold": 4
+  },
+  {
+   "id": "S18",
+   "name": "S18",
+   "grade": null,
+   "remain": 149,
+   "max": 180,
+   "sold": 4
+  },
+  {
+   "id": "S19",
+   "name": "S19",
+   "grade": null,
+   "remain": 254,
+   "max": 280,
+   "sold": 5
+  },
+  {
+   "id": "S20",
+   "name": "S20",
+   "grade": null,
+   "remain": 189,
+   "max": 236,
+   "sold": 7
+  },
+  {
+   "id": "W11",
+   "name": "W11",
+   "grade": null,
+   "remain": 127,
+   "max": 236,
+   "sold": -2
+  },
+  {
+   "id": "W12",
+   "name": "W12",
+   "grade": null,
+   "remain": 27,
+   "max": 284,
+   "sold": 7
+  },
+  {
+   "id": "W13",
+   "name": "W13",
+   "grade": null,
+   "remain": 0,
+   "max": 182,
+   "sold": 0
+  },
+  {
+   "id": "W14",
+   "name": "W14",
+   "grade": null,
+   "remain": 31,
+   "max": 182,
+   "sold": 16
+  },
+  {
+   "id": "W15",
+   "name": "W15",
+   "grade": null,
+   "remain": 274,
+   "max": 283,
+   "sold": 4
+  },
+  {
+   "id": "T21",
+   "name": "T21",
+   "grade": null,
+   "remain": 0,
+   "max": 78,
+   "sold": 0
+  },
+  {
+   "id": "T22",
+   "name": "T22",
+   "grade": null,
+   "remain": 0,
+   "max": 84,
+   "sold": 0
+  },
+  {
+   "id": "T23",
+   "name": "T23",
+   "grade": null,
+   "remain": 0,
+   "max": 84,
+   "sold": 0
+  },
+  {
+   "id": "T24",
+   "name": "T24",
+   "grade": null,
+   "remain": 0,
+   "max": 84,
+   "sold": 0
+  },
+  {
+   "id": "T25",
+   "name": "T25",
+   "grade": null,
+   "remain": 0,
+   "max": 84,
+   "sold": 0
+  },
+  {
+   "id": "T26",
+   "name": "T26",
+   "grade": null,
+   "remain": 0,
+   "max": 84,
+   "sold": 0
+  },
+  {
+   "id": "T27",
+   "name": "T27",
+   "grade": null,
+   "remain": 0,
+   "max": 84,
+   "sold": 0
+  },
+  {
+   "id": "T28",
+   "name": "T28",
+   "grade": null,
+   "remain": 0,
+   "max": 78,
+   "sold": 0
+  },
+  {
+   "id": "W16",
+   "name": "W16",
+   "grade": null,
+   "remain": 238,
+   "max": 246,
+   "sold": 6
+  },
+  {
+   "id": "N11",
+   "name": "N11",
+   "grade": null,
+   "remain": 241,
+   "max": 241,
+   "sold": 0
+  },
+  {
+   "id": "N12",
+   "name": "N12",
+   "grade": null,
+   "remain": 273,
+   "max": 278,
+   "sold": 0
+  },
+  {
+   "id": "N13",
+   "name": "N13",
+   "grade": null,
+   "remain": 174,
+   "max": 180,
+   "sold": 0
+  },
+  {
+   "id": "N14",
+   "name": "N14",
+   "grade": null,
+   "remain": 157,
+   "max": 180,
+   "sold": 3
+  },
+  {
+   "id": "N15",
+   "name": "N15",
+   "grade": null,
+   "remain": 154,
+   "max": 180,
+   "sold": -3
+  },
+  {
+   "id": "N16",
+   "name": "N16",
+   "grade": null,
+   "remain": null,
+   "max": null,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "N17",
+   "name": "N17",
+   "grade": null,
+   "remain": 170,
+   "max": 180,
+   "sold": 0
+  },
+  {
+   "id": "N18",
+   "name": "N18",
+   "grade": null,
+   "remain": 178,
+   "max": 180,
+   "sold": 0
+  },
+  {
+   "id": "N19",
+   "name": "N19",
+   "grade": null,
+   "remain": 274,
+   "max": 283,
+   "sold": 0
+  },
+  {
+   "id": "N20",
+   "name": "N20",
+   "grade": null,
+   "remain": 116,
+   "max": 118,
+   "sold": 0
+  },
+  {
+   "id": "E31",
+   "name": "E31",
+   "grade": null,
+   "remain": 538,
+   "max": 538,
+   "sold": 0
+  },
+  {
+   "id": "E32",
+   "name": "E32",
+   "grade": null,
+   "remain": 564,
+   "max": 564,
+   "sold": 0
+  },
+  {
+   "id": "E33",
+   "name": "E33",
+   "grade": null,
+   "remain": 577,
+   "max": 577,
+   "sold": 0
+  },
+  {
+   "id": "E34",
+   "name": "E34",
+   "grade": null,
+   "remain": 590,
+   "max": 590,
+   "sold": 0
+  },
+  {
+   "id": "E35",
+   "name": "E35",
+   "grade": null,
+   "remain": 540,
+   "max": 552,
+   "sold": 7
+  },
+  {
+   "id": "E36",
+   "name": "E36",
+   "grade": null,
+   "remain": 554,
+   "max": 568,
+   "sold": 7
+  },
+  {
+   "id": "E37",
+   "name": "E37",
+   "grade": null,
+   "remain": 582,
+   "max": 582,
+   "sold": 0
+  },
+  {
+   "id": "E38",
+   "name": "E38",
+   "grade": null,
+   "remain": 578,
+   "max": 578,
+   "sold": 0
+  },
+  {
+   "id": "E39",
+   "name": "E39",
+   "grade": null,
+   "remain": 537,
+   "max": 537,
+   "sold": 0
+  },
+  {
+   "id": "E40",
+   "name": "E40",
+   "grade": null,
+   "remain": 540,
+   "max": 540,
+   "sold": 0
+  },
+  {
+   "id": "S31",
+   "name": "S31",
+   "grade": null,
+   "remain": 512,
+   "max": 520,
+   "sold": 1
+  },
+  {
+   "id": "S32",
+   "name": "S32",
+   "grade": null,
+   "remain": null,
+   "max": 613,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "S33",
+   "name": "S33",
+   "grade": null,
+   "remain": null,
+   "max": 613,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "S34",
+   "name": "S34",
+   "grade": null,
+   "remain": null,
+   "max": 582,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "W31",
+   "name": "W31",
+   "grade": null,
+   "remain": null,
+   "max": 580,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "W32",
+   "name": "W32",
+   "grade": null,
+   "remain": null,
+   "max": 586,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "W33",
+   "name": "W33",
+   "grade": null,
+   "remain": 355,
+   "max": 360,
+   "sold": 0
+  },
+  {
+   "id": "W34",
+   "name": "W34",
+   "grade": null,
+   "remain": 213,
+   "max": 216,
+   "sold": -1
+  },
+  {
+   "id": "W35",
+   "name": "W35",
+   "grade": null,
+   "remain": null,
+   "max": 223,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "W36",
+   "name": "W36",
+   "grade": null,
+   "remain": null,
+   "max": 383,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "W37",
+   "name": "W37",
+   "grade": null,
+   "remain": null,
+   "max": 590,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "T31",
+   "name": "T31",
+   "grade": null,
+   "remain": null,
+   "max": 64,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "T32",
+   "name": "T32",
+   "grade": null,
+   "remain": 0,
+   "max": 104,
+   "sold": 2
+  },
+  {
+   "id": "T33",
+   "name": "T33",
+   "grade": null,
+   "remain": 0,
+   "max": 104,
+   "sold": 0
+  },
+  {
+   "id": "T34",
+   "name": "T34",
+   "grade": null,
+   "remain": null,
+   "max": 64,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "W38",
+   "name": "W38",
+   "grade": null,
+   "remain": null,
+   "max": 582,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "N31",
+   "name": "N31",
+   "grade": null,
+   "remain": 562,
+   "max": 582,
+   "sold": 0
+  },
+  {
+   "id": "N32",
+   "name": "N32",
+   "grade": null,
+   "remain": 587,
+   "max": 613,
+   "sold": 0
+  },
+  {
+   "id": "N33",
+   "name": "N33",
+   "grade": null,
+   "remain": null,
+   "max": null,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "N34",
+   "name": "N34",
+   "grade": null,
+   "remain": null,
+   "max": null,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "N35",
+   "name": "N35",
+   "grade": null,
+   "remain": 590,
+   "max": 616,
+   "sold": 0
+  },
+  {
+   "id": "N36",
+   "name": "N36",
+   "grade": null,
+   "remain": 541,
+   "max": 562,
+   "sold": 0
+  }
+ ],
+ "summary": "울산HD vs 전북현대 2026.11.29(일) 14:00 예매 현황 (시험 집계) (11.28 10:03 기준)\n\n예매 13,244석 / 28,618석 (46.3%)\n원정석 예매 873석 / 3,610석 (24.2%)\n11.27 17:11 이후 +244석\n\n매진: E2, E3, E5, E7, S1, S2, S3, S4, S5, S6, S7, S8, T21, T22, T23, T24, T25, T26, T27, T28, T32, T33, W2, W3, W13, 게이밍, 밤겔, 치킨존, 프리미엄\n미판매: N5, N16, N33, N34, S32, S33, S34, T31, T34, W31, W32, W35, W36, W37, W38",
+ "images": {
+  "board": "https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/test/ulsan/latest.png",
+  "story": "https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/test/ulsan/latest-story.png"
+ },
+ "history": "https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/test/ulsan/history.json"
+}

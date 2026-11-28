@@ -1,0 +1,545 @@
+{
+ "app": "fc-anyang-seats",
+ "version": 1,
+ "updatedAt": "2026-11-25T21:20:00+09:00",
+ "match": {
+  "opponent": "인천유나이티드",
+  "kickoff": "2026-11-29T16:30:00+09:00",
+  "venue": "인천축구전용경기장",
+  "home": "인천유나이티드",
+  "away": "강원FC",
+  "test": true,
+  "competition": "K리그1",
+  "attendance": null,
+  "awayAttendance": null
+ },
+ "capacity": 17585,
+ "available": 10930,
+ "booked": 6655,
+ "awayCapacity": 2131,
+ "awayBooked": 318,
+ "awayRemain": 1813,
+ "groups": [],
+ "sinceBase": {
+  "at": "2026-11-25T15:53:00+09:00",
+  "booked": 631
+ },
+ "soldOut": [
+  "E10",
+  "S1",
+  "라탄석2",
+  "W5",
+  "V1"
+ ],
+ "unknown": [],
+ "unsold": [
+  "W10",
+  "N7"
+ ],
+ "sections": [
+  {
+   "id": "N8",
+   "name": "N8",
+   "grade": null,
+   "remain": 23,
+   "max": 27,
+   "sold": 0
+  },
+  {
+   "id": "E1",
+   "name": "E1",
+   "grade": null,
+   "remain": 18,
+   "max": 27,
+   "sold": 0
+  },
+  {
+   "id": "피크닉테이블석",
+   "name": "피크닉",
+   "grade": null,
+   "remain": 58,
+   "max": 80,
+   "sold": 2
+  },
+  {
+   "id": "E10",
+   "name": "E10",
+   "grade": null,
+   "remain": 0,
+   "max": 27,
+   "sold": 0
+  },
+  {
+   "id": "S1",
+   "name": "S1",
+   "grade": null,
+   "remain": 0,
+   "max": 27,
+   "sold": 0
+  },
+  {
+   "id": "하이네켄테이블석",
+   "name": "하이네켄",
+   "grade": null,
+   "remain": 2,
+   "max": 68,
+   "sold": -2
+  },
+  {
+   "id": "E2",
+   "name": "E2",
+   "grade": null,
+   "remain": 70,
+   "max": 135,
+   "sold": 12
+  },
+  {
+   "id": "E3",
+   "name": "E3",
+   "grade": null,
+   "remain": 265,
+   "max": 425,
+   "sold": 12
+  },
+  {
+   "id": "E4",
+   "name": "E4",
+   "grade": null,
+   "remain": 328,
+   "max": 445,
+   "sold": 32
+  },
+  {
+   "id": "E5",
+   "name": "E5",
+   "grade": null,
+   "remain": 273,
+   "max": 494,
+   "sold": 25
+  },
+  {
+   "id": "E6",
+   "name": "E6",
+   "grade": null,
+   "remain": 213,
+   "max": 494,
+   "sold": 33
+  },
+  {
+   "id": "E7",
+   "name": "E7",
+   "grade": null,
+   "remain": 201,
+   "max": 445,
+   "sold": 36
+  },
+  {
+   "id": "E8",
+   "name": "E8",
+   "grade": null,
+   "remain": 163,
+   "max": 425,
+   "sold": 13
+  },
+  {
+   "id": "E9",
+   "name": "E9",
+   "grade": null,
+   "remain": 2,
+   "max": 135,
+   "sold": 2
+  },
+  {
+   "id": "E11",
+   "name": "E11",
+   "grade": null,
+   "remain": 144,
+   "max": 146,
+   "sold": 1
+  },
+  {
+   "id": "E12",
+   "name": "E12",
+   "grade": null,
+   "remain": 278,
+   "max": 280,
+   "sold": 0
+  },
+  {
+   "id": "E13",
+   "name": "E13",
+   "grade": null,
+   "remain": 375,
+   "max": 377,
+   "sold": 0
+  },
+  {
+   "id": "E14",
+   "name": "E14",
+   "grade": null,
+   "remain": 371,
+   "max": 384,
+   "sold": 1
+  },
+  {
+   "id": "E15",
+   "name": "E15",
+   "grade": null,
+   "remain": 328,
+   "max": 388,
+   "sold": 12
+  },
+  {
+   "id": "E16",
+   "name": "E16",
+   "grade": null,
+   "remain": 357,
+   "max": 384,
+   "sold": 8
+  },
+  {
+   "id": "E17",
+   "name": "E17",
+   "grade": null,
+   "remain": 357,
+   "max": 376,
+   "sold": -1
+  },
+  {
+   "id": "E18",
+   "name": "E18",
+   "grade": null,
+   "remain": 272,
+   "max": 277,
+   "sold": 0
+  },
+  {
+   "id": "E19",
+   "name": "E19",
+   "grade": null,
+   "remain": 143,
+   "max": 145,
+   "sold": 0
+  },
+  {
+   "id": "S2",
+   "name": "S2",
+   "grade": null,
+   "remain": 190,
+   "max": 500,
+   "sold": 44
+  },
+  {
+   "id": "S3",
+   "name": "S3",
+   "grade": null,
+   "remain": 4,
+   "max": 425,
+   "sold": 6
+  },
+  {
+   "id": "S4",
+   "name": "S4",
+   "grade": null,
+   "remain": 4,
+   "max": 413,
+   "sold": 9
+  },
+  {
+   "id": "S5",
+   "name": "S5",
+   "grade": null,
+   "remain": 8,
+   "max": 425,
+   "sold": 17
+  },
+  {
+   "id": "S6",
+   "name": "S6",
+   "grade": null,
+   "remain": 224,
+   "max": 500,
+   "sold": 46
+  },
+  {
+   "id": "S8",
+   "name": "S8",
+   "grade": null,
+   "remain": 296,
+   "max": 376,
+   "sold": 2
+  },
+  {
+   "id": "S9",
+   "name": "S9",
+   "grade": null,
+   "remain": 311,
+   "max": 478,
+   "sold": 26
+  },
+  {
+   "id": "S10",
+   "name": "S10",
+   "grade": null,
+   "remain": 215,
+   "max": 415,
+   "sold": 44
+  },
+  {
+   "id": "S11",
+   "name": "S11",
+   "grade": null,
+   "remain": 314,
+   "max": 478,
+   "sold": 51
+  },
+  {
+   "id": "S12",
+   "name": "S12",
+   "grade": null,
+   "remain": 303,
+   "max": 372,
+   "sold": 7
+  },
+  {
+   "id": "라탄석1",
+   "name": "라탄 1",
+   "grade": null,
+   "remain": 6,
+   "max": 27,
+   "sold": -6
+  },
+  {
+   "id": "라탄석2",
+   "name": "라탄 2",
+   "grade": null,
+   "remain": 0,
+   "max": 27,
+   "sold": 0
+  },
+  {
+   "id": "W2",
+   "name": "W2",
+   "grade": null,
+   "remain": 218,
+   "max": 411,
+   "sold": 28
+  },
+  {
+   "id": "W3",
+   "name": "W3",
+   "grade": null,
+   "remain": 25,
+   "max": 456,
+   "sold": 19
+  },
+  {
+   "id": "W4",
+   "name": "W4",
+   "grade": null,
+   "remain": 2,
+   "max": 375,
+   "sold": 4
+  },
+  {
+   "id": "W5",
+   "name": "W5",
+   "grade": null,
+   "remain": 0,
+   "max": 170,
+   "sold": 0
+  },
+  {
+   "id": "V1",
+   "name": "V1",
+   "grade": null,
+   "remain": 0,
+   "max": 144,
+   "sold": 0
+  },
+  {
+   "id": "V2",
+   "name": "V2",
+   "grade": null,
+   "remain": 1,
+   "max": 116,
+   "sold": 0
+  },
+  {
+   "id": "V3",
+   "name": "V3",
+   "grade": null,
+   "remain": 4,
+   "max": 144,
+   "sold": 15
+  },
+  {
+   "id": "W6",
+   "name": "W6",
+   "grade": null,
+   "remain": 43,
+   "max": 170,
+   "sold": 19
+  },
+  {
+   "id": "W7",
+   "name": "W7",
+   "grade": null,
+   "remain": 218,
+   "max": 374,
+   "sold": 32
+  },
+  {
+   "id": "W8",
+   "name": "W8",
+   "grade": null,
+   "remain": 430,
+   "max": 456,
+   "sold": 4
+  },
+  {
+   "id": "W9",
+   "name": "W9",
+   "grade": null,
+   "remain": 408,
+   "max": 407,
+   "sold": 0
+  },
+  {
+   "id": "W10",
+   "name": "W10",
+   "grade": null,
+   "remain": null,
+   "max": 163,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "W11",
+   "name": "W11",
+   "grade": null,
+   "remain": 122,
+   "max": 129,
+   "sold": 0
+  },
+  {
+   "id": "W12",
+   "name": "W12",
+   "grade": null,
+   "remain": 241,
+   "max": 242,
+   "sold": 0
+  },
+  {
+   "id": "W13",
+   "name": "W13",
+   "grade": null,
+   "remain": 337,
+   "max": 355,
+   "sold": 9
+  },
+  {
+   "id": "W14",
+   "name": "W14",
+   "grade": null,
+   "remain": 123,
+   "max": 163,
+   "sold": 8
+  },
+  {
+   "id": "W15",
+   "name": "W15",
+   "grade": null,
+   "remain": 108,
+   "max": 163,
+   "sold": 2
+  },
+  {
+   "id": "W16",
+   "name": "W16",
+   "grade": null,
+   "remain": 351,
+   "max": 353,
+   "sold": 0
+  },
+  {
+   "id": "W17",
+   "name": "W17",
+   "grade": null,
+   "remain": 247,
+   "max": 248,
+   "sold": 0
+  },
+  {
+   "id": "W18",
+   "name": "W18",
+   "grade": null,
+   "remain": 124,
+   "max": 131,
+   "sold": 0
+  },
+  {
+   "id": "N1",
+   "name": "N1",
+   "grade": null,
+   "remain": 203,
+   "max": 224,
+   "sold": 0
+  },
+  {
+   "id": "N2",
+   "name": "N2",
+   "grade": null,
+   "remain": 317,
+   "max": 355,
+   "sold": 2
+  },
+  {
+   "id": "N3",
+   "name": "N3",
+   "grade": null,
+   "remain": 284,
+   "max": 385,
+   "sold": 24
+  },
+  {
+   "id": "N4",
+   "name": "N4",
+   "grade": null,
+   "remain": 283,
+   "max": 391,
+   "sold": 19
+  },
+  {
+   "id": "N5",
+   "name": "N5",
+   "grade": null,
+   "remain": 350,
+   "max": 391,
+   "sold": 11
+  },
+  {
+   "id": "N6",
+   "name": "N6",
+   "grade": null,
+   "remain": 376,
+   "max": 385,
+   "sold": 3
+  },
+  {
+   "id": "N7",
+   "name": "N7",
+   "grade": null,
+   "remain": null,
+   "max": 354,
+   "unsold": true,
+   "sold": 0
+  }
+ ],
+ "summary": "인천유나이티드 vs 강원FC 2026.11.29(일) 16:30 예매 현황 (시험 집계) (11.25 21:20 기준)\n\n예매 6,655석 / 17,585석 (37.8%)\n원정석 예매 318석 / 2,131석 (14.9%)\n11.25 15:53 이후 +631석\n\n매진: E10, S1, V1, W5, 라탄 2\n미판매: N7, W10",
+ "images": {
+  "board": "https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/test/incheon/latest.png",
+  "story": "https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/test/incheon/latest-story.png"
+ },
+ "history": "https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/test/incheon/history.json"
+}

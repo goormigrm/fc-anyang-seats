@@ -1,0 +1,480 @@
+{
+ "app": "fc-anyang-seats",
+ "version": 1,
+ "updatedAt": "2026-11-28T12:04:00+09:00",
+ "match": {
+  "opponent": "제주SK",
+  "kickoff": "2026-11-28T14:00:00+09:00",
+  "venue": "안양종합운동장",
+  "home": "FC안양",
+  "away": "제주SK",
+  "competition": "K리그1",
+  "attendance": null,
+  "awayAttendance": null
+ },
+ "capacity": 10783,
+ "available": 7231,
+ "booked": 3552,
+ "awayCapacity": 1500,
+ "awayBooked": 184,
+ "sinceBase": {
+  "at": "2026-11-28T09:05:00+09:00",
+  "booked": 84
+ },
+ "soldOut": [
+  "R17",
+  "R19",
+  "T2",
+  "F7",
+  "FS6",
+  "F6",
+  "R13",
+  "FS5",
+  "F5",
+  "R12",
+  "S2",
+  "F4",
+  "R11",
+  "FS3",
+  "F3",
+  "F2",
+  "F1"
+ ],
+ "unknown": [],
+ "unsold": [
+  "T1"
+ ],
+ "sections": [
+  {
+   "id": "일반지정석",
+   "name": "일반지정석",
+   "grade": "일반지정석",
+   "remain": 1241,
+   "max": 1427,
+   "sold": 13
+  },
+  {
+   "id": "일반자유석",
+   "name": "일반자유석",
+   "grade": "일반자유석",
+   "remain": 1989,
+   "max": 2040,
+   "sold": 11
+  },
+  {
+   "id": "T4",
+   "name": "피크닉 T4",
+   "grade": "피크닉존 테이블석(T4)",
+   "remain": 52,
+   "max": 62,
+   "sold": 0
+  },
+  {
+   "id": "P",
+   "name": "돗자리 P",
+   "grade": "피크닉존 돗자리석(P)",
+   "remain": 178,
+   "max": 226,
+   "sold": 2
+  },
+  {
+   "id": "중립석",
+   "name": "중립석",
+   "grade": "중립석",
+   "remain": 602,
+   "max": 613,
+   "sold": 1
+  },
+  {
+   "id": "원정석",
+   "name": "원정석",
+   "grade": "원정석",
+   "remain": 1316,
+   "max": 1500,
+   "sold": 30
+  },
+  {
+   "id": "T3",
+   "name": "T3",
+   "grade": "테이블석(T3)",
+   "remain": 16,
+   "max": 30,
+   "sold": 0
+  },
+  {
+   "id": "남측자유석",
+   "name": "남측자유석",
+   "grade": "남측 자유석(2층)",
+   "remain": 1185,
+   "max": 1207,
+   "sold": 1
+  },
+  {
+   "id": "R15",
+   "name": "R15",
+   "grade": "해링턴플레이스존",
+   "remain": 22,
+   "max": 141,
+   "sold": -5
+  },
+  {
+   "id": "R16",
+   "name": "R16",
+   "grade": "해링턴플레이스존",
+   "remain": 15,
+   "max": 138,
+   "sold": -4
+  },
+  {
+   "id": "R17",
+   "name": "R17",
+   "grade": "해링턴플레이스존",
+   "remain": 0,
+   "max": 123,
+   "sold": 0
+  },
+  {
+   "id": "R18",
+   "name": "R18",
+   "grade": "해링턴플레이스존",
+   "remain": 5,
+   "max": 123,
+   "sold": 1
+  },
+  {
+   "id": "R19",
+   "name": "R19",
+   "grade": "해링턴플레이스존",
+   "remain": 0,
+   "max": 138,
+   "sold": 0
+  },
+  {
+   "id": "R20",
+   "name": "R20",
+   "grade": "해링턴플레이스존",
+   "remain": 4,
+   "max": 123,
+   "sold": 0
+  },
+  {
+   "id": "R21",
+   "name": "R21",
+   "grade": "해링턴플레이스존",
+   "remain": 3,
+   "max": 123,
+   "sold": 6
+  },
+  {
+   "id": "R22",
+   "name": "R22",
+   "grade": "해링턴플레이스존",
+   "remain": 8,
+   "max": 138,
+   "sold": 3
+  },
+  {
+   "id": "R23",
+   "name": "R23",
+   "grade": "해링턴플레이스존",
+   "remain": 31,
+   "max": 123,
+   "sold": -1
+  },
+  {
+   "id": "R24",
+   "name": "R24",
+   "grade": "해링턴플레이스존",
+   "remain": 42,
+   "max": 123,
+   "sold": 3
+  },
+  {
+   "id": "R25",
+   "name": "R25",
+   "grade": "해링턴플레이스존",
+   "remain": 71,
+   "max": 138,
+   "sold": 4
+  },
+  {
+   "id": "R26",
+   "name": "R26",
+   "grade": "해링턴플레이스존",
+   "remain": 97,
+   "max": 138,
+   "sold": 23
+  },
+  {
+   "id": "R9",
+   "name": "R9",
+   "grade": "가변석",
+   "remain": 6,
+   "max": 108,
+   "sold": -2
+  },
+  {
+   "id": "R8",
+   "name": "R8",
+   "grade": "가변석",
+   "remain": 1,
+   "max": 99,
+   "sold": 0
+  },
+  {
+   "id": "R7",
+   "name": "R7",
+   "grade": "가변석",
+   "remain": 17,
+   "max": 123,
+   "sold": 11
+  },
+  {
+   "id": "R6",
+   "name": "R6",
+   "grade": "가변석",
+   "remain": 33,
+   "max": 135,
+   "sold": 7
+  },
+  {
+   "id": "T1",
+   "name": "T1",
+   "grade": "테이블석(T1)",
+   "remain": null,
+   "max": 117,
+   "unsold": true,
+   "sold": 0
+  },
+  {
+   "id": "T2",
+   "name": "T2",
+   "grade": "테이블석(T2)",
+   "remain": 0,
+   "max": 42,
+   "sold": 0
+  },
+  {
+   "id": "R5",
+   "name": "R5",
+   "grade": "가변석",
+   "remain": 16,
+   "max": 120,
+   "sold": 0
+  },
+  {
+   "id": "R4",
+   "name": "R4",
+   "grade": "가변석",
+   "remain": 20,
+   "max": 123,
+   "sold": -1
+  },
+  {
+   "id": "R3",
+   "name": "R3",
+   "grade": "가변석",
+   "remain": 26,
+   "max": 123,
+   "sold": 3
+  },
+  {
+   "id": "R2",
+   "name": "R2",
+   "grade": "가변석",
+   "remain": 90,
+   "max": 123,
+   "sold": -4
+  },
+  {
+   "id": "R1",
+   "name": "R1",
+   "grade": "가변석",
+   "remain": 125,
+   "max": 141,
+   "sold": 2
+  },
+  {
+   "id": "FS7",
+   "name": "FS7",
+   "grade": "퍼스트 스탠딩석",
+   "remain": 3,
+   "max": 50,
+   "sold": -3
+  },
+  {
+   "id": "F7",
+   "name": "F7",
+   "grade": "퍼스트석",
+   "remain": 0,
+   "max": 8,
+   "sold": 0
+  },
+  {
+   "id": "R14",
+   "name": "R14",
+   "grade": "서포터즈석",
+   "remain": 7,
+   "max": 123,
+   "sold": -7
+  },
+  {
+   "id": "FS6",
+   "name": "FS6",
+   "grade": "퍼스트 스탠딩석",
+   "remain": 0,
+   "max": 26,
+   "sold": 0
+  },
+  {
+   "id": "F6",
+   "name": "F6",
+   "grade": "퍼스트석",
+   "remain": 0,
+   "max": 15,
+   "sold": 0
+  },
+  {
+   "id": "R13",
+   "name": "R13",
+   "grade": "서포터즈석",
+   "remain": 0,
+   "max": 63,
+   "sold": 0
+  },
+  {
+   "id": "S3",
+   "name": "S3",
+   "grade": "스탠딩석",
+   "remain": 2,
+   "max": 50,
+   "sold": -2
+  },
+  {
+   "id": "FS5",
+   "name": "FS5",
+   "grade": "퍼스트 스탠딩석",
+   "remain": 0,
+   "max": 36,
+   "sold": 0
+  },
+  {
+   "id": "F5",
+   "name": "F5",
+   "grade": "퍼스트석",
+   "remain": 0,
+   "max": 21,
+   "sold": 0
+  },
+  {
+   "id": "R12",
+   "name": "R12",
+   "grade": "서포터즈석",
+   "remain": 0,
+   "max": 63,
+   "sold": 0
+  },
+  {
+   "id": "S2",
+   "name": "S2",
+   "grade": "스탠딩석",
+   "remain": 0,
+   "max": 65,
+   "sold": 0
+  },
+  {
+   "id": "FS4",
+   "name": "FS4",
+   "grade": "퍼스트 스탠딩석",
+   "remain": 1,
+   "max": 36,
+   "sold": -1
+  },
+  {
+   "id": "F4",
+   "name": "F4",
+   "grade": "퍼스트석",
+   "remain": 0,
+   "max": 21,
+   "sold": 0
+  },
+  {
+   "id": "R11",
+   "name": "R11",
+   "grade": "서포터즈석",
+   "remain": 0,
+   "max": 63,
+   "sold": 0
+  },
+  {
+   "id": "S1",
+   "name": "S1",
+   "grade": "스탠딩석",
+   "remain": 1,
+   "max": 50,
+   "sold": -1
+  },
+  {
+   "id": "FS3",
+   "name": "FS3",
+   "grade": "퍼스트 스탠딩석",
+   "remain": 0,
+   "max": 36,
+   "sold": 0
+  },
+  {
+   "id": "F3",
+   "name": "F3",
+   "grade": "퍼스트석",
+   "remain": 0,
+   "max": 21,
+   "sold": 0
+  },
+  {
+   "id": "R10",
+   "name": "R10",
+   "grade": "서포터즈석",
+   "remain": 2,
+   "max": 126,
+   "sold": -2
+  },
+  {
+   "id": "FS2",
+   "name": "FS2",
+   "grade": "퍼스트 스탠딩석",
+   "remain": 1,
+   "max": 26,
+   "sold": -1
+  },
+  {
+   "id": "F2",
+   "name": "F2",
+   "grade": "퍼스트석",
+   "remain": 0,
+   "max": 15,
+   "sold": 0
+  },
+  {
+   "id": "FS1",
+   "name": "FS1",
+   "grade": "퍼스트 스탠딩석",
+   "remain": 3,
+   "max": 50,
+   "sold": -3
+  },
+  {
+   "id": "F1",
+   "name": "F1",
+   "grade": "퍼스트석",
+   "remain": 0,
+   "max": 8,
+   "sold": 0
+  }
+ ],
+ "summary": "FC안양 vs 제주SK 2026.11.28(토) 14:00 예매 현황 (11.28 12:04 기준)\n\n예매 3,552석 / 10,783석 (32.9%)\n원정석 예매 184석 / 1,500석 (12.3%)\n11.28 09:05 이후 +84석\n\n매진: F1, F2, F3, F4, F5, F6, F7, FS3, FS5, FS6, R11, R12, R13, R17, R19, S2, T2\n미판매: T1",
+ "images": {
+  "board": "https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/latest.png",
+  "story": "https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/latest-story.png"
+ },
+ "history": "https://raw.githubusercontent.com/goormigrm/fc-anyang-seats/data/history.json"
+}
