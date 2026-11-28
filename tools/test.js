@@ -270,7 +270,7 @@ const ingest = (page, text) => page.evaluate(t => { fcIngest(t); return { status
   p = await open(b, { url: URL + '?s=ulsan&test=jeonbuk#edit' });
   r = await p.evaluate(() => SECTIONS.filter(s => state.rows[s.id].off).map(s => s.id).sort().join(' '));
   await p.context().close();
-  check('울산 시험 페이지: 기본 미판매 N16 N33 N34 N5', r === 'N16 N33 N34 N5', r);
+  check('울산 시험 페이지: 기본 미판매 북측 4, 3층 9, 3층 테이블 T31·T34', r === 'N16 N33 N34 N5 S32 S33 S34 T31 T34 W31 W32 W35 W36 W37 W38', r);
   // 휴대폰은 입력 화면을 열지 않음(#edit, 기억한 값), 기억한 값은 지움 (11/27 사용자)
   {
     const ctx = await b.newContext({ ...devices['iPhone 13'] });

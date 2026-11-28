@@ -323,7 +323,8 @@ const STADIUMS = {
   // color2: 시험 페이지에서 원정 팀 색이 홈 팀과 같을 때 쓰는 둘째 색 (인천 vs 울산: 둘 다 파랑 -> 울산 노랑)
   // venueAlt: 티켓링크 머리글의 다른 경기장 이름 (11/27 사용자: '울산 문수 월드컵경기장'이라 '받은 글자에 울산문수축구경기장 없음')
   // unsold: N5, N16, N33, N34 는 좌석 그림이 안 열리는 미판매(11/27 사용자, 울산 vs 전북). 북측 노랑 = 원정석(ours), 파랑 = 중립석(홈 관중 쪽)
-  ulsan: { unsold: ['N5', 'N16', 'N33', 'N34'], newUnsold: true, color2: 'yellow', venue: '울산문수축구경기장', venueAlt: ['울산문수월드컵경기장'], host: '울산HD', name: '울산', geo: { frame: true, kx: 1.15, r: [12, 212], s: 1.04 },
+  // 3층 S32~S34, W31, W32, W35~W38 과 3층 테이블 T31, T34 도 미판매(11/28 사용자: 선예매 화면에서 통째로 회색). unsoldRev 2: 이미 연 브라우저에도 한 번 다시
+  ulsan: { unsold: ['N5', 'N16', 'N33', 'N34', 'S32', 'S33', 'S34', 'W31', 'W32', 'W35', 'W36', 'W37', 'W38', 'T31', 'T34'], newUnsold: true, unsoldRev: 2, color2: 'yellow', venue: '울산문수축구경기장', venueAlt: ['울산문수월드컵경기장'], host: '울산HD', name: '울산', geo: { frame: true, kx: 1.15, r: [12, 212], s: 1.04 },
     layout: () => {
       const T1 = [14, 70], T2 = [74, 140], T3 = [144, 212], ours = [...Rs(1, 4, 'N'), ...Rs(11, 15, 'N'), 'N31', 'N32'];
       const seq = (T, list, o) => list.forEach(([ids, u0, u1]) => arc(ids, u0, u1, T, o));  // [칸들, u0, u1] 차례로
@@ -2239,7 +2240,7 @@ const lamp = { installed: 0, version: 0, pings: {}, got: 0, zones: 0, rejected: 
 // 보내기 스크립트 최신 판 (fc-anyang-send.user.js 의 @version 과 같게. 자동 시험이 맞춰 봄). 설치된 판이 낮으면 입력 화면 맨 위 버튼을 눈에 띄게
 const SCRIPT_VERSION = 18;
 // 현황판 판: 커밋할 때 tools/pre-commit.sh 가 이 줄을 커밋 시각(KST)으로 바꿈. 화면 아래와 입력 화면 맨 위에 보여 수정이 반영됐는지 알 수 있게 (11/25 사용자)
-const APP_VERSION = '2026.11.27 16:58';
+const APP_VERSION = '2026.11.28 09:40';
 const hms = t => new Date(t).toTimeString().slice(0, 8);
 // Tampermonkey 저장소는 브라우저마다 따로: 티켓링크를 다른 브라우저에서 열면 신호가 안 옴 (램프에 이 브라우저 이름을 보여 줌)
 const BROWSER = (ua => /Whale\//.test(ua) ? '웨일' : /Edg\//.test(ua) ? '엣지' : /Chrome\//.test(ua) ? '크롬' : /Firefox\//.test(ua) ? '파이어폭스' : '이 브라우저')(navigator.userAgent);
